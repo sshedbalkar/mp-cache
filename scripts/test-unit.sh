@@ -9,7 +9,7 @@ mkdir -p "$report_dir"
 ctest_report="$report_dir/ctest.txt"
 summary_report="$report_dir/unit-test-report.md"
 
-cmake --preset local-debug
+cmake --fresh --preset local-debug
 cmake --build --preset local-debug
 ctest --test-dir build/local-debug --output-on-failure >"$ctest_report"
 

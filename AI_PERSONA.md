@@ -23,5 +23,5 @@ Build a production-quality C cache server that is secure, predictable, performan
 - Keep hot-path data structures bounded and explicit.
 - Treat all remote input, imported files, and runtime config as untrusted until validated.
 - Use C only with small, explicit APIs and documented ownership rules.
-- Reuse established project conventions from `multi-player-app-ai` when they fit.
+- Keep the project self-contained and internally consistent.
 - Build QoL scripts for repeated operational workflows.

@@ -18,7 +18,7 @@ The first implementation phase delivered in this scaffold focuses on project str
 1. Keep the hot path local, bounded, and low overhead.
 2. Keep deployment and recovery simple through exportable state.
 3. Keep security explicit with role-based APIs, token management, and at-rest encryption.
-4. Reuse the standards and operational layout already established in `multi-player-app-ai`.
+4. Keep the standards and operational layout self-contained and predictable inside this repository.
 
 ## Non-Goals For The Bootstrap Phase
 

@@ -14,7 +14,7 @@ STANDARDS_MIN ?= 85
 build: native-build
 
 native-config:
-	$(CMAKE) --preset local-debug
+	$(CMAKE) --fresh --preset local-debug
 
 native-build: native-config
 	$(CMAKE) --build --preset local-debug

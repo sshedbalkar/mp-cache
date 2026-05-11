@@ -1,21 +1,21 @@
-# MPSTD Routing Map
+# Standards Routing Map
 
-Use inherited standards from `../multi-player-app-ai/docs/`.
+Use local standards from `docs/engineering-standards.md` and `docs/commit-messages.md`.
 
 ## Route Selectors
 
 - `route.build-release`
-  - `MPSTD11`
+  - section: `Build, Release, And Deployment`
   - local files: `Makefile`, `configs/build/CMakePresets.json`, `scripts/package.sh`, `deploy/`
 - `route.c-service`
-  - `MPSTD1`, `MPSTD7`, `MPSTD17`
+  - sections: `Common Engineering`, `C Service And CMake`, `Dependency Management`
   - local files: `cmd/`, `internal/`, `native/mp_logger`
 - `route.server-api`
-  - `MPSTD3`, `MPSTD9`, `MPSTD10`
+  - sections: `Server And API`, `Security And Operations`
   - local files: `api/http/v1/cache-service.md`, `internal/httpserver/`
 - `route.technical-docs`
-  - `MPSTD13`, `MPSTD16`
+  - sections: `Documentation`, `Folder Structure`
   - local files: `docs/`, `context/`
 - `route.testing`
-  - `MPSTD15`
+  - section: `Testing And Validation`
   - local files: `tests/`, `scripts/test-unit.sh`, `scripts/check-standards.sh`

@@ -7,9 +7,11 @@ required_files=(
   README.md
   AGENTS.md
   AI_PERSONA.md
+  docs/engineering-standards.md
+  docs/commit-messages.md
   context/README.md
   context/repo-map.md
-  context/mpstd-routing-map.md
+  context/standards-routing-map.md
   context/doc-cards.md
   docs/architecture/mp-cache-architecture.md
   api/http/v1/cache-service.md

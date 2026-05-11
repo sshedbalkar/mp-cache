@@ -7,6 +7,20 @@
   - status: accepted
   - purpose: service architecture, deployment posture, phased plan
 
+## Standards
+
+- `standards.engineering`
+  - path: `docs/engineering-standards.md`
+  - status: active
+  - purpose: authoritative local engineering, API, security, build, test, and layout rules
+
+## Workflow
+
+- `workflow.commit-messages`
+  - path: `docs/commit-messages.md`
+  - status: active
+  - purpose: authoritative local Git commit-message standard
+
 ## API
 
 - `api.http.v1.cache-service`

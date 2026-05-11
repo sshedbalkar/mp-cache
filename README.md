@@ -4,7 +4,7 @@ Unix-socket cache server written in C17 for local S2S deployment on Linux system
 
 Project state: **bootstrap / MVP scaffold**.
 
-This project follows the engineering, deployment, and folder-structure conventions established in `../multi-player-app-ai`, while keeping `mp-cache` as a standalone sibling project under `mp_cache/` with its own docs, context, scripts, and build.
+This project is a standalone C cache server repository with its own docs, context, scripts, and build.
 
 ## Scope
 
@@ -22,7 +22,7 @@ Target system characteristics:
 
 The initial scaffold created in this change provides:
 
-- project structure aligned to the sibling project;
+- project structure aligned to the local standards in this repository;
 - `mp_logger` integrated as a git submodule under `native/mp_logger`;
 - CMake and Make build wrappers;
 - bootstrap config defaults with export-on-missing behavior;
@@ -42,20 +42,12 @@ Not yet implemented in this scaffold:
 
 Those are documented in the architecture and API specs as planned next phases.
 
-## Inherited Standards
+## Project Standards
 
-`mp-cache` inherits relevant standards from `../multi-player-app-ai/docs/`, especially:
+Authoritative local standards:
 
-- `MPSTD1` common engineering standards;
-- `MPSTD3` server and API standards;
-- `MPSTD7` C native and CMake standards;
-- `MPSTD9` security standards;
-- `MPSTD10` observability and operations;
-- `MPSTD11` build, release, and deployment;
-- `MPSTD13` technical document guide;
-- `MPSTD15` testing strategy;
-- `MPSTD16` folder structure;
-- `MPSTD17` dependency and coupling standards.
+- `docs/engineering-standards.md`
+- `docs/commit-messages.md`
 
 ## Prerequisites
 
@@ -148,6 +140,8 @@ Deployment docs:
 ## Docs
 
 - architecture: `docs/architecture/mp-cache-architecture.md`
+- engineering standards: `docs/engineering-standards.md`
+- commit messages: `docs/commit-messages.md`
 - API contract: `api/http/v1/cache-service.md`
 - runbooks: `docs/runbooks/`
 - retrieval context: `context/`

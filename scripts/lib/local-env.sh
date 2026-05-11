@@ -77,7 +77,7 @@ mp_build_server() {
   mp_assert_env "$env_id"
   mp_require_local_dependencies
   mp_prepare_runtime_paths
-  (cd "$MP_REPO_ROOT" && cmake --preset local-debug && cmake --build --preset local-debug)
+  (cd "$MP_REPO_ROOT" && cmake --fresh --preset local-debug && cmake --build --preset local-debug)
 }
 
 mp_is_server_running() {
