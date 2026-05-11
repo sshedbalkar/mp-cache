@@ -19,3 +19,6 @@
   - cache tests
   - naming strategy check
   - standards check
+  - sanitizer hardening checks
+- `make test-valgrind`
+  - host-prepared Valgrind validation for the native test binaries

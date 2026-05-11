@@ -14,6 +14,7 @@ Local development, validation, and manual testing are blocked.
 ## Preconditions
 
 - local dependencies installed
+- normal non-root shell
 - `.tmp/secrets/local.env` created from `configs/secrets/templates/local.env.template`
 - build completed
 - writable `.tmp/` and `logging/` paths
@@ -36,7 +37,7 @@ Local development, validation, and manual testing are blocked.
 3. `./scripts/run-local-server.sh`
 4. `./scripts/test-local.sh`
 
-`./scripts/run-local-server.sh` now retries once after rotating unreadable local checkpoint and journal files to timestamped backups.
+`./scripts/run-local-server.sh` now retries once after rotating unreadable local checkpoint and journal files to timestamped backups. `./scripts/test-local.sh` covers the full rootless validation suite and keeps Valgrind separate as an explicit host-prepared follow-up step.
 
 ## Rollback
 

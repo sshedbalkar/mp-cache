@@ -52,7 +52,7 @@ Valgrind check - rule for any c based native development. Done
 
 In 'mp-cache', use the 'mp_logger' submodule for any kind of logging needs. Make sure this is treated as a durable rule and followed in the future as well. Done
 
-Rootless run and scripts.
+Make sure the project 'mp_cache' can be deployed and tested (all tests) rootless, except for the valgrind test. 
 
 Create a doc on the host setup, what was the issue with Valgrind,what was the root cause, how was it fixed. This doc should be reusable in the future, if needed. Place it in 'docs/'. Done
 

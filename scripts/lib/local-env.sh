@@ -74,7 +74,9 @@ mp_output_mentions_socket_permission_error() {
 }
 
 mp_is_state_load_failure() {
-  mp_console_log_contains "failed to load checkpoint or journal state"
+  mp_console_log_contains "failed to load checkpoint or journal state" ||
+    mp_console_log_contains "failed to read checkpoint state" ||
+    mp_console_log_contains "failed to read journal state"
 }
 
 mp_is_socket_bind_permission_failure() {
@@ -156,8 +158,9 @@ mp_require_local_dependencies() {
 
 mp_build_server() {
   local target_env_id="${1:-}"
-  [ -n "$target_env_id" ] || mp_exit_with_error "environment id is required"
-  mp_assert_target_env_id "$target_env_id"
+  if [ -n "$target_env_id" ]; then
+    mp_assert_target_env_id "$target_env_id"
+  fi
   mp_require_local_dependencies
   mp_prepare_runtime_paths
   (cd "$MP_REPO_ROOT" && cmake --fresh --preset local-debug && cmake --build --preset local-debug)

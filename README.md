@@ -63,7 +63,7 @@ Optional local tooling:
 - `jq`
 - `mise`
 
-Current local target environment:
+Validated local host example:
 
 - Arch Linux with CachyOS kernel
 
@@ -79,6 +79,7 @@ Primary commands:
 make native-config
 make native-build
 make test
+make test-full
 make test-naming-strategy
 make test-hardening
 make test-valgrind
@@ -88,6 +89,8 @@ make deploy-local
 make stop-local
 make restart-local
 ```
+
+`make test` is the rootless local validation suite. It runs the unit tests, naming checks, standards checks, and sanitizer-based hardening checks without requiring elevated privileges. `make test-valgrind` stays separate because some hosts need additional package or container setup before Valgrind can execute successfully. Use `make test-full` when the host is already prepared for both.
 
 On Arch Linux and CachyOS, Valgrind can fail before any project code runs when the system dynamic loader is stripped and matching glibc debuginfo is missing. If `make test-valgrind` reports that host blocker, populate the loader debuginfo cache and rerun Valgrind:
 
@@ -113,12 +116,15 @@ build/local-debug/
 Bootstrap and run:
 
 ```sh
+mkdir -p .tmp/secrets
 cp configs/secrets/templates/local.env.template .tmp/secrets/local.env
 ./scripts/build-local.sh
 ./scripts/run-local-server.sh
 ./scripts/test-local.sh
 ./scripts/stop-local-server.sh
 ```
+
+After the required build tools are installed, the local build, deploy, and test commands are intended to run from a normal non-root shell.
 
 Local secrets are sourced from `.tmp/secrets/local.env`. The default bootstrap config expects:
 

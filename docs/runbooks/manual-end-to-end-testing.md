@@ -65,11 +65,9 @@ Optional host-side memory validation tools:
 sudo pacman -S --needed valgrind debuginfod
 ```
 
-This runbook assumes CachyOS because the local helper scripts target the repo's `arch-cachyos` environment check. If you intentionally adapt the flow to a different host, install equivalent packages manually and allow the local build helper to skip the OS identity check:
+Package installation may require administrator privileges, but the actual `mp-cache` build, deploy, and test commands below are intended to run from a normal non-root shell.
 
-```sh
-export MP_ALLOW_ENV_MISMATCH=1
-```
+This runbook uses CachyOS package examples because `./scripts/install-local-deps.sh` is an Arch/CachyOS convenience wrapper. If you adapt the flow to a different Linux host, install equivalent packages manually and then use the same non-root `build-local`, `run-local-server`, and `test-local` commands shown below.
 
 If `make test-valgrind` fails before any unit test starts, use [valgrind-host-setup.md](/run/media/san/ce0dc301-0250-497b-8390-b8547d284322/workwork/repositories/multi-player-app/mp-cache/docs/runbooks/valgrind-host-setup.md:1).
 
@@ -192,6 +190,8 @@ curl --silent --show-error --unix-socket "$MP_SOCKET_PATH" http://localhost/v1/h
 
 ./scripts/test-local.sh
 ```
+
+`./scripts/test-local.sh` covers the full rootless suite, including the sanitizer pass. Keep `make test-valgrind` as a separate optional step because some hosts need additional Valgrind preparation.
 
 ## Unauthenticated Endpoint Checks
 

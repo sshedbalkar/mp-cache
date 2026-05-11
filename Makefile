@@ -9,7 +9,7 @@ PACKAGE_DIR ?= dist
 TEST_REPORT_DIR ?= .tmp/test-reports
 STANDARDS_MIN ?= 85
 
-.PHONY: build native-config native-build test test-unit test-naming-strategy test-standards test-hardening test-valgrind benchmark check package build-local test-local deploy-local stop-local restart-local doctor promote clean
+.PHONY: build native-config native-build test test-full test-unit test-naming-strategy test-standards test-hardening test-valgrind benchmark check package build-local test-local deploy-local stop-local restart-local doctor promote clean
 
 build: native-build
 
@@ -20,6 +20,8 @@ native-build: native-config
 	$(CMAKE) --build --preset local-debug
 
 test: test-unit test-naming-strategy test-standards test-hardening
+
+test-full: test test-valgrind
 
 test-unit: native-build
 	./scripts/test-unit.sh "$(TEST_REPORT_DIR)"
