@@ -4,6 +4,7 @@ Use local deployment for development only.
 
 Local commands:
 
+0. `cp configs/secrets/templates/local.env.template .tmp/secrets/local.env`
 1. `./scripts/build-local.sh`
 2. `./scripts/run-local-server.sh`
 3. `./scripts/test-local.sh`

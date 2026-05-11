@@ -8,3 +8,4 @@ Requirements:
 2. Least-privilege filesystem and network access.
 3. Runtime limits for memory, file descriptors, and writable paths.
 4. SSH tunnel and proxy controls audited separately from the service process.
+5. `deploy/systemd/` assets reviewed and adjusted for the target host paths and secret mounts.

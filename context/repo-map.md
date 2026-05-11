@@ -41,6 +41,6 @@
 
 ## Validation
 
-- bootstrap_state: scaffold
+- bootstrap_state: phase-4-baseline
 - validate_fast: `./scripts/check-context.sh`
 - validate_full: `make test`

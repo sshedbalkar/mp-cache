@@ -144,6 +144,14 @@ static bool mp_cache_apply_value(
             mp_cache_copy_string(config->export_directory, sizeof(config->export_directory), value);
             return true;
         }
+        if (strcmp(key, "checkpoint_path") == 0) {
+            mp_cache_copy_string(config->checkpoint_path, sizeof(config->checkpoint_path), value);
+            return true;
+        }
+        if (strcmp(key, "journal_path") == 0) {
+            mp_cache_copy_string(config->journal_path, sizeof(config->journal_path), value);
+            return true;
+        }
         if (strcmp(key, "max_export_files") == 0) {
             return mp_cache_parse_u32(value, &config->max_export_files);
         }
@@ -154,6 +162,9 @@ static bool mp_cache_apply_value(
         if (strcmp(key, "log_directory") == 0) {
             mp_cache_copy_string(config->log_directory, sizeof(config->log_directory), value);
             return true;
+        }
+        if (strcmp(key, "max_log_lines") == 0) {
+            return mp_cache_parse_u32(value, &config->max_log_lines);
         }
         return false;
     }
@@ -173,6 +184,12 @@ static bool mp_cache_apply_value(
                 value);
             return true;
         }
+        if (strcmp(key, "rate_limit_requests") == 0) {
+            return mp_cache_parse_u32(value, &config->rate_limit_requests);
+        }
+        if (strcmp(key, "rate_limit_window_seconds") == 0) {
+            return mp_cache_parse_u32(value, &config->rate_limit_window_seconds);
+        }
         return false;
     }
 
@@ -186,7 +203,11 @@ static mp_cache_config_status_t mp_cache_validate(const mp_cache_config_t *confi
         config->pid_file_path[0] == '\0' ||
         config->log_directory[0] == '\0' ||
         config->data_directory[0] == '\0' ||
-        config->export_directory[0] == '\0') {
+        config->export_directory[0] == '\0' ||
+        config->checkpoint_path[0] == '\0' ||
+        config->journal_path[0] == '\0' ||
+        config->bootstrap_admin_token_secret_ref[0] == '\0' ||
+        config->storage_key_secret_ref[0] == '\0') {
         return MP_CACHE_CONFIG_STATUS_VALIDATION_ERROR;
     }
 
@@ -199,7 +220,10 @@ static mp_cache_config_status_t mp_cache_validate(const mp_cache_config_t *confi
         config->bucket_count == 0u ||
         config->max_export_files == 0u ||
         config->shutdown_timeout_millis == 0u ||
-        config->sweep_interval_seconds == 0u) {
+        config->sweep_interval_seconds == 0u ||
+        config->max_log_lines == 0u ||
+        config->rate_limit_requests == 0u ||
+        config->rate_limit_window_seconds == 0u) {
         return MP_CACHE_CONFIG_STATUS_VALIDATION_ERROR;
     }
 
@@ -227,15 +251,17 @@ void mp_cache_config_init_defaults(mp_cache_config_t *config) {
     mp_cache_copy_string(config->pid_file_path, sizeof(config->pid_file_path), "/tmp/mp-cache/run/mp-cache.pid");
     mp_cache_copy_string(config->data_directory, sizeof(config->data_directory), ".tmp/data");
     mp_cache_copy_string(config->export_directory, sizeof(config->export_directory), ".tmp/exports");
+    mp_cache_copy_string(config->checkpoint_path, sizeof(config->checkpoint_path), ".tmp/data/state.checkpoint");
+    mp_cache_copy_string(config->journal_path, sizeof(config->journal_path), ".tmp/data/state.journal");
     mp_cache_copy_string(config->log_directory, sizeof(config->log_directory), "logging");
     mp_cache_copy_string(
         config->bootstrap_admin_token_secret_ref,
         sizeof(config->bootstrap_admin_token_secret_ref),
-        "env:local/bootstrap_admin_token");
+        "env:MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN");
     mp_cache_copy_string(
         config->storage_key_secret_ref,
         sizeof(config->storage_key_secret_ref),
-        "env:local/storage_key");
+        "env:MP_SECRET_LOCAL_STORAGE_KEY");
     config->memory_limit_bytes = 256u * 1024u * 1024u;
     config->default_ttl_seconds = 172800u;
     config->min_ttl_seconds = 1u;
@@ -246,6 +272,9 @@ void mp_cache_config_init_defaults(mp_cache_config_t *config) {
     config->max_export_files = 16u;
     config->shutdown_timeout_millis = 5000u;
     config->sweep_interval_seconds = 5u;
+    config->max_log_lines = 200u;
+    config->rate_limit_requests = 240u;
+    config->rate_limit_window_seconds = 60u;
 }
 
 mp_cache_config_status_t mp_cache_config_load_file(const char *path, mp_cache_config_t *config) {
@@ -358,13 +387,18 @@ mp_cache_config_status_t mp_cache_config_write_template(
         "[storage]\n"
         "data_directory = %s\n"
         "export_directory = %s\n"
+        "checkpoint_path = %s\n"
+        "journal_path = %s\n"
         "max_export_files = %" PRIu32 "\n\n"
         "[observability]\n"
-        "log_directory = %s\n\n"
+        "log_directory = %s\n"
+        "max_log_lines = %" PRIu32 "\n\n"
         "[security]\n"
         "# Local development may use env refs. Non-local deployments should prefer file refs.\n"
         "bootstrap_admin_token_secret_ref = %s\n"
-        "storage_key_secret_ref = %s\n",
+        "storage_key_secret_ref = %s\n"
+        "rate_limit_requests = %" PRIu32 "\n"
+        "rate_limit_window_seconds = %" PRIu32 "\n",
         config->environment_name,
         config->service_name,
         config->socket_path,
@@ -380,10 +414,15 @@ mp_cache_config_status_t mp_cache_config_write_template(
         config->sweep_interval_seconds,
         config->data_directory,
         config->export_directory,
+        config->checkpoint_path,
+        config->journal_path,
         config->max_export_files,
         config->log_directory,
+        config->max_log_lines,
         config->bootstrap_admin_token_secret_ref,
-        config->storage_key_secret_ref);
+        config->storage_key_secret_ref,
+        config->rate_limit_requests,
+        config->rate_limit_window_seconds);
 
     if (fclose(file) != 0) {
         return MP_CACHE_CONFIG_STATUS_IO_ERROR;
@@ -413,10 +452,15 @@ void mp_cache_config_print(FILE *stream, const mp_cache_config_t *config, const 
     (void)fprintf(stream, "cache.sweep_interval_seconds=%" PRIu32 "\n", config->sweep_interval_seconds);
     (void)fprintf(stream, "storage.data_directory=%s\n", config->data_directory);
     (void)fprintf(stream, "storage.export_directory=%s\n", config->export_directory);
+    (void)fprintf(stream, "storage.checkpoint_path=%s\n", config->checkpoint_path);
+    (void)fprintf(stream, "storage.journal_path=%s\n", config->journal_path);
     (void)fprintf(stream, "storage.max_export_files=%" PRIu32 "\n", config->max_export_files);
     (void)fprintf(stream, "observability.log_directory=%s\n", config->log_directory);
+    (void)fprintf(stream, "observability.max_log_lines=%" PRIu32 "\n", config->max_log_lines);
     (void)fprintf(stream, "security.bootstrap_admin_token_secret_ref=%s\n", config->bootstrap_admin_token_secret_ref);
     (void)fprintf(stream, "security.storage_key_secret_ref=%s\n", config->storage_key_secret_ref);
+    (void)fprintf(stream, "security.rate_limit_requests=%" PRIu32 "\n", config->rate_limit_requests);
+    (void)fprintf(stream, "security.rate_limit_window_seconds=%" PRIu32 "\n", config->rate_limit_window_seconds);
 }
 
 const char *mp_cache_config_status_name(mp_cache_config_status_t status) {

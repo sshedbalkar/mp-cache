@@ -36,6 +36,79 @@ static size_t mp_cache_entry_cost(const mp_cache_entry_t *entry) {
 static mp_cache_entry_t **mp_cache_find_slot(
     mp_cache_store_t *store,
     const void *key,
+    size_t key_length);
+
+static mp_cache_store_status_t mp_cache_store_write_entry(
+    mp_cache_store_t *store,
+    const void *key,
+    size_t key_length,
+    const void *value,
+    size_t value_length,
+    int64_t expires_at_utc_seconds) {
+    mp_cache_entry_t **slot = NULL;
+    mp_cache_entry_t *entry = NULL;
+    size_t previous_cost = 0u;
+    size_t next_cost = 0u;
+    char *key_copy = NULL;
+    uint8_t *value_copy = NULL;
+
+    if (store == NULL || key == NULL || value == NULL) {
+        return MP_CACHE_STORE_STATUS_INVALID_ARGUMENT;
+    }
+    if (key_length == 0u || key_length > store->max_key_bytes || value_length > store->max_value_bytes) {
+        return MP_CACHE_STORE_STATUS_LIMIT_EXCEEDED;
+    }
+
+    slot = mp_cache_find_slot(store, key, key_length);
+    entry = *slot;
+    previous_cost = mp_cache_entry_cost(entry);
+    next_cost = sizeof(mp_cache_entry_t) + key_length + 1u + value_length;
+
+    if (store->bytes_used - previous_cost + next_cost > store->memory_limit_bytes) {
+        return MP_CACHE_STORE_STATUS_LIMIT_EXCEEDED;
+    }
+
+    key_copy = malloc(key_length + 1u);
+    value_copy = malloc(value_length == 0u ? 1u : value_length);
+    if (key_copy == NULL || value_copy == NULL) {
+        free(key_copy);
+        free(value_copy);
+        return MP_CACHE_STORE_STATUS_NO_MEMORY;
+    }
+
+    memcpy(key_copy, key, key_length);
+    key_copy[key_length] = '\0';
+    if (value_length > 0u) {
+        memcpy(value_copy, value, value_length);
+    }
+
+    if (entry == NULL) {
+        entry = calloc(1u, sizeof(*entry));
+        if (entry == NULL) {
+            free(key_copy);
+            free(value_copy);
+            return MP_CACHE_STORE_STATUS_NO_MEMORY;
+        }
+        *slot = entry;
+        store->entry_count++;
+    } else {
+        free(entry->key);
+        free(entry->value);
+    }
+
+    entry->key = key_copy;
+    entry->value = value_copy;
+    entry->key_length = key_length;
+    entry->value_length = value_length;
+    entry->expires_at_utc_seconds = expires_at_utc_seconds;
+
+    store->bytes_used = store->bytes_used - previous_cost + next_cost;
+    return MP_CACHE_STORE_STATUS_OK;
+}
+
+static mp_cache_entry_t **mp_cache_find_slot(
+    mp_cache_store_t *store,
+    const void *key,
     size_t key_length) {
     uint64_t hash = 0u;
     size_t bucket_index = 0u;
@@ -110,65 +183,16 @@ mp_cache_store_status_t mp_cache_store_set(
     size_t value_length,
     uint32_t ttl_seconds,
     int64_t now_utc_seconds) {
-    mp_cache_entry_t **slot = NULL;
-    mp_cache_entry_t *entry = NULL;
-    size_t previous_cost = 0u;
-    size_t next_cost = 0u;
-    char *key_copy = NULL;
-    uint8_t *value_copy = NULL;
-
     if (store == NULL || key == NULL || value == NULL || ttl_seconds == 0u) {
         return MP_CACHE_STORE_STATUS_INVALID_ARGUMENT;
     }
-    if (key_length == 0u || key_length > store->max_key_bytes || value_length > store->max_value_bytes) {
-        return MP_CACHE_STORE_STATUS_LIMIT_EXCEEDED;
-    }
-
-    slot = mp_cache_find_slot(store, key, key_length);
-    entry = *slot;
-    previous_cost = mp_cache_entry_cost(entry);
-    next_cost = sizeof(mp_cache_entry_t) + key_length + 1u + value_length;
-
-    if (store->bytes_used - previous_cost + next_cost > store->memory_limit_bytes) {
-        return MP_CACHE_STORE_STATUS_LIMIT_EXCEEDED;
-    }
-
-    key_copy = malloc(key_length + 1u);
-    value_copy = malloc(value_length == 0u ? 1u : value_length);
-    if (key_copy == NULL || value_copy == NULL) {
-        free(key_copy);
-        free(value_copy);
-        return MP_CACHE_STORE_STATUS_NO_MEMORY;
-    }
-
-    memcpy(key_copy, key, key_length);
-    key_copy[key_length] = '\0';
-    if (value_length > 0u) {
-        memcpy(value_copy, value, value_length);
-    }
-
-    if (entry == NULL) {
-        entry = calloc(1u, sizeof(*entry));
-        if (entry == NULL) {
-            free(key_copy);
-            free(value_copy);
-            return MP_CACHE_STORE_STATUS_NO_MEMORY;
-        }
-        *slot = entry;
-        store->entry_count++;
-    } else {
-        free(entry->key);
-        free(entry->value);
-    }
-
-    entry->key = key_copy;
-    entry->value = value_copy;
-    entry->key_length = key_length;
-    entry->value_length = value_length;
-    entry->expires_at_utc_seconds = now_utc_seconds + (int64_t)ttl_seconds;
-
-    store->bytes_used = store->bytes_used - previous_cost + next_cost;
-    return MP_CACHE_STORE_STATUS_OK;
+    return mp_cache_store_write_entry(
+        store,
+        key,
+        key_length,
+        value,
+        value_length,
+        now_utc_seconds + (int64_t)ttl_seconds);
 }
 
 mp_cache_store_status_t mp_cache_store_get_copy(
@@ -242,6 +266,41 @@ mp_cache_store_status_t mp_cache_store_delete(
     return MP_CACHE_STORE_STATUS_OK;
 }
 
+mp_cache_store_status_t mp_cache_store_restore_entry(
+    mp_cache_store_t *store,
+    const void *key,
+    size_t key_length,
+    const void *value,
+    size_t value_length,
+    int64_t expires_at_utc_seconds) {
+    if (expires_at_utc_seconds <= 0) {
+        return MP_CACHE_STORE_STATUS_INVALID_ARGUMENT;
+    }
+
+    return mp_cache_store_write_entry(store, key, key_length, value, value_length, expires_at_utc_seconds);
+}
+
+void mp_cache_store_clear(mp_cache_store_t *store) {
+    size_t bucket_index = 0u;
+
+    if (store == NULL || store->buckets == NULL) {
+        return;
+    }
+
+    for (bucket_index = 0u; bucket_index < store->bucket_count; bucket_index++) {
+        mp_cache_entry_t *entry = store->buckets[bucket_index];
+        while (entry != NULL) {
+            mp_cache_entry_t *next = entry->next;
+            mp_cache_free_entry(entry);
+            entry = next;
+        }
+        store->buckets[bucket_index] = NULL;
+    }
+
+    store->entry_count = 0u;
+    store->bytes_used = 0u;
+}
+
 size_t mp_cache_store_purge_expired(mp_cache_store_t *store, int64_t now_utc_seconds) {
     size_t removed_count = 0u;
     size_t bucket_index = 0u;
@@ -268,6 +327,27 @@ size_t mp_cache_store_purge_expired(mp_cache_store_t *store, int64_t now_utc_sec
     }
 
     return removed_count;
+}
+
+int mp_cache_store_for_each(const mp_cache_store_t *store, mp_cache_store_visit_fn visit, void *context) {
+    size_t bucket_index = 0u;
+
+    if (store == NULL || visit == NULL) {
+        return -1;
+    }
+
+    for (bucket_index = 0u; bucket_index < store->bucket_count; bucket_index++) {
+        const mp_cache_entry_t *entry = store->buckets[bucket_index];
+        while (entry != NULL) {
+            if (visit(entry->key, entry->key_length, entry->value, entry->value_length, entry->expires_at_utc_seconds, context) !=
+                0) {
+                return -1;
+            }
+            entry = entry->next;
+        }
+    }
+
+    return 0;
 }
 
 void mp_cache_store_get_stats(const mp_cache_store_t *store, mp_cache_store_stats_t *out_stats) {

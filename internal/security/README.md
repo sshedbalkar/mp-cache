@@ -1,3 +1,3 @@
 # Security Module
 
-Reserved for bearer token validation, role mapping, client registration, token rotation, and audit helpers.
+Bearer-token authentication, role mapping, persisted client registry helpers, secret resolution, and token rotation live here.

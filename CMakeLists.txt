@@ -13,10 +13,13 @@ add_subdirectory(native/mp_logger)
 add_library(mp_cache_core
   internal/cache/cache.c
   internal/config/config.c
+  internal/crypto/crypto.c
   internal/httpserver/http_server.c
   internal/observability/log.c
   internal/platform/fs.c
   internal/runtime/runtime.c
+  internal/security/security.c
+  internal/storage/storage.c
 )
 
 target_include_directories(mp_cache_core
@@ -51,3 +54,22 @@ add_executable(mp_cache_store_tests tests/unit/cache_tests.c)
 target_link_libraries(mp_cache_store_tests PRIVATE mp_cache_core)
 target_compile_options(mp_cache_store_tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME mp_cache_store COMMAND mp_cache_store_tests)
+
+add_executable(mp_cache_security_tests tests/unit/security_tests.c)
+target_link_libraries(mp_cache_security_tests PRIVATE mp_cache_core)
+target_compile_options(mp_cache_security_tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME mp_cache_security COMMAND mp_cache_security_tests)
+
+add_executable(mp_cache_storage_tests tests/unit/storage_tests.c)
+target_link_libraries(mp_cache_storage_tests PRIVATE mp_cache_core)
+target_compile_options(mp_cache_storage_tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME mp_cache_storage COMMAND mp_cache_storage_tests)
+
+add_executable(mp_cache_http_tests tests/unit/http_tests.c)
+target_link_libraries(mp_cache_http_tests PRIVATE mp_cache_core)
+target_compile_options(mp_cache_http_tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME mp_cache_http COMMAND mp_cache_http_tests)
+
+add_executable(mp_cache_benchmark tests/bench/cache_benchmark.c)
+target_link_libraries(mp_cache_benchmark PRIVATE mp_cache_core)
+target_compile_options(mp_cache_benchmark PRIVATE -Wall -Wextra -Wpedantic)

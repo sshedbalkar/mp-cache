@@ -52,13 +52,15 @@ mp_require_command() {
 
 mp_load_local_secrets() {
   if [ -f "$MP_LOCAL_SECRET_ENV_FILE" ]; then
+    set -a
     # shellcheck disable=SC1090
     . "$MP_LOCAL_SECRET_ENV_FILE"
+    set +a
   fi
 }
 
 mp_prepare_runtime_paths() {
-  mkdir -p /tmp/mp-cache/run "$MP_REPO_ROOT/.tmp/logs" "$MP_REPO_ROOT/.tmp/data" "$MP_REPO_ROOT/.tmp/exports" "$MP_REPO_ROOT/logging"
+  mkdir -p /tmp/mp-cache/run "$MP_REPO_ROOT/.tmp/logs" "$MP_REPO_ROOT/.tmp/data" "$MP_REPO_ROOT/.tmp/exports" "$MP_REPO_ROOT/.tmp/secrets" "$MP_REPO_ROOT/logging"
 }
 
 mp_require_local_dependencies() {

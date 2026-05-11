@@ -11,7 +11,7 @@
 
 `mp-cache` is a Linux-hosted S2S cache service written in C17. It uses a Unix domain socket for local access, keeps hot data in memory, persists important state to encrypted local files, and exposes controlled management APIs for `admin` and `operator` roles.
 
-The first implementation phase delivered in this scaffold focuses on project structure, build system, config bootstrapping, logger integration, a bounded in-memory cache module, a Unix-socket HTTP server skeleton, and lifecycle automation.
+The current baseline includes the Phase 1 scaffold plus the Phase 2 authenticated data plane, Phase 3 persistence and state portability features, and the Phase 4 hardening baseline described below.
 
 ## Goals
 
@@ -58,7 +58,7 @@ Shutdown order:
 3. Flush logs.
 4. Remove socket and pid files.
 
-## Planned API Surface
+## Current API Surface
 
 - `client`
   - `GET`
@@ -66,17 +66,23 @@ Shutdown order:
   - `DELETE`
   - `Health`
 - `operator`
-  - all health APIs
+  - all client APIs
   - uptime
+  - stats
   - memory usage
   - logs access
-  - client management APIs
 - `admin`
   - all operator APIs
   - client registration
-  - token rotation and invalidation
+  - token rotation
   - export/import
-  - purge all and purge selected keys
+  - purge all
+
+## Future Extensions
+
+- selective key purge
+- token invalidation without rotation
+- broader multi-file export partitioning
 
 ## Phases
 
@@ -91,6 +97,7 @@ Shutdown order:
 
 ### Phase 2: Authenticated Data Plane
 
+- status: implemented
 - bearer token auth
 - RBAC enforcement
 - `GET`/`SET`/`DELETE` HTTP APIs
@@ -98,6 +105,7 @@ Shutdown order:
 
 ### Phase 3: Persistence And State Portability
 
+- status: implemented
 - encrypted append-only journal
 - checkpoint files
 - export/import commands and APIs
@@ -105,6 +113,7 @@ Shutdown order:
 
 ### Phase 4: Operations And Hardening
 
+- status: implemented baseline
 - logs API
 - rate limiting
 - import/export integrity validation

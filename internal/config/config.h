@@ -17,6 +17,8 @@ typedef struct {
     char pid_file_path[MP_CACHE_PATH_CAP];
     char data_directory[MP_CACHE_PATH_CAP];
     char export_directory[MP_CACHE_PATH_CAP];
+    char checkpoint_path[MP_CACHE_PATH_CAP];
+    char journal_path[MP_CACHE_PATH_CAP];
     char log_directory[MP_CACHE_PATH_CAP];
     char bootstrap_admin_token_secret_ref[MP_CACHE_SECRET_REF_CAP];
     char storage_key_secret_ref[MP_CACHE_SECRET_REF_CAP];
@@ -30,6 +32,9 @@ typedef struct {
     uint32_t max_export_files;
     uint32_t shutdown_timeout_millis;
     uint32_t sweep_interval_seconds;
+    uint32_t max_log_lines;
+    uint32_t rate_limit_requests;
+    uint32_t rate_limit_window_seconds;
 } mp_cache_config_t;
 
 typedef enum {

@@ -25,8 +25,8 @@
 
 - `api.http.v1.cache-service`
   - path: `api/http/v1/cache-service.md`
-  - status: draft
-  - purpose: HTTP contract and role permissions
+  - status: active
+  - purpose: implemented HTTP contract, role permissions, and request body shapes
 
 ## Runbooks
 

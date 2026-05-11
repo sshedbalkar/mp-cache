@@ -19,14 +19,24 @@ checks=(
   deploy/qa/README.md
   deploy/staging/README.md
   deploy/production/README.md
+  deploy/systemd/README.md
+  deploy/systemd/mp-cache.service
   docs/architecture/mp-cache-architecture.md
   api/http/v1/cache-service.md
   docs/runbooks/local-service-lifecycle.md
+  scripts/benchmark-cache.sh
   scripts/build-local.sh
   scripts/deploy-local.sh
+  scripts/test-hardening.sh
   scripts/test-local.sh
+  scripts/test-sanitizers.sh
+  scripts/test-valgrind.sh
   tests/unit/config_tests.c
   tests/unit/cache_tests.c
+  tests/unit/security_tests.c
+  tests/unit/storage_tests.c
+  tests/unit/http_tests.c
+  tests/bench/cache_benchmark.c
 )
 
 total="${#checks[@]}"

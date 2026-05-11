@@ -5,6 +5,8 @@
 #include "internal/httpserver/http_server.h"
 #include "internal/observability/log.h"
 #include "internal/platform/fs.h"
+#include "internal/security/security.h"
+#include "internal/storage/storage.h"
 
 #include <errno.h>
 #include <signal.h>
@@ -35,11 +37,15 @@ int mp_cache_runtime_run(const char *config_path, int print_config_only) {
     mp_cache_config_t config;
     mp_cache_config_status_t config_status;
     mp_cache_store_t store;
+    mp_cache_security_t security;
+    mp_cache_storage_t storage;
     mp_cache_log_t log;
     mp_cache_http_server_t server;
     time_t started_at_utc = time(NULL);
     bool log_started = false;
     bool store_started = false;
+    bool security_started = false;
+    bool storage_started = false;
     bool server_started = false;
     int exit_code = 1;
 
@@ -93,12 +99,29 @@ int mp_cache_runtime_run(const char *config_path, int print_config_only) {
     }
     store_started = true;
 
+    if (mp_cache_security_init(&security, &config) != 0) {
+        mp_cache_log_writef(&log, MP_LOG_LEVEL_ERROR, "startup", "failed to resolve bootstrap admin token");
+        goto cleanup;
+    }
+    security_started = true;
+
+    if (mp_cache_storage_init(&storage, &config, &log) != 0) {
+        mp_cache_log_writef(&log, MP_LOG_LEVEL_ERROR, "startup", "failed to initialize storage");
+        goto cleanup;
+    }
+    storage_started = true;
+
+    if (mp_cache_storage_load_state(&storage, &store, &security, started_at_utc) != 0) {
+        mp_cache_log_writef(&log, MP_LOG_LEVEL_ERROR, "startup", "failed to load checkpoint or journal state");
+        goto cleanup;
+    }
+
     if (mp_cache_runtime_register_signals() != 0) {
         mp_cache_log_writef(&log, MP_LOG_LEVEL_ERROR, "startup", "failed to register signal handlers");
         goto cleanup;
     }
 
-    if (mp_cache_http_server_start(&server, &config, &log, &store, started_at_utc) != 0) {
+    if (mp_cache_http_server_start(&server, &config, &log, &store, &security, &storage, started_at_utc) != 0) {
         mp_cache_log_writef(
             &log,
             MP_LOG_LEVEL_ERROR,
@@ -136,8 +159,19 @@ cleanup:
         mp_cache_http_server_stop(&server);
     }
     (void)mp_cache_fs_remove_path_if_exists(config.pid_file_path);
+    if (storage_started && store_started && security_started) {
+        if (mp_cache_storage_checkpoint(&storage, &store, &security, time(NULL)) != 0) {
+            mp_cache_log_writef(&log, MP_LOG_LEVEL_WARNING, "shutdown", "failed to write final checkpoint");
+        }
+    }
     if (store_started) {
         mp_cache_store_destroy(&store);
+    }
+    if (storage_started) {
+        mp_cache_storage_destroy(&storage);
+    }
+    if (security_started) {
+        mp_cache_security_destroy(&security);
     }
     if (log_started) {
         mp_cache_log_shutdown(&log, config.shutdown_timeout_millis);

@@ -13,6 +13,10 @@ static void test_defaults_include_required_ttl(void) {
     assert(config.default_ttl_seconds == 172800u);
     assert(config.min_ttl_seconds == 1u);
     assert(config.max_ttl_seconds >= config.default_ttl_seconds);
+    assert(strcmp(config.bootstrap_admin_token_secret_ref, "env:MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN") == 0);
+    assert(strcmp(config.storage_key_secret_ref, "env:MP_SECRET_LOCAL_STORAGE_KEY") == 0);
+    assert(strcmp(config.checkpoint_path, ".tmp/data/state.checkpoint") == 0);
+    assert(strcmp(config.journal_path, ".tmp/data/state.journal") == 0);
 }
 
 static void test_load_file_overrides_default_ttl(void) {
@@ -44,12 +48,17 @@ static void test_load_file_overrides_default_ttl(void) {
         "[storage]\n"
         "data_directory = /tmp/mp-cache-data\n"
         "export_directory = /tmp/mp-cache-exports\n"
+        "checkpoint_path = /tmp/mp-cache-data/checkpoint.bin\n"
+        "journal_path = /tmp/mp-cache-data/journal.bin\n"
         "max_export_files = 4\n"
         "[observability]\n"
         "log_directory = /tmp/mp-cache-logs\n"
+        "max_log_lines = 42\n"
         "[security]\n"
-        "bootstrap_admin_token_secret_ref = env:test/admin\n"
-        "storage_key_secret_ref = file:/tmp/storage-key\n");
+        "bootstrap_admin_token_secret_ref = env:MP_TEST_ADMIN_TOKEN\n"
+        "storage_key_secret_ref = file:/tmp/storage-key\n"
+        "rate_limit_requests = 15\n"
+        "rate_limit_window_seconds = 30\n");
     assert(fclose(file) == 0);
 
     mp_cache_config_init_defaults(&config);
@@ -57,6 +66,11 @@ static void test_load_file_overrides_default_ttl(void) {
     assert(strcmp(config.environment_name, "qa") == 0);
     assert(config.default_ttl_seconds == 42u);
     assert(config.max_export_files == 4u);
+    assert(strcmp(config.checkpoint_path, "/tmp/mp-cache-data/checkpoint.bin") == 0);
+    assert(strcmp(config.journal_path, "/tmp/mp-cache-data/journal.bin") == 0);
+    assert(config.max_log_lines == 42u);
+    assert(config.rate_limit_requests == 15u);
+    assert(config.rate_limit_window_seconds == 30u);
 
     assert(unlink(path) == 0);
 }

@@ -1,3 +1,3 @@
 # Storage Module
 
-Reserved for encrypted journal, checkpoints, export/import files, and storage integrity helpers.
+Encrypted journal, checkpoint, export/import, and file-integrity helpers live here.

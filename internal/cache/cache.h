@@ -24,6 +24,14 @@ typedef struct {
     uint64_t memory_limit_bytes;
 } mp_cache_store_stats_t;
 
+typedef int (*mp_cache_store_visit_fn)(
+    const char *key,
+    size_t key_length,
+    const uint8_t *value,
+    size_t value_length,
+    int64_t expires_at_utc_seconds,
+    void *context);
+
 typedef enum {
     MP_CACHE_STORE_STATUS_OK = 0,
     MP_CACHE_STORE_STATUS_NOT_FOUND = 1,
@@ -59,7 +67,17 @@ mp_cache_store_status_t mp_cache_store_delete(
     const void *key,
     size_t key_length);
 
+mp_cache_store_status_t mp_cache_store_restore_entry(
+    mp_cache_store_t *store,
+    const void *key,
+    size_t key_length,
+    const void *value,
+    size_t value_length,
+    int64_t expires_at_utc_seconds);
+
+void mp_cache_store_clear(mp_cache_store_t *store);
 size_t mp_cache_store_purge_expired(mp_cache_store_t *store, int64_t now_utc_seconds);
+int mp_cache_store_for_each(const mp_cache_store_t *store, mp_cache_store_visit_fn visit, void *context);
 void mp_cache_store_get_stats(const mp_cache_store_t *store, mp_cache_store_stats_t *out_stats);
 
 const char *mp_cache_store_status_name(mp_cache_store_status_t status);

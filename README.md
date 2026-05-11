@@ -2,7 +2,7 @@
 
 Unix-socket cache server written in C17 for local S2S deployment on Linux systems.
 
-Project state: **bootstrap / MVP scaffold**.
+Project state: **Phase 4 baseline implemented**.
 
 This project is a standalone C cache server repository with its own docs, context, scripts, and build.
 
@@ -18,29 +18,23 @@ Target system characteristics:
 - UTC-only time semantics;
 - long-running process with graceful start, stop, and restart behavior.
 
-## Current Bootstrap Implementation
+## Implemented Baseline
 
-The initial scaffold created in this change provides:
+Current repository features:
 
-- project structure aligned to the local standards in this repository;
-- `mp_logger` integrated as a git submodule under `native/mp_logger`;
-- CMake and Make build wrappers;
-- bootstrap config defaults with export-on-missing behavior;
-- a buildable long-running server skeleton;
-- Unix socket listener with health endpoints;
-- a bounded in-memory cache module with TTL-aware unit tests;
-- local lifecycle, validation, packaging, and promotion scripts;
-- local context, architecture, API, and runbook docs.
+- bearer-token authentication with `admin`, `operator`, and `client` roles;
+- authenticated `GET` / `PUT` / `DELETE` cache APIs plus health, stats, memory, uptime, and log-tail endpoints;
+- encrypted journal, encrypted checkpoint, and integrity-checked export/import files;
+- persisted client registry with admin registration and token rotation;
+- per-principal rate limiting on authenticated APIs;
+- local build, benchmark, sanitizer, and Valgrind validation scripts;
+- systemd-ready deployment assets under `deploy/systemd/`.
 
-Not yet implemented in this scaffold:
+Still future-facing:
 
-- full authenticated data APIs;
-- persistent encrypted journal and checkpoint storage;
-- client registration and token rotation APIs;
-- export/import file execution;
-- logs API and full operator/admin control plane.
-
-Those are documented in the architecture and API specs as planned next phases.
+- selective key-purge API;
+- explicit token invalidation beyond rotation;
+- live Unix-socket integration coverage inside CI or a less-restricted runtime than this sandbox.
 
 ## Project Standards
 
@@ -82,6 +76,7 @@ Primary commands:
 make native-config
 make native-build
 make test
+make benchmark
 make package
 make deploy-local
 make stop-local
@@ -101,11 +96,17 @@ build/local-debug/
 Bootstrap and run:
 
 ```sh
+cp configs/secrets/templates/local.env.template .tmp/secrets/local.env
 ./scripts/build-local.sh
 ./scripts/run-local-server.sh
 ./scripts/test-local.sh
 ./scripts/stop-local-server.sh
 ```
+
+Local secrets are sourced from `.tmp/secrets/local.env`. The default bootstrap config expects:
+
+- `MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN`
+- `MP_SECRET_LOCAL_STORAGE_KEY`
 
 By default the server uses:
 
@@ -117,6 +118,15 @@ By default the server uses:
 If `configs/bootstrap.ini` is missing at startup, the server uses compiled defaults, writes a commented bootstrap template to that path, and continues with those defaults.
 
 The default cache TTL is configurable through the bootstrap config file and defaults to `172800` seconds.
+
+Primary `mp-cachectl` commands:
+
+```sh
+./build/local-debug/mp-cachectl health
+MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats
+MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl register-client client-one client
+MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl export
+```
 
 ## Deployment Layout
 
@@ -136,6 +146,7 @@ Deployment docs:
 - `deploy/staging/README.md`
 - `deploy/production/README.md`
 - `deploy/secrets/README.md`
+- `deploy/systemd/README.md`
 
 ## Docs
 

@@ -3,6 +3,9 @@
 Use this route when work touches:
 
 - health endpoints
+- authenticated cache APIs
+- export/import flows
+- logs and rate limiting
 - deployment docs
 - promotion scripts
 - validation and testing workflows

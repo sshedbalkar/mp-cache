@@ -14,6 +14,7 @@ Local development, validation, and manual testing are blocked.
 ## Preconditions
 
 - local dependencies installed
+- `.tmp/secrets/local.env` created from `configs/secrets/templates/local.env.template`
 - build completed
 - writable `.tmp/` and `logging/` paths
 
@@ -24,6 +25,7 @@ Local development, validation, and manual testing are blocked.
 3. Check `/tmp/mp-cache/run/mp-cache.pid` and `/tmp/mp-cache/run/mp-cache.sock`.
 4. Inspect `logging/` and `.tmp/logs/console.log`.
 5. Run `./build/local-debug/mp-cachectl health`.
+6. Run `MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats`.
 
 ## Mitigation
 
@@ -39,6 +41,7 @@ Stop the local server and revert to the last known-good artifact or config file.
 ## Verification
 
 - `./build/local-debug/mp-cachectl health` returns `200`
+- `MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats` returns cache and request counters
 - `curl --unix-socket /tmp/mp-cache/run/mp-cache.sock http://localhost/health`
 
 ## Escalation
