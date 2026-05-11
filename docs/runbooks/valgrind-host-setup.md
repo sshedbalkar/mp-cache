@@ -79,4 +79,5 @@ DEBUGINFOD_URLS="${DEBUGINFOD_URLS:-https://debuginfod.archlinux.org}" make test
 ## Notes
 
 - `scripts/test-valgrind.sh` is expected to report both host-level blocker variants directly.
-- A sandboxed or network-restricted environment may still report the loader-symbol failure even after the host itself is fixed. Use a direct host run as the source of truth.
+- A sandboxed or network-restricted environment may still report the loader-symbol failure even after the host itself is fixed.
+- If that happens, rerun `make test-valgrind` in a less-restricted host shell and treat the direct host rerun as the source of truth for closeout and report artifacts.

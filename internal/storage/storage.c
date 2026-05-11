@@ -5,6 +5,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,6 +48,28 @@ static void mp_cache_storage_log(mp_cache_storage_t *storage, mp_log_level_t lev
     if (storage != NULL && storage->log != NULL) {
         mp_cache_log_writef(storage->log, level, "storage", "%s", message);
     }
+}
+
+static int mp_cache_storage_format_path(char *out_path, size_t out_path_capacity, const char *format, ...) {
+    va_list arguments;
+    int written = 0;
+
+    if (out_path == NULL || out_path_capacity == 0u || format == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    va_start(arguments, format);
+    written = vsnprintf(out_path, out_path_capacity, format, arguments);
+    va_end(arguments);
+
+    if (written < 0 || (size_t)written >= out_path_capacity) {
+        out_path[0] = '\0';
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    return 0;
 }
 
 static void mp_cache_buffer_destroy(mp_cache_buffer_t *buffer) {
@@ -296,7 +319,9 @@ static int mp_cache_storage_write_packet_file(
         return -1;
     }
 
-    (void)snprintf(temp_path, sizeof(temp_path), "%s.tmp.%ld", file_path, (long)getpid());
+    if (mp_cache_storage_format_path(temp_path, sizeof(temp_path), "%s.tmp.%ld", file_path, (long)getpid()) != 0) {
+        return -1;
+    }
     if (mp_cache_storage_build_packet(storage, magic, payload, payload_length, &packet, out_mac) != 0) {
         mp_cache_buffer_destroy(&packet);
         return -1;
@@ -858,11 +883,22 @@ static int mp_cache_storage_resolve_import_path(
             errno = EACCES;
             return -1;
         }
-        (void)snprintf(resolved_import_path, out_capacity, "%s", requested_import_path);
+        if (mp_cache_storage_format_path(resolved_import_path, out_capacity, "%s", requested_import_path) != 0) {
+            return -1;
+        }
     } else if (strncmp(requested_import_path, storage->export_directory, strlen(storage->export_directory)) == 0) {
-        (void)snprintf(resolved_import_path, out_capacity, "%s", requested_import_path);
+        if (mp_cache_storage_format_path(resolved_import_path, out_capacity, "%s", requested_import_path) != 0) {
+            return -1;
+        }
     } else {
-        (void)snprintf(resolved_import_path, out_capacity, "%s/%s", storage->export_directory, requested_import_path);
+        if (mp_cache_storage_format_path(
+                resolved_import_path,
+                out_capacity,
+                "%s/%s",
+                storage->export_directory,
+                requested_import_path) != 0) {
+            return -1;
+        }
     }
     if (stat(resolved_import_path, &file_status) != 0 || S_ISREG(file_status.st_mode) == 0) {
         errno = ENOENT;
@@ -880,9 +916,15 @@ int mp_cache_storage_init(mp_cache_storage_t *storage, const mp_cache_config_t *
     }
 
     memset(storage, 0, sizeof(*storage));
-    (void)snprintf(storage->checkpoint_path, sizeof(storage->checkpoint_path), "%s", config->checkpoint_path);
-    (void)snprintf(storage->journal_path, sizeof(storage->journal_path), "%s", config->journal_path);
-    (void)snprintf(storage->export_directory, sizeof(storage->export_directory), "%s", config->export_directory);
+    if (mp_cache_storage_format_path(storage->checkpoint_path, sizeof(storage->checkpoint_path), "%s", config->checkpoint_path) != 0 ||
+        mp_cache_storage_format_path(storage->journal_path, sizeof(storage->journal_path), "%s", config->journal_path) != 0 ||
+        mp_cache_storage_format_path(
+            storage->export_directory,
+            sizeof(storage->export_directory),
+            "%s",
+            config->export_directory) != 0) {
+        return -1;
+    }
     storage->max_export_files = config->max_export_files;
     storage->max_packet_bytes = config->memory_limit_bytes + (16u * 1024u * 1024u);
     storage->log = log;
@@ -1114,7 +1156,10 @@ int mp_cache_storage_export_state(
         errno = EINVAL;
         return -1;
     }
-    if (mp_cache_storage_export_count(storage, &export_count) != 0 || export_count >= storage->max_export_files) {
+    if (mp_cache_storage_export_count(storage, &export_count) != 0) {
+        return -1;
+    }
+    if (export_count >= storage->max_export_files) {
         errno = ENOSPC;
         return -1;
     }
@@ -1130,13 +1175,16 @@ int mp_cache_storage_export_state(
     memset(out_result, 0, sizeof(*out_result));
     out_result->entry_count = 0u;
     out_result->client_count = mp_cache_security_client_count(security);
-    (void)snprintf(
-        out_result->export_path,
-        sizeof(out_result->export_path),
-        "%s/mp-cache-export-%ld-%ld.bin",
-        storage->export_directory,
-        (long)now_utc_seconds,
-        (long)getpid());
+    if (mp_cache_storage_format_path(
+            out_result->export_path,
+            sizeof(out_result->export_path),
+            "%s/mp-cache-export-%ld-%ld.bin",
+            storage->export_directory,
+            (long)now_utc_seconds,
+            (long)getpid()) != 0) {
+        mp_cache_buffer_destroy(&payload);
+        return -1;
+    }
 
     if (mp_cache_store_for_each(store, mp_cache_count_active_entry, &(mp_cache_active_count_t){0, now_utc_seconds}) == 0) {
         mp_cache_active_count_t counter = {0, now_utc_seconds};

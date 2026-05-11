@@ -26,13 +26,29 @@ typedef struct {
     mp_cache_http_server_t server;
 } http_fixture_t;
 
+static void assert_format_text(char *destination, size_t destination_capacity, const char *format, ...) {
+    va_list arguments;
+    int written = 0;
+
+    assert(destination != NULL);
+    assert(destination_capacity > 0u);
+    assert(format != NULL);
+
+    va_start(arguments, format);
+    written = vsnprintf(destination, destination_capacity, format, arguments);
+    va_end(arguments);
+
+    assert(written >= 0);
+    assert((size_t)written < destination_capacity);
+}
+
 static void configure_temp_paths(mp_cache_config_t *config, const char *suffix) {
     assert(config != NULL);
-    (void)snprintf(config->data_directory, sizeof(config->data_directory), ".tmp/http-test-%s-data", suffix);
-    (void)snprintf(config->export_directory, sizeof(config->export_directory), ".tmp/http-test-%s-exports", suffix);
-    (void)snprintf(config->checkpoint_path, sizeof(config->checkpoint_path), "%s/state.checkpoint", config->data_directory);
-    (void)snprintf(config->journal_path, sizeof(config->journal_path), "%s/state.journal", config->data_directory);
-    (void)snprintf(config->log_directory, sizeof(config->log_directory), ".tmp/http-test-%s-logs", suffix);
+    assert_format_text(config->data_directory, sizeof(config->data_directory), ".tmp/http-test-%s-data", suffix);
+    assert_format_text(config->export_directory, sizeof(config->export_directory), ".tmp/http-test-%s-exports", suffix);
+    assert_format_text(config->checkpoint_path, sizeof(config->checkpoint_path), "%s/state.checkpoint", config->data_directory);
+    assert_format_text(config->journal_path, sizeof(config->journal_path), "%s/state.journal", config->data_directory);
+    assert_format_text(config->log_directory, sizeof(config->log_directory), ".tmp/http-test-%s-logs", suffix);
 }
 
 static void fixture_init(http_fixture_t *fixture, const char *suffix, uint32_t rate_limit_requests) {
@@ -203,7 +219,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     {
         char final_log_path[MP_CACHE_PATH_CAP];
         sleep(1);
-        (void)snprintf(final_log_path, sizeof(final_log_path), "%s/latest.log", fixture.config.log_directory);
+        assert_format_text(final_log_path, sizeof(final_log_path), "%s/latest.log", fixture.config.log_directory);
         log_file = fopen(final_log_path, "w");
     }
     assert(log_file != NULL);
