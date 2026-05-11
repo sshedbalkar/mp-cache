@@ -125,6 +125,8 @@ Local secrets are sourced from `.tmp/secrets/local.env`. The default bootstrap c
 - `MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN`
 - `MP_SECRET_LOCAL_STORAGE_KEY`
 
+If local startup fails because a previous `.tmp/data/state.checkpoint` or `.tmp/data/state.journal` was written with a different `MP_SECRET_LOCAL_STORAGE_KEY`, the local helper scripts now rotate those files to timestamped `.bak` copies and retry once with a clean cache. Set `MP_AUTO_RESET_LOCAL_STATE_ON_LOAD_FAILURE=0` to keep the old strict-fail behavior.
+
 By default the server uses:
 
 - config path: `configs/bootstrap.ini`
@@ -144,6 +146,8 @@ MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-c
 MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl register-client client-one client
 MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl export
 ```
+
+Inside restricted sandboxes, Unix-socket `bind(2)` or client `connect(2)` may still be denied even when the build is healthy. In that case the local scripts now report the sandbox restriction explicitly, and the live socket smoke test must be rerun from a normal local shell.
 
 ## Deployment Layout
 

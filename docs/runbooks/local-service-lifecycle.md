@@ -26,6 +26,8 @@ Local development, validation, and manual testing are blocked.
 4. Inspect `logging/` and `.tmp/logs/console.log`.
 5. Run `./build/local-debug/mp-cachectl health`.
 6. Run `MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats`.
+7. If startup logs mention checkpoint or journal load failure after a storage-key change, look for timestamped `.bak` files under the configured data directory.
+8. If startup or health checks mention Unix-socket permission denial, rerun the live smoke test outside the sandbox.
 
 ## Mitigation
 
@@ -33,6 +35,8 @@ Local development, validation, and manual testing are blocked.
 2. `./scripts/build-local.sh`
 3. `./scripts/run-local-server.sh`
 4. `./scripts/test-local.sh`
+
+`./scripts/run-local-server.sh` now retries once after rotating unreadable local checkpoint and journal files to timestamped backups.
 
 ## Rollback
 
