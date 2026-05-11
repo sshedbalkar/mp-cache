@@ -25,10 +25,10 @@ typedef struct {
 } mp_cache_store_stats_t;
 
 typedef int (*mp_cache_store_visit_fn)(
-    const char *key,
-    size_t key_length,
-    const uint8_t *value,
-    size_t value_length,
+    const char *entry_key,
+    size_t entry_key_length,
+    const uint8_t *entry_value,
+    size_t entry_value_length,
     int64_t expires_at_utc_seconds,
     void *context);
 
@@ -46,33 +46,33 @@ void mp_cache_store_destroy(mp_cache_store_t *store);
 
 mp_cache_store_status_t mp_cache_store_set(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length,
-    const void *value,
-    size_t value_length,
+    const void *cache_key,
+    size_t cache_key_length,
+    const void *cache_value,
+    size_t cache_value_length,
     uint32_t ttl_seconds,
     int64_t now_utc_seconds);
 
 mp_cache_store_status_t mp_cache_store_get_copy(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length,
+    const void *cache_key,
+    size_t cache_key_length,
     int64_t now_utc_seconds,
-    uint8_t **out_value,
-    size_t *out_value_length,
+    uint8_t **out_value_copy,
+    size_t *out_value_copy_length,
     int64_t *out_expires_at_utc_seconds);
 
 mp_cache_store_status_t mp_cache_store_delete(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length);
+    const void *cache_key,
+    size_t cache_key_length);
 
 mp_cache_store_status_t mp_cache_store_restore_entry(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length,
-    const void *value,
-    size_t value_length,
+    const void *cache_key,
+    size_t cache_key_length,
+    const void *cache_value,
+    size_t cache_value_length,
     int64_t expires_at_utc_seconds);
 
 void mp_cache_store_clear(mp_cache_store_t *store);

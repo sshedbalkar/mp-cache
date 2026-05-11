@@ -277,17 +277,17 @@ void mp_cache_config_init_defaults(mp_cache_config_t *config) {
     config->rate_limit_window_seconds = 60u;
 }
 
-mp_cache_config_status_t mp_cache_config_load_file(const char *path, mp_cache_config_t *config) {
+mp_cache_config_status_t mp_cache_config_load_file(const char *config_path, mp_cache_config_t *config) {
     FILE *file = NULL;
     char line_buffer[MP_CACHE_LINE_CAPACITY];
     char current_section[MP_CACHE_TEXT_CAP] = "";
     unsigned long line_number = 0ul;
 
-    if (path == NULL || config == NULL) {
+    if (config_path == NULL || config == NULL) {
         return MP_CACHE_CONFIG_STATUS_INVALID_ARGUMENT;
     }
 
-    file = fopen(path, "r");
+    file = fopen(config_path, "r");
     if (file == NULL) {
         return (errno == ENOENT) ? MP_CACHE_CONFIG_STATUS_NOT_FOUND : MP_CACHE_CONFIG_STATUS_IO_ERROR;
     }
@@ -342,19 +342,19 @@ mp_cache_config_status_t mp_cache_config_load_file(const char *path, mp_cache_co
 }
 
 mp_cache_config_status_t mp_cache_config_write_template(
-    const char *path,
+    const char *template_path,
     const mp_cache_config_t *config) {
     FILE *file = NULL;
 
-    if (path == NULL || config == NULL) {
+    if (template_path == NULL || config == NULL) {
         return MP_CACHE_CONFIG_STATUS_INVALID_ARGUMENT;
     }
 
-    if (mp_cache_fs_ensure_parent_directory(path) != 0) {
+    if (mp_cache_fs_ensure_parent_directory(template_path) != 0) {
         return MP_CACHE_CONFIG_STATUS_IO_ERROR;
     }
 
-    file = fopen(path, "w");
+    file = fopen(template_path, "w");
     if (file == NULL) {
         return MP_CACHE_CONFIG_STATUS_IO_ERROR;
     }

@@ -14,7 +14,7 @@ project_foundation_file: README.md
 
 - Use `README.md`, `AI_PERSONA.md`, `docs/engineering-standards.md`, `docs/naming-strategy.md`, `docs/commit-messages.md`, and local durable docs as source truth.
 - Use `native/mp_logger` as the only logging backend for `mp-cache`. Do not add alternate logging frameworks or ad hoc runtime log sinks; reserve direct stdio for user-facing CLI output, config/template emission, and fatal bootstrap diagnostics before `mp_logger` is available.
-- Any change under `cmd/` or `scripts/` must include a naming-strategy validation run through `./scripts/test-naming-strategy.sh` or `make test-naming-strategy`, with the outcome reported at closeout.
+- Any change under `cmd/`, `scripts/`, or `internal/` must include a naming-strategy validation run through `./scripts/test-naming-strategy.sh` or `make test-naming-strategy`, with the outcome reported at closeout.
 - Any change under `cmd/`, `internal/`, `tests/unit/`, or `native/` must include a Valgrind validation run through `./scripts/test-valgrind.sh` or `make test-valgrind`, with the outcome reported at closeout. If the host cannot run Valgrind, report that blocker explicitly.
 - Keep `context/` thin. Do not duplicate rule bodies from local durable standards docs.
 - Prefer the local folder conventions unless `mp-cache` has a documented reason to diverge.

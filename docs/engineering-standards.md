@@ -79,7 +79,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 
 - Cover happy, sad, edge, hot, and recovery paths.
 - Unit tests are required for core logic and config parsing.
-- Changes under `cmd/` or `scripts/` require `./scripts/test-naming-strategy.sh` or `make test-naming-strategy`.
+- Changes under `cmd/`, `scripts/`, or `internal/` require `./scripts/test-naming-strategy.sh` or `make test-naming-strategy`.
 - Native validation should use ASan, UBSan, and Valgrind where available.
 - Any change to native code in `cmd/`, `internal/`, `tests/unit/`, or `native/` requires a Valgrind run before closeout, using `./scripts/test-valgrind.sh` or an equivalent wrapper such as `make test-valgrind`.
 - If the current host cannot execute Valgrind successfully, treat that as a validation blocker unless the failure is an environment limitation that is captured and reported explicitly.

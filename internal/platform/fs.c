@@ -9,15 +9,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static int mp_cache_fs_mkdir_single(const char *path) {
+static int mp_cache_fs_mkdir_single(const char *directory_path) {
     struct stat status;
 
-    if (path == NULL || *path == '\0') {
+    if (directory_path == NULL || *directory_path == '\0') {
         errno = EINVAL;
         return -1;
     }
 
-    if (stat(path, &status) == 0) {
+    if (stat(directory_path, &status) == 0) {
         if (S_ISDIR(status.st_mode) != 0) {
             return 0;
         }
@@ -25,30 +25,30 @@ static int mp_cache_fs_mkdir_single(const char *path) {
         return -1;
     }
 
-    if (mkdir(path, 0755) == 0 || errno == EEXIST) {
+    if (mkdir(directory_path, 0755) == 0 || errno == EEXIST) {
         return 0;
     }
 
     return -1;
 }
 
-int mp_cache_fs_ensure_directory(const char *path) {
+int mp_cache_fs_ensure_directory(const char *filesystem_path) {
     char scratch[MP_CACHE_PATH_CAP];
     size_t index = 0u;
     size_t length = 0u;
 
-    if (path == NULL || *path == '\0') {
+    if (filesystem_path == NULL || *filesystem_path == '\0') {
         errno = EINVAL;
         return -1;
     }
 
-    length = strlen(path);
+    length = strlen(filesystem_path);
     if (length >= sizeof(scratch)) {
         errno = ENAMETOOLONG;
         return -1;
     }
 
-    (void)snprintf(scratch, sizeof(scratch), "%s", path);
+    (void)snprintf(scratch, sizeof(scratch), "%s", filesystem_path);
 
     for (index = 1u; scratch[index] != '\0'; index++) {
         if (scratch[index] == '/') {
@@ -63,21 +63,21 @@ int mp_cache_fs_ensure_directory(const char *path) {
     return mp_cache_fs_mkdir_single(scratch);
 }
 
-int mp_cache_fs_ensure_parent_directory(const char *path) {
+int mp_cache_fs_ensure_parent_directory(const char *filesystem_path) {
     char scratch[MP_CACHE_PATH_CAP];
     char *last_separator = NULL;
 
-    if (path == NULL || *path == '\0') {
+    if (filesystem_path == NULL || *filesystem_path == '\0') {
         errno = EINVAL;
         return -1;
     }
 
-    if (strlen(path) >= sizeof(scratch)) {
+    if (strlen(filesystem_path) >= sizeof(scratch)) {
         errno = ENAMETOOLONG;
         return -1;
     }
 
-    (void)snprintf(scratch, sizeof(scratch), "%s", path);
+    (void)snprintf(scratch, sizeof(scratch), "%s", filesystem_path);
     last_separator = strrchr(scratch, '/');
     if (last_separator == NULL) {
         return 0;
@@ -91,32 +91,32 @@ int mp_cache_fs_ensure_parent_directory(const char *path) {
     return mp_cache_fs_ensure_directory(scratch);
 }
 
-int mp_cache_fs_remove_path_if_exists(const char *path) {
-    if (path == NULL || *path == '\0') {
+int mp_cache_fs_remove_path_if_exists(const char *filesystem_path) {
+    if (filesystem_path == NULL || *filesystem_path == '\0') {
         errno = EINVAL;
         return -1;
     }
 
-    if (unlink(path) == 0 || errno == ENOENT) {
+    if (unlink(filesystem_path) == 0 || errno == ENOENT) {
         return 0;
     }
 
     return -1;
 }
 
-int mp_cache_fs_write_pid_file(const char *path, pid_t pid) {
+int mp_cache_fs_write_pid_file(const char *pid_file_path, pid_t pid) {
     FILE *file = NULL;
 
-    if (path == NULL || *path == '\0') {
+    if (pid_file_path == NULL || *pid_file_path == '\0') {
         errno = EINVAL;
         return -1;
     }
 
-    if (mp_cache_fs_ensure_parent_directory(path) != 0) {
+    if (mp_cache_fs_ensure_parent_directory(pid_file_path) != 0) {
         return -1;
     }
 
-    file = fopen(path, "w");
+    file = fopen(pid_file_path, "w");
     if (file == NULL) {
         return -1;
     }

@@ -25,20 +25,20 @@
 
 typedef struct {
     char method[16];
-    char target[MP_CACHE_HTTP_PATH_CAPACITY];
-    char path[MP_CACHE_HTTP_PATH_CAPACITY];
-    char query[MP_CACHE_HTTP_PATH_CAPACITY];
-    char authorization[256];
+    char request_target[MP_CACHE_HTTP_PATH_CAPACITY];
+    char request_path[MP_CACHE_HTTP_PATH_CAPACITY];
+    char query_string[MP_CACHE_HTTP_PATH_CAPACITY];
+    char authorization_header[256];
     size_t content_length;
-    char *body;
-    size_t body_length;
+    char *request_body;
+    size_t request_body_length;
 } mp_cache_http_request_t;
 
 typedef struct {
     int status_code;
     const char *status_text;
-    char *body;
-    const char *allow_header;
+    char *response_body;
+    const char *allow_header_value;
     const char *extra_headers;
 } mp_cache_http_response_t;
 
@@ -66,11 +66,11 @@ static int mp_cache_http_write_response(
     int client_fd,
     int status_code,
     const char *status_text,
-    const char *body,
+    const char *response_body,
     const char *allow_header_value,
     const char *extra_headers) {
     char header_buffer[MP_CACHE_HTTP_HEADER_CAPACITY];
-    size_t body_length = body == NULL ? 0u : strlen(body);
+    size_t response_body_length = response_body == NULL ? 0u : strlen(response_body);
     int header_length = 0;
 
     header_length = snprintf(
@@ -87,7 +87,7 @@ static int mp_cache_http_write_response(
         "\r\n",
         status_code,
         status_text,
-        body_length,
+        response_body_length,
         allow_header_value == NULL ? "" : "Allow: ",
         allow_header_value == NULL ? "" : allow_header_value,
         allow_header_value == NULL ? "" : "\r\n",
@@ -99,7 +99,7 @@ static int mp_cache_http_write_response(
     if (mp_cache_http_send_all(client_fd, header_buffer, (size_t)header_length) != 0) {
         return -1;
     }
-    if (body_length > 0u && mp_cache_http_send_all(client_fd, body, body_length) != 0) {
+    if (response_body_length > 0u && mp_cache_http_send_all(client_fd, response_body, response_body_length) != 0) {
         return -1;
     }
 
@@ -111,7 +111,7 @@ static void mp_cache_http_response_destroy(mp_cache_http_response_t *response) {
         return;
     }
 
-    free(response->body);
+    free(response->response_body);
     memset(response, 0, sizeof(*response));
 }
 
@@ -140,8 +140,8 @@ static char *mp_cache_http_strdup_printf(const char *format, ...) {
     return buffer;
 }
 
-static char *mp_cache_http_escape_json(const char *text, size_t length) {
-    size_t capacity = length * 6u + 1u;
+static char *mp_cache_http_escape_json(const char *json_text, size_t text_length) {
+    size_t capacity = text_length * 6u + 1u;
     char *escaped = NULL;
     size_t input_index = 0u;
     size_t output_index = 0u;
@@ -151,8 +151,8 @@ static char *mp_cache_http_escape_json(const char *text, size_t length) {
         return NULL;
     }
 
-    for (input_index = 0u; input_index < length; input_index++) {
-        unsigned char character = (unsigned char)text[input_index];
+    for (input_index = 0u; input_index < text_length; input_index++) {
+        unsigned char character = (unsigned char)json_text[input_index];
         switch (character) {
             case '\\':
             case '"':
@@ -200,16 +200,17 @@ static void mp_cache_http_make_error(
 
     response->status_code = status_code;
     response->status_text = status_text;
-    response->allow_header = allow_header;
+    response->allow_header_value = allow_header;
     response->extra_headers = extra_headers;
-    response->body = mp_cache_http_strdup_printf(
+    response->response_body = mp_cache_http_strdup_printf(
         "{\"error\":\"%s\",\"message\":\"%s\"}",
         error_code == NULL ? "internal_error" : error_code,
         message == NULL ? "request failed" : message);
 }
 
-static bool mp_cache_http_path_is_health(const char *path) {
-    return path != NULL && (strcmp(path, "/health") == 0 || strcmp(path, "/v1/health") == 0);
+static bool mp_cache_http_path_is_health(const char *request_path) {
+    return request_path != NULL &&
+           (strcmp(request_path, "/health") == 0 || strcmp(request_path, "/v1/health") == 0);
 }
 
 static int mp_cache_http_hex_value(char character) {
@@ -266,28 +267,32 @@ static int mp_cache_http_percent_decode(const char *encoded, char *decoded, size
     return 0;
 }
 
-static char *mp_cache_http_find_json_field(const char *body, const char *field_name) {
+static char *mp_cache_http_find_json_field(const char *json_body, const char *field_name) {
     char pattern[128];
 
-    if (body == NULL || field_name == NULL) {
+    if (json_body == NULL || field_name == NULL) {
         return NULL;
     }
 
     (void)snprintf(pattern, sizeof(pattern), "\"%s\"", field_name);
-    return strstr((char *)body, pattern);
+    return strstr((char *)json_body, pattern);
 }
 
-static int mp_cache_http_extract_json_string(const char *body, const char *field_name, char *out_text, size_t out_capacity) {
+static int mp_cache_http_extract_json_string(
+    const char *json_body,
+    const char *field_name,
+    char *out_string_value,
+    size_t out_capacity) {
     char *field = NULL;
     char *value = NULL;
     size_t out_index = 0u;
 
-    if (body == NULL || field_name == NULL || out_text == NULL || out_capacity == 0u) {
+    if (json_body == NULL || field_name == NULL || out_string_value == NULL || out_capacity == 0u) {
         errno = EINVAL;
         return -1;
     }
 
-    field = mp_cache_http_find_json_field(body, field_name);
+    field = mp_cache_http_find_json_field(json_body, field_name);
     if (field == NULL) {
         errno = ENOENT;
         return -1;
@@ -341,19 +346,19 @@ static int mp_cache_http_extract_json_string(const char *body, const char *field
             errno = ENOSPC;
             return -1;
         }
-        out_text[out_index++] = next_character;
+        out_string_value[out_index++] = next_character;
     }
 
     if (*value != '"') {
         errno = EINVAL;
         return -1;
     }
-    out_text[out_index] = '\0';
+    out_string_value[out_index] = '\0';
     return 0;
 }
 
 static int mp_cache_http_extract_json_u32(
-    const char *body,
+    const char *json_body,
     const char *field_name,
     uint32_t *out_value,
     bool *out_found) {
@@ -365,12 +370,12 @@ static int mp_cache_http_extract_json_u32(
     if (out_found != NULL) {
         *out_found = false;
     }
-    if (body == NULL || field_name == NULL || out_value == NULL) {
+    if (json_body == NULL || field_name == NULL || out_value == NULL) {
         errno = EINVAL;
         return -1;
     }
 
-    field = mp_cache_http_find_json_field(body, field_name);
+    field = mp_cache_http_find_json_field(json_body, field_name);
     if (field == NULL) {
         errno = ENOENT;
         return -1;
@@ -402,29 +407,34 @@ static int mp_cache_http_extract_json_u32(
     return 0;
 }
 
-static void mp_cache_http_split_target(const char *target, char *path, size_t path_capacity, char *query, size_t query_capacity) {
+static void mp_cache_http_split_target(
+    const char *request_target,
+    char *request_path,
+    size_t request_path_capacity,
+    char *query_string,
+    size_t query_string_capacity) {
     const char *separator = NULL;
 
-    if (target == NULL || path == NULL || query == NULL) {
+    if (request_target == NULL || request_path == NULL || query_string == NULL) {
         return;
     }
 
-    separator = strchr(target, '?');
+    separator = strchr(request_target, '?');
     if (separator == NULL) {
-        (void)snprintf(path, path_capacity, "%s", target);
-        query[0] = '\0';
+        (void)snprintf(request_path, request_path_capacity, "%s", request_target);
+        query_string[0] = '\0';
         return;
     }
 
-    (void)snprintf(path, path_capacity, "%.*s", (int)(separator - target), target);
-    (void)snprintf(query, query_capacity, "%s", separator + 1);
+    (void)snprintf(request_path, request_path_capacity, "%.*s", (int)(separator - request_target), request_target);
+    (void)snprintf(query_string, query_string_capacity, "%s", separator + 1);
 }
 
-static int mp_cache_http_extract_query_u32(const char *query, const char *field_name, uint32_t *out_value) {
-    const char *position = query;
+static int mp_cache_http_extract_query_u32(const char *query_string, const char *field_name, uint32_t *out_value) {
+    const char *position = query_string;
     size_t field_length = 0u;
 
-    if (query == NULL || field_name == NULL || out_value == NULL) {
+    if (query_string == NULL || field_name == NULL || out_value == NULL) {
         errno = EINVAL;
         return -1;
     }
@@ -456,7 +466,7 @@ static int mp_cache_http_parse_headers(
     mp_cache_http_request_t *request) {
     char *line = NULL;
     line = strtok(headers_text, "\r\n");
-    if (line == NULL || sscanf(line, "%15s %511s", request->method, request->target) != 2) {
+    if (line == NULL || sscanf(line, "%15s %511s", request->method, request->request_target) != 2) {
         errno = EINVAL;
         return -1;
     }
@@ -471,11 +481,11 @@ static int mp_cache_http_parse_headers(
             while (*value != '\0' && isspace((unsigned char)*value) != 0) {
                 value++;
             }
-            (void)snprintf(request->authorization, sizeof(request->authorization), "%s", value);
+            (void)snprintf(request->authorization_header, sizeof(request->authorization_header), "%s", value);
         }
     }
 
-    mp_cache_http_split_target(request->target, request->path, sizeof(request->path), request->query, sizeof(request->query));
+    mp_cache_http_split_target(request->request_target, request->request_path, sizeof(request->request_path), request->query_string, sizeof(request->query_string));
     return 0;
 }
 
@@ -514,9 +524,9 @@ static int mp_cache_http_parse_request_buffer(char *buffer, size_t total_bytes, 
         return -1;
     }
 
-    request->body = buffer + header_length;
-    request->body_length = request->content_length;
-    request->body[request->body_length] = '\0';
+    request->request_body = buffer + header_length;
+    request->request_body_length = request->content_length;
+    request->request_body[request->request_body_length] = '\0';
     return 0;
 }
 
@@ -676,7 +686,7 @@ static int mp_cache_http_authenticate(
     int64_t now_utc_seconds,
     mp_cache_principal_t *out_principal,
     mp_cache_http_response_t *out_response) {
-    const char *token = NULL;
+    const char *bearer_token = NULL;
     mp_cache_security_status_t auth_status;
 
     if (server == NULL || request == NULL || out_principal == NULL || out_response == NULL) {
@@ -684,8 +694,8 @@ static int mp_cache_http_authenticate(
         return -1;
     }
 
-    token = mp_cache_http_extract_bearer_token(request->authorization);
-    if (token == NULL || *token == '\0') {
+    bearer_token = mp_cache_http_extract_bearer_token(request->authorization_header);
+    if (bearer_token == NULL || *bearer_token == '\0') {
         server->metrics.unauthorized_requests++;
         mp_cache_http_make_error(
             out_response,
@@ -698,7 +708,7 @@ static int mp_cache_http_authenticate(
         return 1;
     }
 
-    auth_status = mp_cache_security_authenticate(server->security, token, out_principal);
+    auth_status = mp_cache_security_authenticate(server->security, bearer_token, out_principal);
     if (auth_status != MP_CACHE_SECURITY_STATUS_OK) {
         server->metrics.unauthorized_requests++;
         mp_cache_http_make_error(
@@ -844,7 +854,7 @@ static int mp_cache_http_handle_cache_get(
     server->metrics.cache_hits++;
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf(
+    response->response_body = mp_cache_http_strdup_printf(
         "{\"key\":\"%s\",\"value_base64\":\"%s\",\"value_bytes\":%zu,\"expires_at_utc_seconds\":%lld}",
         key,
         value_base64,
@@ -870,12 +880,12 @@ static int mp_cache_http_handle_cache_put(
     size_t decoded_capacity = 0u;
     mp_cache_store_status_t status;
 
-    if (request->body == NULL || request->body_length == 0u ||
-        mp_cache_http_extract_json_string(request->body, "value_base64", value_base64, sizeof(value_base64)) != 0) {
+    if (request->request_body == NULL || request->request_body_length == 0u ||
+        mp_cache_http_extract_json_string(request->request_body, "value_base64", value_base64, sizeof(value_base64)) != 0) {
         mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "value_base64 is required", NULL, NULL);
         return 0;
     }
-    if (mp_cache_http_extract_json_u32(request->body, "ttl_seconds", &ttl_seconds, &ttl_found) != 0 && errno != ENOENT) {
+    if (mp_cache_http_extract_json_u32(request->request_body, "ttl_seconds", &ttl_seconds, &ttl_found) != 0 && errno != ENOENT) {
         mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "ttl_seconds must be an integer", NULL, NULL);
         return 0;
     }
@@ -922,7 +932,7 @@ static int mp_cache_http_handle_cache_put(
     server->metrics.cache_sets++;
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf(
+    response->response_body = mp_cache_http_strdup_printf(
         "{\"key\":\"%s\",\"ttl_seconds\":%u,\"expires_at_utc_seconds\":%lld}",
         key,
         ttl_seconds,
@@ -964,7 +974,7 @@ static int mp_cache_http_handle_cache_delete(
     server->metrics.cache_deletes++;
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf("{\"key\":\"%s\",\"deleted\":true}", key);
+    response->response_body = mp_cache_http_strdup_printf("{\"key\":\"%s\",\"deleted\":true}", key);
     return 0;
 }
 
@@ -977,7 +987,7 @@ static int mp_cache_http_handle_logs(
     char *log_text = NULL;
     char *escaped = NULL;
 
-    if (mp_cache_http_extract_query_u32(request->query, "tail", &tail_lines) != 0 && errno != ENOENT) {
+    if (mp_cache_http_extract_query_u32(request->query_string, "tail", &tail_lines) != 0 && errno != ENOENT) {
         mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "tail must be a positive integer", NULL, NULL);
         return 0;
     }
@@ -992,7 +1002,7 @@ static int mp_cache_http_handle_logs(
         if (errno == ENOENT) {
             response->status_code = 200;
             response->status_text = "OK";
-            response->body = mp_cache_http_strdup_printf("{\"file\":null,\"tail_lines\":0,\"text\":\"\"}");
+            response->response_body = mp_cache_http_strdup_printf("{\"file\":null,\"tail_lines\":0,\"text\":\"\"}");
             return 0;
         }
         mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "failed to read logs", NULL, NULL);
@@ -1009,7 +1019,7 @@ static int mp_cache_http_handle_logs(
     server->metrics.log_reads++;
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf(
+    response->response_body = mp_cache_http_strdup_printf(
         "{\"file\":\"%s\",\"tail_lines\":%u,\"text\":\"%s\"}",
         log_file_name,
         tail_lines,
@@ -1027,13 +1037,13 @@ static int mp_cache_http_handle_register_client(
     mp_cache_http_response_t *response) {
     char client_id[MP_CACHE_CLIENT_ID_CAP];
     char role_text[16];
-    char token[MP_CACHE_TOKEN_TEXT_CAP];
+    char issued_client_token[MP_CACHE_TOKEN_TEXT_CAP];
     const mp_cache_client_record_t *record = NULL;
     mp_cache_role_t role = MP_CACHE_ROLE_NONE;
     mp_cache_security_status_t status;
 
-    if (mp_cache_http_extract_json_string(request->body, "client_id", client_id, sizeof(client_id)) != 0 ||
-        mp_cache_http_extract_json_string(request->body, "role", role_text, sizeof(role_text)) != 0) {
+    if (mp_cache_http_extract_json_string(request->request_body, "client_id", client_id, sizeof(client_id)) != 0 ||
+        mp_cache_http_extract_json_string(request->request_body, "role", role_text, sizeof(role_text)) != 0) {
         mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "client_id and role are required", NULL, NULL);
         return 0;
     }
@@ -1044,7 +1054,12 @@ static int mp_cache_http_handle_register_client(
         return 0;
     }
 
-    status = mp_cache_security_register_client(server->security, client_id, role, token, sizeof(token));
+    status = mp_cache_security_register_client(
+        server->security,
+        client_id,
+        role,
+        issued_client_token,
+        sizeof(issued_client_token));
     if (status == MP_CACHE_SECURITY_STATUS_CONFLICT) {
         mp_cache_http_make_error(response, 409, "Conflict", "conflict", "client_id already exists", NULL, NULL);
         return 0;
@@ -1071,11 +1086,11 @@ static int mp_cache_http_handle_register_client(
     server->metrics.client_registrations++;
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf(
+    response->response_body = mp_cache_http_strdup_printf(
         "{\"client_id\":\"%s\",\"role\":\"%s\",\"token\":\"%s\"}",
         client_id,
         mp_cache_role_name(role),
-        token);
+        issued_client_token);
     return 0;
 }
 
@@ -1084,11 +1099,15 @@ static int mp_cache_http_handle_rotate_client(
     const char *client_id,
     int64_t now_utc_seconds,
     mp_cache_http_response_t *response) {
-    char token[MP_CACHE_TOKEN_TEXT_CAP];
+    char rotated_client_token[MP_CACHE_TOKEN_TEXT_CAP];
     const mp_cache_client_record_t *record = NULL;
     mp_cache_security_status_t status;
 
-    status = mp_cache_security_rotate_client_token(server->security, client_id, token, sizeof(token));
+    status = mp_cache_security_rotate_client_token(
+        server->security,
+        client_id,
+        rotated_client_token,
+        sizeof(rotated_client_token));
     if (status == MP_CACHE_SECURITY_STATUS_NOT_FOUND) {
         mp_cache_http_make_error(response, 404, "Not Found", "not_found", "client_id not found", NULL, NULL);
         return 0;
@@ -1115,7 +1134,10 @@ static int mp_cache_http_handle_rotate_client(
     server->metrics.token_rotations++;
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf("{\"client_id\":\"%s\",\"token\":\"%s\"}", client_id, token);
+    response->response_body = mp_cache_http_strdup_printf(
+        "{\"client_id\":\"%s\",\"token\":\"%s\"}",
+        client_id,
+        rotated_client_token);
     return 0;
 }
 
@@ -1133,9 +1155,9 @@ static int mp_cache_http_handle_export(
     server->metrics.exports++;
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf(
+    response->response_body = mp_cache_http_strdup_printf(
         "{\"path\":\"%s\",\"digest_sha256\":\"%s\",\"entry_count\":%zu,\"client_count\":%zu}",
-        export_result.path,
+        export_result.export_path,
         export_result.digest_hex,
         export_result.entry_count,
         export_result.client_count);
@@ -1147,14 +1169,14 @@ static int mp_cache_http_handle_import(
     const mp_cache_http_request_t *request,
     int64_t now_utc_seconds,
     mp_cache_http_response_t *response) {
-    char path[MP_CACHE_PATH_CAP];
+    char import_path[MP_CACHE_PATH_CAP];
 
-    if (mp_cache_http_extract_json_string(request->body, "path", path, sizeof(path)) != 0) {
+    if (mp_cache_http_extract_json_string(request->request_body, "path", import_path, sizeof(import_path)) != 0) {
         mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "path is required", NULL, NULL);
         return 0;
     }
 
-    if (mp_cache_storage_import_state(server->storage, path, server->store, server->security, now_utc_seconds) != 0) {
+    if (mp_cache_storage_import_state(server->storage, import_path, server->store, server->security, now_utc_seconds) != 0) {
         mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "state import failed integrity or bounds checks", NULL, NULL);
         return 0;
     }
@@ -1162,7 +1184,7 @@ static int mp_cache_http_handle_import(
     server->metrics.imports++;
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf("{\"path\":\"%s\",\"imported\":true}", path);
+    response->response_body = mp_cache_http_strdup_printf("{\"path\":\"%s\",\"imported\":true}", import_path);
     return 0;
 }
 
@@ -1186,7 +1208,7 @@ static int mp_cache_http_handle_purge_all(
 
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf("{\"purged\":true}");
+    response->response_body = mp_cache_http_strdup_printf("{\"purged\":true}");
     return 0;
 }
 
@@ -1200,7 +1222,7 @@ static int mp_cache_http_handle_root(
 
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf(
+    response->response_body = mp_cache_http_strdup_printf(
         "{\"service\":\"mp-cache\",\"message\":\"use /health or /v1/* endpoints\"}");
     return 0;
 }
@@ -1211,7 +1233,7 @@ static int mp_cache_http_handle_uptime(
     mp_cache_http_response_t *response) {
     response->status_code = 200;
     response->status_text = "OK";
-    response->body = mp_cache_http_strdup_printf(
+    response->response_body = mp_cache_http_strdup_printf(
         "{\"uptime_seconds\":%lld,\"started_at_utc_seconds\":%lld}",
         (long long)(now_utc_seconds - server->started_at_utc),
         (long long)server->started_at_utc);
@@ -1233,23 +1255,23 @@ static int mp_cache_http_route_request(
     server->metrics.total_requests++;
     mp_cache_http_maybe_sweep(server, now_utc_seconds);
 
-    if (mp_cache_http_path_is_health(request->path)) {
+    if (mp_cache_http_path_is_health(request->request_path)) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
             return 0;
         }
         response->status_code = 200;
         response->status_text = "OK";
-        response->body = mp_cache_http_build_health_body(server, now_utc_seconds);
+        response->response_body = mp_cache_http_build_health_body(server, now_utc_seconds);
         return 0;
     }
 
-    if (strcmp(request->path, "/") == 0) {
+    if (strcmp(request->request_path, "/") == 0) {
         return mp_cache_http_handle_root(request, response);
     }
 
-    if (strncmp(request->path, cache_prefix, strlen(cache_prefix)) == 0) {
-        if (mp_cache_http_percent_decode(request->path + strlen(cache_prefix), key, sizeof(key)) != 0 || key[0] == '\0') {
+    if (strncmp(request->request_path, cache_prefix, strlen(cache_prefix)) == 0) {
+        if (mp_cache_http_percent_decode(request->request_path + strlen(cache_prefix), key, sizeof(key)) != 0 || key[0] == '\0') {
             mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "cache key is invalid", NULL, NULL);
             return 0;
         }
@@ -1277,7 +1299,7 @@ static int mp_cache_http_route_request(
         return 0;
     }
 
-    if (strcmp(request->path, "/v1/stats") == 0) {
+    if (strcmp(request->request_path, "/v1/stats") == 0) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
             return 0;
@@ -1287,11 +1309,11 @@ static int mp_cache_http_route_request(
         }
         response->status_code = 200;
         response->status_text = "OK";
-        response->body = mp_cache_http_build_stats_body(server, now_utc_seconds);
+        response->response_body = mp_cache_http_build_stats_body(server, now_utc_seconds);
         return 0;
     }
 
-    if (strcmp(request->path, "/v1/metrics/memory") == 0) {
+    if (strcmp(request->request_path, "/v1/metrics/memory") == 0) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
             return 0;
@@ -1301,11 +1323,11 @@ static int mp_cache_http_route_request(
         }
         response->status_code = 200;
         response->status_text = "OK";
-        response->body = mp_cache_http_build_memory_body(server);
+        response->response_body = mp_cache_http_build_memory_body(server);
         return 0;
     }
 
-    if (strcmp(request->path, "/v1/uptime") == 0) {
+    if (strcmp(request->request_path, "/v1/uptime") == 0) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
             return 0;
@@ -1316,7 +1338,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_uptime(server, now_utc_seconds, response);
     }
 
-    if (strcmp(request->path, "/v1/logs") == 0) {
+    if (strcmp(request->request_path, "/v1/logs") == 0) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
             return 0;
@@ -1327,7 +1349,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_logs(server, request, response);
     }
 
-    if (strcmp(request->path, "/v1/clients") == 0) {
+    if (strcmp(request->request_path, "/v1/clients") == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
             return 0;
@@ -1338,8 +1360,8 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_register_client(server, request, now_utc_seconds, response);
     }
 
-    if (strncmp(request->path, "/v1/clients/", 12u) == 0 && strlen(request->path) > 12u) {
-        const char *suffix = strstr(request->path + 12u, rotate_suffix);
+    if (strncmp(request->request_path, "/v1/clients/", 12u) == 0 && strlen(request->request_path) > 12u) {
+        const char *suffix = strstr(request->request_path + 12u, rotate_suffix);
         size_t id_length = 0u;
         char client_id[MP_CACHE_CLIENT_ID_CAP];
 
@@ -1352,18 +1374,18 @@ static int mp_cache_http_route_request(
                 return 0;
             }
 
-            id_length = (size_t)(suffix - (request->path + 12u));
+            id_length = (size_t)(suffix - (request->request_path + 12u));
             if (id_length == 0u || id_length >= sizeof(client_id)) {
                 mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "client_id is invalid", NULL, NULL);
                 return 0;
             }
-            memcpy(client_id, request->path + 12u, id_length);
+            memcpy(client_id, request->request_path + 12u, id_length);
             client_id[id_length] = '\0';
             return mp_cache_http_handle_rotate_client(server, client_id, now_utc_seconds, response);
         }
     }
 
-    if (strcmp(request->path, "/v1/export") == 0) {
+    if (strcmp(request->request_path, "/v1/export") == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
             return 0;
@@ -1374,7 +1396,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_export(server, now_utc_seconds, response);
     }
 
-    if (strcmp(request->path, "/v1/import") == 0) {
+    if (strcmp(request->request_path, "/v1/import") == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
             return 0;
@@ -1385,7 +1407,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_import(server, request, now_utc_seconds, response);
     }
 
-    if (strcmp(request->path, "/v1/purge/all") == 0) {
+    if (strcmp(request->request_path, "/v1/purge/all") == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
             return 0;
@@ -1411,8 +1433,8 @@ static int mp_cache_http_handle_client(int client_fd, mp_cache_http_server_t *se
             client_fd,
             response.status_code,
             response.status_text,
-            response.body,
-            response.allow_header,
+            response.response_body,
+            response.allow_header_value,
             response.extra_headers);
         mp_cache_http_response_destroy(&response);
         return 0;
@@ -1426,8 +1448,8 @@ static int mp_cache_http_handle_client(int client_fd, mp_cache_http_server_t *se
         client_fd,
         response.status_code,
         response.status_text,
-        response.body,
-        response.allow_header,
+        response.response_body,
+        response.allow_header_value,
         response.extra_headers);
     mp_cache_http_response_destroy(&response);
     return 0;
@@ -1552,22 +1574,22 @@ void mp_cache_http_server_stop(mp_cache_http_server_t *server) {
 int mp_cache_http_client_request(
     const char *socket_path,
     const char *method,
-    const char *path,
-    const char *token,
+    const char *request_path,
+    const char *auth_token,
     const char *content_type,
-    const char *body,
+    const char *request_body,
     FILE *stream) {
     struct sockaddr_un address;
     int client_fd = -1;
     socklen_t address_length = 0;
     char request_buffer[MP_CACHE_HTTP_REQUEST_CAPACITY];
     char response_buffer[MP_CACHE_HTTP_REQUEST_CAPACITY];
-    size_t body_length = body == NULL ? 0u : strlen(body);
+    size_t request_body_length = request_body == NULL ? 0u : strlen(request_body);
     int request_length = 0;
     ssize_t bytes_read = 0;
     char *response_body = NULL;
 
-    if (socket_path == NULL || method == NULL || path == NULL || stream == NULL) {
+    if (socket_path == NULL || method == NULL || request_path == NULL || stream == NULL) {
         errno = EINVAL;
         return -1;
     }
@@ -1584,15 +1606,15 @@ int mp_cache_http_client_request(
         "\r\n"
         "%s",
         method,
-        path,
-        token == NULL ? "" : "Authorization: Bearer ",
-        token == NULL ? "" : token,
-        token == NULL ? "" : "\r\n",
+        request_path,
+        auth_token == NULL ? "" : "Authorization: Bearer ",
+        auth_token == NULL ? "" : auth_token,
+        auth_token == NULL ? "" : "\r\n",
         content_type == NULL ? "" : "Content-Type: ",
         content_type == NULL ? "" : content_type,
         content_type == NULL ? "" : "\r\n",
-        body_length,
-        body == NULL ? "" : body);
+        request_body_length,
+        request_body == NULL ? "" : request_body);
     if (request_length < 0 || (size_t)request_length >= sizeof(request_buffer)) {
         errno = EOVERFLOW;
         return -1;
@@ -1644,14 +1666,14 @@ int mp_cache_http_client_health(const char *socket_path, FILE *stream) {
 int mp_cache_http_server_test_request(
     mp_cache_http_server_t *server,
     const char *raw_request,
-    int *out_status_code,
-    char **out_body) {
+    int *out_response_status_code,
+    char **out_response_body) {
     char *buffer = NULL;
     size_t request_length = 0u;
     mp_cache_http_request_t request;
     mp_cache_http_response_t response;
 
-    if (server == NULL || raw_request == NULL || out_status_code == NULL || out_body == NULL) {
+    if (server == NULL || raw_request == NULL || out_response_status_code == NULL || out_response_body == NULL) {
         errno = EINVAL;
         return -1;
     }
@@ -1669,8 +1691,8 @@ int mp_cache_http_server_test_request(
         return -1;
     }
 
-    *out_status_code = response.status_code;
-    *out_body = response.body;
+    *out_response_status_code = response.status_code;
+    *out_response_body = response.response_body;
     free(buffer);
     return 0;
 }

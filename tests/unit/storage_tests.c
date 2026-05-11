@@ -99,7 +99,13 @@ static void test_journal_checkpoint_and_export_import_round_trip(void) {
     assert(mp_cache_storage_export_state(&storage, &store, &security, now_utc_seconds, &export_result) == 0);
     mp_cache_store_clear(&restored_store);
     mp_cache_security_clear_clients(&restored_security);
-    assert(mp_cache_storage_import_state(&storage, export_result.path, &restored_store, &restored_security, now_utc_seconds) == 0);
+    assert(
+        mp_cache_storage_import_state(
+            &storage,
+            export_result.export_path,
+            &restored_store,
+            &restored_security,
+            now_utc_seconds) == 0);
     assert(
         mp_cache_store_get_copy(
             &restored_store,
@@ -116,7 +122,7 @@ static void test_journal_checkpoint_and_export_import_round_trip(void) {
         mp_cache_security_authenticate(&restored_security, client_token, &principal) == MP_CACHE_SECURITY_STATUS_OK);
 
     {
-        FILE *export_file = fopen(export_result.path, "r+b");
+        FILE *export_file = fopen(export_result.export_path, "r+b");
         assert(export_file != NULL);
         assert(fseek(export_file, 32L, SEEK_SET) == 0);
         assert(fputc('X', export_file) != EOF);
@@ -125,7 +131,7 @@ static void test_journal_checkpoint_and_export_import_round_trip(void) {
     assert(
         mp_cache_storage_import_state(
             &storage,
-            export_result.path,
+            export_result.export_path,
             &tampered_store,
             &tampered_security,
             now_utc_seconds) != 0);

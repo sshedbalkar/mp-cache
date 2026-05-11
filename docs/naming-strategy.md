@@ -50,15 +50,18 @@ Avoid switching between synonyms unless the concepts are actually different.
 ## Files, Scripts, And Modules
 
 - Prefer names that make the action and target obvious: `run-local-server.sh`, `promote-artifact.sh`, `test-naming-strategy.sh`.
-- Entry-point helpers should include service or CLI context when a flat name would be ambiguous: `mp_cache_server_print_usage`, `mp_cachectl_send_http_request`.
+- Entry-point and internal service helpers should include service or boundary context when a flat name would be ambiguous: `mp_cache_server_print_usage`, `mp_cachectl_send_http_request`, `mp_cache_http_client_request`.
 - Within a narrowly scoped directory, compact names are acceptable when nearby files and call sites already make the target obvious. Do not add redundant prefixes just to repeat folder context.
+- `internal/` code follows the same rule, with the strongest requirements on cross-module interfaces, structs, exported results, and request or storage boundaries.
 
 ## Functions, Variables, And Collections
 
 - Prefer business or boundary meaning over raw type.
 - Boolean names should read as predicates or states: `is_ttl_provided`, `server_started_by_script`.
-- Request, response, config, and filesystem values should carry their boundary context: `request_body`, `auth_token`, `config_path`.
+- Request, response, config, auth, export, import, and filesystem values should carry their boundary context: `request_body`, `auth_token`, `config_path`, `export_path`, `import_path`.
+- Output parameters and returned artifacts should name the returned thing, not only the direction: `out_client_token`, `out_response_body`, `out_value_copy`.
 - Collections should describe entries, not container type.
+- Tight loop counters and short-lived algorithm locals may stay compact when the surrounding function already makes the role obvious. This exception does not apply to public interfaces or long-lived boundary state.
 
 ## External Names
 
@@ -84,5 +87,5 @@ Avoid low-signal standalone names when local context does not narrow them enough
 
 ## Required Validation
 
-- Changes under `cmd/` or `scripts/` must pass `./scripts/test-naming-strategy.sh`.
+- Changes under `cmd/`, `scripts/`, or `internal/` must pass `./scripts/test-naming-strategy.sh`.
 - `make test` includes naming-strategy validation.

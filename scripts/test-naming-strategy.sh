@@ -10,6 +10,7 @@ summary_report="$report_dir/naming-strategy-report.md"
 violations_report="$report_dir/naming-strategy-violations.txt"
 cmd_violation_output=""
 script_violation_output=""
+internal_violation_output=""
 
 capture_violations() {
   local pattern="$1"
@@ -32,7 +33,30 @@ script_violation_output="$(
     scripts/lib/local-env.sh
 )"
 
-printf '%s\n%s\n' "$cmd_violation_output" "$script_violation_output" | sed '/^$/d' >"$violations_report"
+internal_violation_output="$(
+  capture_violations \
+    'char (target|path|query|authorization)\[[^]]*\];|char \*body;|const char \*(path|body|token|text)\b|request->(path|body|query|target|authorization)\b|response->body\b|export_result\.path\b|out_result->path\b|char \*out_(token|body|text)\b|int \*out_status_code\b|uint8_t \*\*out_value\b|size_t \*out_value_length\b|uint8_t key\[MP_CACHE_TOKEN_HASH_SIZE\]' \
+    internal/cache/cache.c \
+    internal/cache/cache.h \
+    internal/config/config.c \
+    internal/config/config.h \
+    internal/crypto/crypto.c \
+    internal/crypto/crypto.h \
+    internal/httpserver/http_server.c \
+    internal/httpserver/http_server.h \
+    internal/observability/log.c \
+    internal/observability/log.h \
+    internal/platform/fs.c \
+    internal/platform/fs.h \
+    internal/runtime/runtime.c \
+    internal/runtime/runtime.h \
+    internal/security/security.c \
+    internal/security/security.h \
+    internal/storage/storage.c \
+    internal/storage/storage.h
+)"
+
+printf '%s\n%s\n%s\n' "$cmd_violation_output" "$script_violation_output" "$internal_violation_output" | sed '/^$/d' >"$violations_report"
 
 if [ -s "$violations_report" ]; then
   {
@@ -40,7 +64,7 @@ if [ -s "$violations_report" ]; then
     printf '| Field | Value |\n'
     printf '|:------|:------|\n'
     printf '| Rule | `docs/naming-strategy.md` |\n'
-    printf '| Scope | `cmd/` and `scripts/` |\n'
+    printf '| Scope | `cmd/`, `scripts/`, and `internal/` |\n'
     printf '| Status | FAIL |\n\n'
     printf 'Low-signal standalone names found:\n\n'
     printf '```text\n'
@@ -57,7 +81,7 @@ fi
   printf '| Field | Value |\n'
   printf '|:------|:------|\n'
   printf '| Rule | `docs/naming-strategy.md` |\n'
-  printf '| Scope | `cmd/` and `scripts/` |\n'
+  printf '| Scope | `cmd/`, `scripts/`, and `internal/` |\n'
   printf '| Status | PASS |\n'
 } > "$summary_report"
 

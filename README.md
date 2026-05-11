@@ -44,6 +44,8 @@ Authoritative local standards:
 - `docs/naming-strategy.md`
 - `docs/commit-messages.md`
 
+The naming strategy applies to `cmd/`, `scripts/`, and `internal/`.
+
 ## Prerequisites
 
 Required local tooling:

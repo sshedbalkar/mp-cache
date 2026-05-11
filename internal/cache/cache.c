@@ -40,10 +40,10 @@ static mp_cache_entry_t **mp_cache_find_slot(
 
 static mp_cache_store_status_t mp_cache_store_write_entry(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length,
-    const void *value,
-    size_t value_length,
+    const void *cache_key,
+    size_t cache_key_length,
+    const void *cache_value,
+    size_t cache_value_length,
     int64_t expires_at_utc_seconds) {
     mp_cache_entry_t **slot = NULL;
     mp_cache_entry_t *entry = NULL;
@@ -52,34 +52,34 @@ static mp_cache_store_status_t mp_cache_store_write_entry(
     char *key_copy = NULL;
     uint8_t *value_copy = NULL;
 
-    if (store == NULL || key == NULL || value == NULL) {
+    if (store == NULL || cache_key == NULL || cache_value == NULL) {
         return MP_CACHE_STORE_STATUS_INVALID_ARGUMENT;
     }
-    if (key_length == 0u || key_length > store->max_key_bytes || value_length > store->max_value_bytes) {
+    if (cache_key_length == 0u || cache_key_length > store->max_key_bytes || cache_value_length > store->max_value_bytes) {
         return MP_CACHE_STORE_STATUS_LIMIT_EXCEEDED;
     }
 
-    slot = mp_cache_find_slot(store, key, key_length);
+    slot = mp_cache_find_slot(store, cache_key, cache_key_length);
     entry = *slot;
     previous_cost = mp_cache_entry_cost(entry);
-    next_cost = sizeof(mp_cache_entry_t) + key_length + 1u + value_length;
+    next_cost = sizeof(mp_cache_entry_t) + cache_key_length + 1u + cache_value_length;
 
     if (store->bytes_used - previous_cost + next_cost > store->memory_limit_bytes) {
         return MP_CACHE_STORE_STATUS_LIMIT_EXCEEDED;
     }
 
-    key_copy = malloc(key_length + 1u);
-    value_copy = malloc(value_length == 0u ? 1u : value_length);
+    key_copy = malloc(cache_key_length + 1u);
+    value_copy = malloc(cache_value_length == 0u ? 1u : cache_value_length);
     if (key_copy == NULL || value_copy == NULL) {
         free(key_copy);
         free(value_copy);
         return MP_CACHE_STORE_STATUS_NO_MEMORY;
     }
 
-    memcpy(key_copy, key, key_length);
-    key_copy[key_length] = '\0';
-    if (value_length > 0u) {
-        memcpy(value_copy, value, value_length);
+    memcpy(key_copy, cache_key, cache_key_length);
+    key_copy[cache_key_length] = '\0';
+    if (cache_value_length > 0u) {
+        memcpy(value_copy, cache_value, cache_value_length);
     }
 
     if (entry == NULL) {
@@ -98,8 +98,8 @@ static mp_cache_store_status_t mp_cache_store_write_entry(
 
     entry->key = key_copy;
     entry->value = value_copy;
-    entry->key_length = key_length;
-    entry->value_length = value_length;
+    entry->key_length = cache_key_length;
+    entry->value_length = cache_value_length;
     entry->expires_at_utc_seconds = expires_at_utc_seconds;
 
     store->bytes_used = store->bytes_used - previous_cost + next_cost;
@@ -177,41 +177,41 @@ void mp_cache_store_destroy(mp_cache_store_t *store) {
 
 mp_cache_store_status_t mp_cache_store_set(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length,
-    const void *value,
-    size_t value_length,
+    const void *cache_key,
+    size_t cache_key_length,
+    const void *cache_value,
+    size_t cache_value_length,
     uint32_t ttl_seconds,
     int64_t now_utc_seconds) {
-    if (store == NULL || key == NULL || value == NULL || ttl_seconds == 0u) {
+    if (store == NULL || cache_key == NULL || cache_value == NULL || ttl_seconds == 0u) {
         return MP_CACHE_STORE_STATUS_INVALID_ARGUMENT;
     }
     return mp_cache_store_write_entry(
         store,
-        key,
-        key_length,
-        value,
-        value_length,
+        cache_key,
+        cache_key_length,
+        cache_value,
+        cache_value_length,
         now_utc_seconds + (int64_t)ttl_seconds);
 }
 
 mp_cache_store_status_t mp_cache_store_get_copy(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length,
+    const void *cache_key,
+    size_t cache_key_length,
     int64_t now_utc_seconds,
-    uint8_t **out_value,
-    size_t *out_value_length,
+    uint8_t **out_value_copy,
+    size_t *out_value_copy_length,
     int64_t *out_expires_at_utc_seconds) {
     mp_cache_entry_t **slot = NULL;
     mp_cache_entry_t *entry = NULL;
-    uint8_t *copy = NULL;
+    uint8_t *value_copy = NULL;
 
-    if (store == NULL || key == NULL || out_value == NULL || out_value_length == NULL) {
+    if (store == NULL || cache_key == NULL || out_value_copy == NULL || out_value_copy_length == NULL) {
         return MP_CACHE_STORE_STATUS_INVALID_ARGUMENT;
     }
 
-    slot = mp_cache_find_slot(store, key, key_length);
+    slot = mp_cache_find_slot(store, cache_key, cache_key_length);
     entry = *slot;
     if (entry == NULL) {
         return MP_CACHE_STORE_STATUS_NOT_FOUND;
@@ -225,17 +225,17 @@ mp_cache_store_status_t mp_cache_store_get_copy(
         return MP_CACHE_STORE_STATUS_EXPIRED;
     }
 
-    copy = malloc(entry->value_length == 0u ? 1u : entry->value_length);
-    if (copy == NULL) {
+    value_copy = malloc(entry->value_length == 0u ? 1u : entry->value_length);
+    if (value_copy == NULL) {
         return MP_CACHE_STORE_STATUS_NO_MEMORY;
     }
 
     if (entry->value_length > 0u) {
-        memcpy(copy, entry->value, entry->value_length);
+        memcpy(value_copy, entry->value, entry->value_length);
     }
 
-    *out_value = copy;
-    *out_value_length = entry->value_length;
+    *out_value_copy = value_copy;
+    *out_value_copy_length = entry->value_length;
     if (out_expires_at_utc_seconds != NULL) {
         *out_expires_at_utc_seconds = entry->expires_at_utc_seconds;
     }
@@ -244,16 +244,16 @@ mp_cache_store_status_t mp_cache_store_get_copy(
 
 mp_cache_store_status_t mp_cache_store_delete(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length) {
+    const void *cache_key,
+    size_t cache_key_length) {
     mp_cache_entry_t **slot = NULL;
     mp_cache_entry_t *entry = NULL;
 
-    if (store == NULL || key == NULL) {
+    if (store == NULL || cache_key == NULL) {
         return MP_CACHE_STORE_STATUS_INVALID_ARGUMENT;
     }
 
-    slot = mp_cache_find_slot(store, key, key_length);
+    slot = mp_cache_find_slot(store, cache_key, cache_key_length);
     entry = *slot;
     if (entry == NULL) {
         return MP_CACHE_STORE_STATUS_NOT_FOUND;
@@ -268,16 +268,22 @@ mp_cache_store_status_t mp_cache_store_delete(
 
 mp_cache_store_status_t mp_cache_store_restore_entry(
     mp_cache_store_t *store,
-    const void *key,
-    size_t key_length,
-    const void *value,
-    size_t value_length,
+    const void *cache_key,
+    size_t cache_key_length,
+    const void *cache_value,
+    size_t cache_value_length,
     int64_t expires_at_utc_seconds) {
     if (expires_at_utc_seconds <= 0) {
         return MP_CACHE_STORE_STATUS_INVALID_ARGUMENT;
     }
 
-    return mp_cache_store_write_entry(store, key, key_length, value, value_length, expires_at_utc_seconds);
+    return mp_cache_store_write_entry(
+        store,
+        cache_key,
+        cache_key_length,
+        cache_value,
+        cache_value_length,
+        expires_at_utc_seconds);
 }
 
 void mp_cache_store_clear(mp_cache_store_t *store) {

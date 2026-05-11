@@ -59,19 +59,19 @@ void mp_cache_security_destroy(mp_cache_security_t *security);
 
 mp_cache_security_status_t mp_cache_security_authenticate(
     const mp_cache_security_t *security,
-    const char *token,
+    const char *auth_token,
     mp_cache_principal_t *out_principal);
 mp_cache_security_status_t mp_cache_security_register_client(
     mp_cache_security_t *security,
     const char *client_id,
     mp_cache_role_t role,
-    char *out_token,
-    size_t out_token_capacity);
+    char *out_client_token,
+    size_t out_client_token_capacity);
 mp_cache_security_status_t mp_cache_security_rotate_client_token(
     mp_cache_security_t *security,
     const char *client_id,
-    char *out_token,
-    size_t out_token_capacity);
+    char *out_client_token,
+    size_t out_client_token_capacity);
 mp_cache_security_status_t mp_cache_security_import_client_hash(
     mp_cache_security_t *security,
     const char *client_id,
@@ -88,7 +88,7 @@ const mp_cache_client_record_t *mp_cache_security_find_client(const mp_cache_sec
 
 bool mp_cache_role_allows(mp_cache_role_t actual_role, mp_cache_role_t required_role);
 const char *mp_cache_role_name(mp_cache_role_t role);
-mp_cache_role_t mp_cache_role_from_string(const char *text);
+mp_cache_role_t mp_cache_role_from_string(const char *role_text);
 const char *mp_cache_security_status_name(mp_cache_security_status_t status);
 
 #endif

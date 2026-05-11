@@ -106,18 +106,18 @@ void mp_cache_log_writef(mp_cache_log_t *log, mp_log_level_t level, const char *
 
 static int mp_cache_log_find_latest_file(
     const char *log_directory,
-    char *out_path,
-    size_t out_path_capacity,
-    char *out_name,
-    size_t out_name_capacity) {
+    char *out_log_file_path,
+    size_t out_log_file_path_capacity,
+    char *out_log_file_name,
+    size_t out_log_file_name_capacity) {
     DIR *directory = NULL;
     struct dirent *entry = NULL;
     struct stat entry_status;
     struct stat latest_status;
-    char path[MP_CACHE_PATH_CAP];
+    char candidate_log_file_path[MP_CACHE_PATH_CAP];
     int found = 0;
 
-    if (log_directory == NULL || out_path == NULL || out_name == NULL) {
+    if (log_directory == NULL || out_log_file_path == NULL || out_log_file_name == NULL) {
         errno = EINVAL;
         return -1;
     }
@@ -133,14 +133,14 @@ static int mp_cache_log_find_latest_file(
             continue;
         }
 
-        (void)snprintf(path, sizeof(path), "%s/%s", log_directory, entry->d_name);
-        if (stat(path, &entry_status) != 0 || S_ISREG(entry_status.st_mode) == 0) {
+        (void)snprintf(candidate_log_file_path, sizeof(candidate_log_file_path), "%s/%s", log_directory, entry->d_name);
+        if (stat(candidate_log_file_path, &entry_status) != 0 || S_ISREG(entry_status.st_mode) == 0) {
             continue;
         }
         if (!found || entry_status.st_mtime > latest_status.st_mtime) {
             latest_status = entry_status;
-            (void)snprintf(out_path, out_path_capacity, "%s", path);
-            (void)snprintf(out_name, out_name_capacity, "%s", entry->d_name);
+            (void)snprintf(out_log_file_path, out_log_file_path_capacity, "%s", candidate_log_file_path);
+            (void)snprintf(out_log_file_name, out_log_file_name_capacity, "%s", entry->d_name);
             found = 1;
         }
     }
@@ -158,10 +158,10 @@ int mp_cache_log_read_latest_tail(
     const char *log_directory,
     uint32_t max_lines,
     uint32_t requested_lines,
-    char *out_file_name,
-    size_t out_file_name_capacity,
-    char **out_text) {
-    char path[MP_CACHE_PATH_CAP];
+    char *out_log_file_name,
+    size_t out_log_file_name_capacity,
+    char **out_log_text) {
+    char latest_log_file_path[MP_CACHE_PATH_CAP];
     FILE *file = NULL;
     char *buffer = NULL;
     char *start = NULL;
@@ -171,7 +171,7 @@ int mp_cache_log_read_latest_tail(
     uint32_t seen_lines = 0u;
     size_t index = 0u;
 
-    if (log_directory == NULL || out_file_name == NULL || out_text == NULL || out_file_name_capacity == 0u) {
+    if (log_directory == NULL || out_log_file_name == NULL || out_log_text == NULL || out_log_file_name_capacity == 0u) {
         errno = EINVAL;
         return -1;
     }
@@ -179,11 +179,16 @@ int mp_cache_log_read_latest_tail(
     if (target_lines > max_lines) {
         target_lines = max_lines;
     }
-    if (mp_cache_log_find_latest_file(log_directory, path, sizeof(path), out_file_name, out_file_name_capacity) != 0) {
+    if (mp_cache_log_find_latest_file(
+            log_directory,
+            latest_log_file_path,
+            sizeof(latest_log_file_path),
+            out_log_file_name,
+            out_log_file_name_capacity) != 0) {
         return -1;
     }
 
-    file = fopen(path, "rb");
+    file = fopen(latest_log_file_path, "rb");
     if (file == NULL) {
         return -1;
     }
@@ -227,6 +232,6 @@ int mp_cache_log_read_latest_tail(
         memmove(buffer, start, remaining + 1u);
     }
 
-    *out_text = buffer;
+    *out_log_text = buffer;
     return 0;
 }

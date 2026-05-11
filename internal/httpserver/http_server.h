@@ -68,15 +68,15 @@ int mp_cache_http_client_health(const char *socket_path, FILE *stream);
 int mp_cache_http_client_request(
     const char *socket_path,
     const char *method,
-    const char *path,
-    const char *token,
+    const char *request_path,
+    const char *auth_token,
     const char *content_type,
-    const char *body,
+    const char *request_body,
     FILE *stream);
 int mp_cache_http_server_test_request(
     mp_cache_http_server_t *server,
     const char *raw_request,
-    int *out_status_code,
-    char **out_body);
+    int *out_response_status_code,
+    char **out_response_body);
 
 #endif

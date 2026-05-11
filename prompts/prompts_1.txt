@@ -42,7 +42,9 @@ Check if Phase 2, 3, and 4 of the 'mp-cache/docs/architecture/mp-cache-architect
 
 comments and durable rule.
 
-Naming and durable rule.
+Naming and durable rule. Done
+
+The rule is to be followed by any change in 'mp-cache/internal/' as well. Update the rule set. And check all of the files in the 'internal/' directory and make sure the rule is followed. Update docs/context/tests/etc. Build, deploy, and validate that the cache server is properly working. Done
 
 Implement: selective key-purge API, explicit token invalidation beyond rotation.
 

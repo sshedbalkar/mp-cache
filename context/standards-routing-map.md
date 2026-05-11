@@ -12,7 +12,7 @@ Use local standards from `docs/engineering-standards.md`, `docs/naming-strategy.
   - local files: `cmd/`, `internal/`, `native/mp_logger`
 - `route.naming`
   - section: `Naming And Terminology`
-  - local files: `docs/naming-strategy.md`, `cmd/`, `scripts/`, `Makefile`
+  - local files: `docs/naming-strategy.md`, `cmd/`, `scripts/`, `internal/`, `Makefile`
 - `route.observability-logging`
   - section: `Security And Operations`
   - local files: `internal/observability/`, `internal/runtime/`, `native/mp_logger`, `configs/logger.bootstrap.ini`

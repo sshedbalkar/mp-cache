@@ -163,13 +163,13 @@ static int mp_cache_consume_bytes(
     size_t length,
     size_t *offset,
     size_t value_length,
-    const uint8_t **out_value) {
-    if (bytes == NULL || offset == NULL || out_value == NULL || *offset > length || length - *offset < value_length) {
+    const uint8_t **out_value_bytes) {
+    if (bytes == NULL || offset == NULL || out_value_bytes == NULL || *offset > length || length - *offset < value_length) {
         errno = EINVAL;
         return -1;
     }
 
-    *out_value = bytes + *offset;
+    *out_value_bytes = bytes + *offset;
     *offset += value_length;
     return 0;
 }
@@ -232,7 +232,7 @@ static int mp_cache_storage_build_packet(
     }
     if (payload_length > 0u) {
         memcpy(ciphertext, payload, payload_length);
-        mp_cache_stream_xor(storage->key, sizeof(storage->key), nonce, ciphertext, payload_length);
+        mp_cache_stream_xor(storage->storage_key, sizeof(storage->storage_key), nonce, ciphertext, payload_length);
     }
 
     memset(header, 0, sizeof(header));
@@ -254,7 +254,12 @@ static int mp_cache_storage_build_packet(
         return -1;
     }
 
-    mp_cache_hmac_sha256(storage->key, sizeof(storage->key), mac_input.bytes, mac_input.length, header + 32u);
+    mp_cache_hmac_sha256(
+        storage->storage_key,
+        sizeof(storage->storage_key),
+        mac_input.bytes,
+        mac_input.length,
+        header + 32u);
     if (out_mac != NULL) {
         memcpy(out_mac, header + 32u, MP_CACHE_TOKEN_HASH_SIZE);
     }
@@ -273,7 +278,7 @@ static int mp_cache_storage_build_packet(
 
 static int mp_cache_storage_write_packet_file(
     mp_cache_storage_t *storage,
-    const char *path,
+    const char *file_path,
     const char *magic,
     const uint8_t *payload,
     size_t payload_length,
@@ -283,15 +288,15 @@ static int mp_cache_storage_write_packet_file(
     mp_cache_buffer_t packet = {0};
     int result = -1;
 
-    if (storage == NULL || path == NULL || magic == NULL || payload == NULL) {
+    if (storage == NULL || file_path == NULL || magic == NULL || payload == NULL) {
         errno = EINVAL;
         return -1;
     }
-    if (mp_cache_fs_ensure_parent_directory(path) != 0) {
+    if (mp_cache_fs_ensure_parent_directory(file_path) != 0) {
         return -1;
     }
 
-    (void)snprintf(temp_path, sizeof(temp_path), "%s.tmp.%ld", path, (long)getpid());
+    (void)snprintf(temp_path, sizeof(temp_path), "%s.tmp.%ld", file_path, (long)getpid());
     if (mp_cache_storage_build_packet(storage, magic, payload, payload_length, &packet, out_mac) != 0) {
         mp_cache_buffer_destroy(&packet);
         return -1;
@@ -304,7 +309,7 @@ static int mp_cache_storage_write_packet_file(
     }
 
     if (mp_cache_storage_write_all(file, packet.bytes, packet.length) == 0 && fflush(file) == 0 && fclose(file) == 0 &&
-        rename(temp_path, path) == 0) {
+        rename(temp_path, file_path) == 0) {
         result = 0;
     } else {
         if (file != NULL) {
@@ -319,7 +324,7 @@ static int mp_cache_storage_write_packet_file(
 
 static int mp_cache_storage_append_packet(
     mp_cache_storage_t *storage,
-    const char *path,
+    const char *file_path,
     const char *magic,
     const uint8_t *payload,
     size_t payload_length) {
@@ -327,11 +332,11 @@ static int mp_cache_storage_append_packet(
     mp_cache_buffer_t packet = {0};
     int result = -1;
 
-    if (storage == NULL || path == NULL || magic == NULL || payload == NULL) {
+    if (storage == NULL || file_path == NULL || magic == NULL || payload == NULL) {
         errno = EINVAL;
         return -1;
     }
-    if (mp_cache_fs_ensure_parent_directory(path) != 0) {
+    if (mp_cache_fs_ensure_parent_directory(file_path) != 0) {
         return -1;
     }
     if (mp_cache_storage_build_packet(storage, magic, payload, payload_length, &packet, NULL) != 0) {
@@ -339,7 +344,7 @@ static int mp_cache_storage_append_packet(
         return -1;
     }
 
-    file = fopen(path, "ab");
+    file = fopen(file_path, "ab");
     if (file == NULL) {
         mp_cache_buffer_destroy(&packet);
         return -1;
@@ -416,7 +421,12 @@ static int mp_cache_storage_read_packet_stream(
         mp_cache_buffer_destroy(&mac_input);
         return -1;
     }
-    mp_cache_hmac_sha256(storage->key, sizeof(storage->key), mac_input.bytes, mac_input.length, computed_mac);
+    mp_cache_hmac_sha256(
+        storage->storage_key,
+        sizeof(storage->storage_key),
+        mac_input.bytes,
+        mac_input.length,
+        computed_mac);
     if (!mp_cache_constant_time_equals(computed_mac, header + 32u, sizeof(computed_mac))) {
         free(ciphertext);
         mp_cache_buffer_destroy(&mac_input);
@@ -424,7 +434,12 @@ static int mp_cache_storage_read_packet_stream(
         return -1;
     }
 
-    mp_cache_stream_xor(storage->key, sizeof(storage->key), header + 16u, ciphertext, payload_length);
+    mp_cache_stream_xor(
+        storage->storage_key,
+        sizeof(storage->storage_key),
+        header + 16u,
+        ciphertext,
+        payload_length);
     *out_payload = ciphertext;
     *out_payload_length = payload_length;
     if (out_mac != NULL) {
@@ -437,7 +452,7 @@ static int mp_cache_storage_read_packet_stream(
 
 static int mp_cache_storage_read_packet_file(
     mp_cache_storage_t *storage,
-    const char *path,
+    const char *file_path,
     const char *expected_magic,
     uint8_t **out_payload,
     size_t *out_payload_length,
@@ -445,7 +460,7 @@ static int mp_cache_storage_read_packet_file(
     FILE *file = NULL;
     int result = 0;
 
-    file = fopen(path, "rb");
+    file = fopen(file_path, "rb");
     if (file == NULL) {
         return errno == ENOENT ? 1 : -1;
     }
@@ -824,32 +839,32 @@ static int mp_cache_storage_export_count(mp_cache_storage_t *storage, size_t *ou
 
 static int mp_cache_storage_resolve_import_path(
     mp_cache_storage_t *storage,
-    const char *path,
-    char *out_path,
+    const char *requested_import_path,
+    char *resolved_import_path,
     size_t out_capacity) {
     struct stat file_status;
 
-    if (storage == NULL || path == NULL || out_path == NULL || out_capacity == 0u) {
+    if (storage == NULL || requested_import_path == NULL || resolved_import_path == NULL || out_capacity == 0u) {
         errno = EINVAL;
         return -1;
     }
 
-    if (strstr(path, "../") != NULL || strstr(path, "/..") != NULL) {
+    if (strstr(requested_import_path, "../") != NULL || strstr(requested_import_path, "/..") != NULL) {
         errno = EACCES;
         return -1;
     }
-    if (path[0] == '/') {
-        if (strncmp(path, storage->export_directory, strlen(storage->export_directory)) != 0) {
+    if (requested_import_path[0] == '/') {
+        if (strncmp(requested_import_path, storage->export_directory, strlen(storage->export_directory)) != 0) {
             errno = EACCES;
             return -1;
         }
-        (void)snprintf(out_path, out_capacity, "%s", path);
-    } else if (strncmp(path, storage->export_directory, strlen(storage->export_directory)) == 0) {
-        (void)snprintf(out_path, out_capacity, "%s", path);
+        (void)snprintf(resolved_import_path, out_capacity, "%s", requested_import_path);
+    } else if (strncmp(requested_import_path, storage->export_directory, strlen(storage->export_directory)) == 0) {
+        (void)snprintf(resolved_import_path, out_capacity, "%s", requested_import_path);
     } else {
-        (void)snprintf(out_path, out_capacity, "%s/%s", storage->export_directory, path);
+        (void)snprintf(resolved_import_path, out_capacity, "%s/%s", storage->export_directory, requested_import_path);
     }
-    if (stat(out_path, &file_status) != 0 || S_ISREG(file_status.st_mode) == 0) {
+    if (stat(resolved_import_path, &file_status) != 0 || S_ISREG(file_status.st_mode) == 0) {
         errno = ENOENT;
         return -1;
     }
@@ -875,7 +890,7 @@ int mp_cache_storage_init(mp_cache_storage_t *storage, const mp_cache_config_t *
     if (mp_cache_secret_resolve(config->storage_key_secret_ref, storage_secret, sizeof(storage_secret)) != 0) {
         return -1;
     }
-    mp_cache_secret_derive_key(storage_secret, storage->key);
+    mp_cache_secret_derive_key(storage_secret, storage->storage_key);
     return 0;
 }
 
@@ -1116,8 +1131,8 @@ int mp_cache_storage_export_state(
     out_result->entry_count = 0u;
     out_result->client_count = mp_cache_security_client_count(security);
     (void)snprintf(
-        out_result->path,
-        sizeof(out_result->path),
+        out_result->export_path,
+        sizeof(out_result->export_path),
         "%s/mp-cache-export-%ld-%ld.bin",
         storage->export_directory,
         (long)now_utc_seconds,
@@ -1131,7 +1146,7 @@ int mp_cache_storage_export_state(
 
     if (mp_cache_storage_write_packet_file(
             storage,
-            out_result->path,
+            out_result->export_path,
             MP_CACHE_EXPORT_MAGIC,
             payload.bytes,
             payload.length,
@@ -1147,7 +1162,7 @@ int mp_cache_storage_export_state(
 
 int mp_cache_storage_import_state(
     mp_cache_storage_t *storage,
-    const char *path,
+    const char *import_path,
     mp_cache_store_t *store,
     mp_cache_security_t *security,
     int64_t now_utc_seconds) {
@@ -1158,11 +1173,11 @@ int mp_cache_storage_import_state(
     mp_cache_security_t imported_security;
     int result = -1;
 
-    if (storage == NULL || path == NULL || store == NULL || security == NULL) {
+    if (storage == NULL || import_path == NULL || store == NULL || security == NULL) {
         errno = EINVAL;
         return -1;
     }
-    if (mp_cache_storage_resolve_import_path(storage, path, resolved_path, sizeof(resolved_path)) != 0) {
+    if (mp_cache_storage_resolve_import_path(storage, import_path, resolved_path, sizeof(resolved_path)) != 0) {
         return -1;
     }
     if (mp_cache_storage_read_packet_file(storage, resolved_path, MP_CACHE_EXPORT_MAGIC, &payload, &payload_length, NULL) != 0) {

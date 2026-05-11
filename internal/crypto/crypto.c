@@ -156,7 +156,7 @@ static void mp_cache_sha256_final(mp_cache_sha256_context_t *context, uint8_t ou
     }
 }
 
-void mp_cache_sha256(const uint8_t *data, size_t length, uint8_t out_digest[MP_CACHE_SHA256_SIZE]) {
+void mp_cache_sha256(const uint8_t *input_bytes, size_t input_length, uint8_t out_digest[MP_CACHE_SHA256_SIZE]) {
     mp_cache_sha256_context_t context;
 
     if (out_digest == NULL) {
@@ -164,15 +164,15 @@ void mp_cache_sha256(const uint8_t *data, size_t length, uint8_t out_digest[MP_C
     }
 
     mp_cache_sha256_init(&context);
-    mp_cache_sha256_update(&context, data, length);
+    mp_cache_sha256_update(&context, input_bytes, input_length);
     mp_cache_sha256_final(&context, out_digest);
 }
 
 void mp_cache_hmac_sha256(
-    const uint8_t *key,
-    size_t key_length,
-    const uint8_t *data,
-    size_t data_length,
+    const uint8_t *secret_key,
+    size_t secret_key_length,
+    const uint8_t *message_bytes,
+    size_t message_length,
     uint8_t out_digest[MP_CACHE_SHA256_SIZE]) {
     uint8_t normalized_key[MP_CACHE_SHA256_BLOCK_SIZE];
     uint8_t inner_block[MP_CACHE_SHA256_BLOCK_SIZE];
@@ -186,11 +186,11 @@ void mp_cache_hmac_sha256(
     }
 
     memset(normalized_key, 0, sizeof(normalized_key));
-    if (key != NULL && key_length > 0u) {
-        if (key_length > MP_CACHE_SHA256_BLOCK_SIZE) {
-            mp_cache_sha256(key, key_length, normalized_key);
+    if (secret_key != NULL && secret_key_length > 0u) {
+        if (secret_key_length > MP_CACHE_SHA256_BLOCK_SIZE) {
+            mp_cache_sha256(secret_key, secret_key_length, normalized_key);
         } else {
-            memcpy(normalized_key, key, key_length);
+            memcpy(normalized_key, secret_key, secret_key_length);
         }
     }
 
@@ -201,7 +201,7 @@ void mp_cache_hmac_sha256(
 
     mp_cache_sha256_init(&context);
     mp_cache_sha256_update(&context, inner_block, sizeof(inner_block));
-    mp_cache_sha256_update(&context, data, data_length);
+    mp_cache_sha256_update(&context, message_bytes, message_length);
     mp_cache_sha256_final(&context, inner_digest);
 
     mp_cache_sha256_init(&context);
@@ -210,26 +210,26 @@ void mp_cache_hmac_sha256(
     mp_cache_sha256_final(&context, out_digest);
 }
 
-bool mp_cache_constant_time_equals(const uint8_t *left, const uint8_t *right, size_t length) {
+bool mp_cache_constant_time_equals(const uint8_t *left_bytes, const uint8_t *right_bytes, size_t byte_length) {
     size_t index = 0u;
     uint8_t diff = 0u;
 
-    if (left == NULL || right == NULL) {
+    if (left_bytes == NULL || right_bytes == NULL) {
         return false;
     }
 
-    for (index = 0u; index < length; index++) {
-        diff |= (uint8_t)(left[index] ^ right[index]);
+    for (index = 0u; index < byte_length; index++) {
+        diff |= (uint8_t)(left_bytes[index] ^ right_bytes[index]);
     }
 
     return diff == 0u;
 }
 
-int mp_cache_random_bytes(uint8_t *buffer, size_t length) {
+int mp_cache_random_bytes(uint8_t *out_random_bytes, size_t byte_length) {
     int fd = -1;
     size_t offset = 0u;
 
-    if (buffer == NULL && length > 0u) {
+    if (out_random_bytes == NULL && byte_length > 0u) {
         errno = EINVAL;
         return -1;
     }
@@ -239,8 +239,8 @@ int mp_cache_random_bytes(uint8_t *buffer, size_t length) {
         return -1;
     }
 
-    while (offset < length) {
-        ssize_t bytes_read = read(fd, buffer + offset, length - offset);
+    while (offset < byte_length) {
+        ssize_t bytes_read = read(fd, out_random_bytes + offset, byte_length - offset);
         if (bytes_read < 0) {
             if (errno == EINTR) {
                 continue;
@@ -273,41 +273,41 @@ static int mp_cache_hex_nibble(char character) {
     return -1;
 }
 
-int mp_cache_hex_encode(const uint8_t *bytes, size_t length, char *out_text, size_t out_capacity) {
+int mp_cache_hex_encode(const uint8_t *input_bytes, size_t input_length, char *out_hex_text, size_t out_capacity) {
     static const char hex_chars[] = "0123456789abcdef";
     size_t index = 0u;
 
-    if (out_text == NULL || out_capacity < length * 2u + 1u) {
+    if (out_hex_text == NULL || out_capacity < input_length * 2u + 1u) {
         errno = ENOSPC;
         return -1;
     }
 
-    for (index = 0u; index < length; index++) {
-        out_text[index * 2u] = hex_chars[bytes[index] >> 4u];
-        out_text[index * 2u + 1u] = hex_chars[bytes[index] & 0x0fu];
+    for (index = 0u; index < input_length; index++) {
+        out_hex_text[index * 2u] = hex_chars[input_bytes[index] >> 4u];
+        out_hex_text[index * 2u + 1u] = hex_chars[input_bytes[index] & 0x0fu];
     }
-    out_text[length * 2u] = '\0';
+    out_hex_text[input_length * 2u] = '\0';
     return 0;
 }
 
-int mp_cache_hex_decode(const char *text, uint8_t *out_bytes, size_t out_capacity, size_t *out_length) {
-    size_t text_length = 0u;
+int mp_cache_hex_decode(const char *hex_text, uint8_t *out_bytes, size_t out_capacity, size_t *out_byte_length) {
+    size_t hex_text_length = 0u;
     size_t index = 0u;
 
-    if (text == NULL || out_bytes == NULL) {
+    if (hex_text == NULL || out_bytes == NULL) {
         errno = EINVAL;
         return -1;
     }
 
-    text_length = strlen(text);
-    if ((text_length % 2u) != 0u || out_capacity < text_length / 2u) {
+    hex_text_length = strlen(hex_text);
+    if ((hex_text_length % 2u) != 0u || out_capacity < hex_text_length / 2u) {
         errno = EINVAL;
         return -1;
     }
 
-    for (index = 0u; index < text_length; index += 2u) {
-        int high = mp_cache_hex_nibble(text[index]);
-        int low = mp_cache_hex_nibble(text[index + 1u]);
+    for (index = 0u; index < hex_text_length; index += 2u) {
+        int high = mp_cache_hex_nibble(hex_text[index]);
+        int low = mp_cache_hex_nibble(hex_text[index + 1u]);
         if (high < 0 || low < 0) {
             errno = EINVAL;
             return -1;
@@ -315,44 +315,49 @@ int mp_cache_hex_decode(const char *text, uint8_t *out_bytes, size_t out_capacit
         out_bytes[index / 2u] = (uint8_t)((high << 4u) | low);
     }
 
-    if (out_length != NULL) {
-        *out_length = text_length / 2u;
+    if (out_byte_length != NULL) {
+        *out_byte_length = hex_text_length / 2u;
     }
     return 0;
 }
 
-int mp_cache_base64_encode(const uint8_t *bytes, size_t length, char *out_text, size_t out_capacity, size_t *out_length) {
+int mp_cache_base64_encode(
+    const uint8_t *input_bytes,
+    size_t input_length,
+    char *out_base64_text,
+    size_t out_capacity,
+    size_t *out_base64_length) {
     static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    size_t required = ((length + 2u) / 3u) * 4u;
+    size_t required = ((input_length + 2u) / 3u) * 4u;
     size_t in_index = 0u;
     size_t out_index = 0u;
 
-    if (out_text == NULL || out_capacity < required + 1u) {
+    if (out_base64_text == NULL || out_capacity < required + 1u) {
         errno = ENOSPC;
         return -1;
     }
 
-    while (in_index < length) {
+    while (in_index < input_length) {
         uint32_t chunk = 0u;
         size_t chunk_length = 0u;
         size_t pad_index = 0u;
 
-        for (chunk_length = 0u; chunk_length < 3u && in_index < length; chunk_length++, in_index++) {
-            chunk = (chunk << 8u) | bytes[in_index];
+        for (chunk_length = 0u; chunk_length < 3u && in_index < input_length; chunk_length++, in_index++) {
+            chunk = (chunk << 8u) | input_bytes[in_index];
         }
         for (pad_index = chunk_length; pad_index < 3u; pad_index++) {
             chunk <<= 8u;
         }
 
-        out_text[out_index++] = alphabet[(chunk >> 18u) & 0x3fu];
-        out_text[out_index++] = alphabet[(chunk >> 12u) & 0x3fu];
-        out_text[out_index++] = chunk_length > 1u ? alphabet[(chunk >> 6u) & 0x3fu] : '=';
-        out_text[out_index++] = chunk_length > 2u ? alphabet[chunk & 0x3fu] : '=';
+        out_base64_text[out_index++] = alphabet[(chunk >> 18u) & 0x3fu];
+        out_base64_text[out_index++] = alphabet[(chunk >> 12u) & 0x3fu];
+        out_base64_text[out_index++] = chunk_length > 1u ? alphabet[(chunk >> 6u) & 0x3fu] : '=';
+        out_base64_text[out_index++] = chunk_length > 2u ? alphabet[chunk & 0x3fu] : '=';
     }
 
-    out_text[out_index] = '\0';
-    if (out_length != NULL) {
-        *out_length = out_index;
+    out_base64_text[out_index] = '\0';
+    if (out_base64_length != NULL) {
+        *out_base64_length = out_index;
     }
     return 0;
 }
@@ -376,30 +381,30 @@ static int mp_cache_base64_value(char character) {
     return -1;
 }
 
-int mp_cache_base64_decode(const char *text, uint8_t *out_bytes, size_t out_capacity, size_t *out_length) {
-    size_t text_length = 0u;
+int mp_cache_base64_decode(const char *base64_text, uint8_t *out_bytes, size_t out_capacity, size_t *out_byte_length) {
+    size_t base64_text_length = 0u;
     size_t in_index = 0u;
     size_t out_index = 0u;
 
-    if (text == NULL || out_bytes == NULL) {
+    if (base64_text == NULL || out_bytes == NULL) {
         errno = EINVAL;
         return -1;
     }
 
-    text_length = strlen(text);
-    if ((text_length % 4u) != 0u) {
+    base64_text_length = strlen(base64_text);
+    if ((base64_text_length % 4u) != 0u) {
         errno = EINVAL;
         return -1;
     }
 
-    while (in_index < text_length) {
+    while (in_index < base64_text_length) {
         int values[4];
         size_t index = 0u;
         uint32_t chunk = 0u;
         size_t decoded_count = 3u;
 
         for (index = 0u; index < 4u; index++) {
-            char character = text[in_index + index];
+            char character = base64_text[in_index + index];
             if (character == '=') {
                 values[index] = 0;
                 decoded_count--;
@@ -420,40 +425,40 @@ int mp_cache_base64_decode(const char *text, uint8_t *out_bytes, size_t out_capa
         }
 
         out_bytes[out_index++] = (uint8_t)(chunk >> 16u);
-        if (text[in_index + 2u] != '=') {
+        if (base64_text[in_index + 2u] != '=') {
             out_bytes[out_index++] = (uint8_t)(chunk >> 8u);
         }
-        if (text[in_index + 3u] != '=') {
+        if (base64_text[in_index + 3u] != '=') {
             out_bytes[out_index++] = (uint8_t)chunk;
         }
 
         in_index += 4u;
     }
 
-    if (out_length != NULL) {
-        *out_length = out_index;
+    if (out_byte_length != NULL) {
+        *out_byte_length = out_index;
     }
     return 0;
 }
 
 void mp_cache_stream_xor(
-    const uint8_t *key,
-    size_t key_length,
+    const uint8_t *stream_key,
+    size_t stream_key_length,
     const uint8_t nonce[MP_CACHE_NONCE_SIZE],
-    uint8_t *data,
-    size_t length) {
+    uint8_t *inout_bytes,
+    size_t byte_length) {
     uint64_t counter = 0u;
     size_t offset = 0u;
 
-    if (key == NULL || nonce == NULL || data == NULL) {
+    if (stream_key == NULL || nonce == NULL || inout_bytes == NULL) {
         return;
     }
 
-    while (offset < length) {
+    while (offset < byte_length) {
         uint8_t counter_block[MP_CACHE_NONCE_SIZE + sizeof(counter)];
         uint8_t keystream[MP_CACHE_SHA256_SIZE];
         size_t block_index = 0u;
-        size_t remaining = length - offset;
+        size_t remaining = byte_length - offset;
         size_t chunk_length = remaining < sizeof(keystream) ? remaining : sizeof(keystream);
 
         memcpy(counter_block, nonce, MP_CACHE_NONCE_SIZE);
@@ -461,9 +466,9 @@ void mp_cache_stream_xor(
             counter_block[MP_CACHE_NONCE_SIZE + sizeof(counter) - block_index - 1u] = (uint8_t)(counter >> (block_index * 8u));
         }
 
-        mp_cache_hmac_sha256(key, key_length, counter_block, sizeof(counter_block), keystream);
+        mp_cache_hmac_sha256(stream_key, stream_key_length, counter_block, sizeof(counter_block), keystream);
         for (block_index = 0u; block_index < chunk_length; block_index++) {
-            data[offset + block_index] ^= keystream[block_index];
+            inout_bytes[offset + block_index] ^= keystream[block_index];
         }
 
         counter++;

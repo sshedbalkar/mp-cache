@@ -49,11 +49,11 @@ typedef enum {
 void mp_cache_config_init_defaults(mp_cache_config_t *config);
 
 mp_cache_config_status_t mp_cache_config_load_file(
-    const char *path,
+    const char *config_path,
     mp_cache_config_t *config);
 
 mp_cache_config_status_t mp_cache_config_write_template(
-    const char *path,
+    const char *template_path,
     const mp_cache_config_t *config);
 
 void mp_cache_config_print(FILE *stream, const mp_cache_config_t *config, const char *source_path);

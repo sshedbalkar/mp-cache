@@ -16,8 +16,8 @@ int mp_cache_log_read_latest_tail(
     const char *log_directory,
     uint32_t max_lines,
     uint32_t requested_lines,
-    char *out_file_name,
-    size_t out_file_name_capacity,
-    char **out_text);
+    char *out_log_file_name,
+    size_t out_log_file_name_capacity,
+    char **out_log_text);
 
 #endif
