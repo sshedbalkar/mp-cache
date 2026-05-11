@@ -1,6 +1,6 @@
 # Standards Routing Map
 
-Use local standards from `docs/engineering-standards.md` and `docs/commit-messages.md`.
+Use local standards from `docs/engineering-standards.md`, `docs/naming-strategy.md`, and `docs/commit-messages.md`.
 
 ## Route Selectors
 
@@ -8,8 +8,11 @@ Use local standards from `docs/engineering-standards.md` and `docs/commit-messag
   - section: `Build, Release, And Deployment`
   - local files: `Makefile`, `configs/build/CMakePresets.json`, `scripts/package.sh`, `deploy/`
 - `route.c-service`
-  - sections: `Common Engineering`, `C Service And CMake`, `Security And Operations`, `Dependency Management`
+  - sections: `Common Engineering`, `Naming And Terminology`, `C Service And CMake`, `Security And Operations`, `Dependency Management`
   - local files: `cmd/`, `internal/`, `native/mp_logger`
+- `route.naming`
+  - section: `Naming And Terminology`
+  - local files: `docs/naming-strategy.md`, `cmd/`, `scripts/`, `Makefile`
 - `route.observability-logging`
   - section: `Security And Operations`
   - local files: `internal/observability/`, `internal/runtime/`, `native/mp_logger`, `configs/logger.bootstrap.ini`
@@ -21,4 +24,4 @@ Use local standards from `docs/engineering-standards.md` and `docs/commit-messag
   - local files: `docs/`, `context/`
 - `route.testing`
   - section: `Testing And Validation`
-  - local files: `tests/`, `scripts/test-unit.sh`, `scripts/check-standards.sh`
+  - local files: `tests/`, `scripts/test-unit.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-hardening.sh`, `scripts/test-valgrind.sh`, `scripts/check-standards.sh`

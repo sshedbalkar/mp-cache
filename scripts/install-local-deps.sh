@@ -9,6 +9,6 @@ case "$(mp_detect_env_id)" in
     ./scripts/install-arch-cachyos.sh "$@"
     ;;
   *)
-    mp_die "unsupported local environment: $(mp_detect_env_id)"
+    mp_exit_with_error "unsupported local environment: $(mp_detect_env_id)"
     ;;
 esac

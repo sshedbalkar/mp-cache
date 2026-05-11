@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dry_run=0
+is_dry_run_requested=0
 if [ "${1:-}" = "--dry-run" ]; then
-  dry_run=1
+  is_dry_run_requested=1
 fi
 
-packages=(
+required_package_names=(
   base-devel
   cmake
   git
   curl
 )
 
-if [ "$dry_run" -eq 1 ]; then
-  printf 'pacman -S --needed %s\n' "${packages[*]}"
+if [ "$is_dry_run_requested" -eq 1 ]; then
+  printf 'pacman -S --needed %s\n' "${required_package_names[*]}"
   exit 0
 fi
 
-sudo pacman -S --needed "${packages[@]}"
+sudo pacman -S --needed "${required_package_names[@]}"

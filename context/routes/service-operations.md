@@ -16,4 +16,5 @@ Primary local files:
 - `deploy/`
 - `docs/runbooks/`
 - `scripts/check-*.sh`
+- `scripts/test-naming-strategy.sh`
 - `tests/`

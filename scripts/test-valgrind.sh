@@ -25,16 +25,16 @@ fi
 cmake --fresh --preset local-debug
 cmake --build --preset local-debug
 
-run_valgrind() {
+run_valgrind_for_test_binary() {
   local test_binary="$1"
 
   valgrind --error-exitcode=1 --leak-check=full "$test_binary" >>"$detail_report" 2>&1
 }
 
-if ! run_valgrind ./build/local-debug/mp_cache_store_tests ||
-   ! run_valgrind ./build/local-debug/mp_cache_security_tests ||
-   ! run_valgrind ./build/local-debug/mp_cache_storage_tests ||
-   ! run_valgrind ./build/local-debug/mp_cache_http_tests; then
+if ! run_valgrind_for_test_binary ./build/local-debug/mp_cache_store_tests ||
+   ! run_valgrind_for_test_binary ./build/local-debug/mp_cache_security_tests ||
+   ! run_valgrind_for_test_binary ./build/local-debug/mp_cache_storage_tests ||
+   ! run_valgrind_for_test_binary ./build/local-debug/mp_cache_http_tests; then
   if rg -q "Fatal error at startup|install glibc's debuginfo|Cannot continue -- exiting now" "$detail_report"; then
     {
       printf '# Valgrind Report\n\n'

@@ -5,11 +5,11 @@ cd "$(dirname "$0")/.."
 
 package_dir="${1:-dist}"
 build_dir="${2:-build/local-debug}"
-version="${3:-dev}"
-commit="${4:-local}"
-build_time="${5:-1970-01-01T00:00:00Z}"
-artifact_root="$package_dir/mp-cache-$version"
-archive_path="$package_dir/mp-cache-$version.tar.gz"
+artifact_version="${3:-dev}"
+artifact_commit="${4:-local}"
+artifact_build_time="${5:-1970-01-01T00:00:00Z}"
+artifact_root="$package_dir/mp-cache-$artifact_version"
+archive_path="$package_dir/mp-cache-$artifact_version.tar.gz"
 
 mkdir -p "$artifact_root/bin" "$artifact_root/configs" "$artifact_root/deploy" "$artifact_root/docs"
 cp "$build_dir/mp-cache-server" "$artifact_root/bin/"
@@ -20,12 +20,12 @@ cp -r docs "$artifact_root/"
 cp README.md "$artifact_root/"
 
 cat >"$artifact_root/build-info.txt" <<EOF
-version=$version
-commit=$commit
-build_time=$build_time
+version=$artifact_version
+commit=$artifact_commit
+build_time=$artifact_build_time
 EOF
 
-tar -czf "$archive_path" -C "$package_dir" "mp-cache-$version"
+tar -czf "$archive_path" -C "$package_dir" "mp-cache-$artifact_version"
 
 if command -v sha256sum >/dev/null 2>&1; then
   sha256sum "$archive_path" >"$archive_path.sha256"

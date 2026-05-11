@@ -3,11 +3,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-required_files=(
+required_context_paths=(
   README.md
   AGENTS.md
   AI_PERSONA.md
   docs/engineering-standards.md
+  docs/naming-strategy.md
   docs/commit-messages.md
   context/README.md
   context/repo-map.md
@@ -18,9 +19,9 @@ required_files=(
   docs/runbooks/local-service-lifecycle.md
 )
 
-for path in "${required_files[@]}"; do
-  [ -f "$path" ] || {
-    printf 'missing required context or durable doc: %s\n' "$path" >&2
+for required_path in "${required_context_paths[@]}"; do
+  [ -f "$required_path" ] || {
+    printf 'missing required context or durable doc: %s\n' "$required_path" >&2
     exit 1
   }
 done

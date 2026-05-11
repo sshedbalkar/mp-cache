@@ -7,11 +7,12 @@ report_dir="${1:-.tmp/test-reports}"
 minimum_score="${2:-85}"
 mkdir -p "$report_dir"
 
-checks=(
+required_standard_paths=(
   README.md
   AGENTS.md
   Makefile
   CMakeLists.txt
+  docs/naming-strategy.md
   configs/bootstrap.ini
   configs/build/CMakePresets.json
   configs/logger.bootstrap.ini
@@ -28,6 +29,7 @@ checks=(
   scripts/build-local.sh
   scripts/check-logging.sh
   scripts/deploy-local.sh
+  scripts/test-naming-strategy.sh
   scripts/test-hardening.sh
   scripts/test-local.sh
   scripts/test-sanitizers.sh
@@ -40,27 +42,27 @@ checks=(
   tests/bench/cache_benchmark.c
 )
 
-total="${#checks[@]}"
-present=0
-for path in "${checks[@]}"; do
-  if [ -e "$path" ]; then
-    present=$((present + 1))
+required_standard_path_count="${#required_standard_paths[@]}"
+present_standard_path_count=0
+for required_path in "${required_standard_paths[@]}"; do
+  if [ -e "$required_path" ]; then
+    present_standard_path_count=$((present_standard_path_count + 1))
   fi
 done
 
-score="$(awk -v p="$present" -v t="$total" 'BEGIN { printf "%.0f", (p * 100) / t }')"
+standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_standard_path_count" 'BEGIN { printf "%.0f", (p * 100) / t }')"
 
 {
   printf '# Standards Check Report\n\n'
   printf '| Field | Value |\n'
   printf '|:------|:------|\n'
-  printf '| Checks present | %s/%s |\n' "$present" "$total"
-  printf '| Score | %s |\n' "$score"
+  printf '| Checks present | %s/%s |\n' "$present_standard_path_count" "$required_standard_path_count"
+  printf '| Score | %s |\n' "$standards_score"
 } > "$report_dir/standards-report.md"
 
-if ! awk -v score="$score" -v minimum="$minimum_score" 'BEGIN { exit (score + 0 >= minimum + 0) ? 0 : 1 }'; then
-  printf 'standards score %s is below required %s\n' "$score" "$minimum_score" >&2
+if ! awk -v score="$standards_score" -v minimum="$minimum_score" 'BEGIN { exit (score + 0 >= minimum + 0) ? 0 : 1 }'; then
+  printf 'standards score %s is below required %s\n' "$standards_score" "$minimum_score" >&2
   exit 1
 fi
 
-printf 'standards score %s meets required %s\n' "$score" "$minimum_score"
+printf 'standards score %s meets required %s\n' "$standards_score" "$minimum_score"

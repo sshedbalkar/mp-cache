@@ -20,6 +20,12 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Keep hot-path data structures bounded and explicit.
 - Use UTC for all persisted and exported time values.
 
+## Naming And Terminology
+
+- Follow `docs/naming-strategy.md` for files, modules, entrypoints, scripts, functions, variables, metrics, config keys, and future wire or database names.
+- Prefer names that narrow from boundary or domain to concept to role.
+- Keep shared service terms stable across code, scripts, docs, and APIs.
+
 ## Configuration And Secrets
 
 - Configuration must be explicit, layered, and reviewable.
@@ -73,7 +79,10 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 
 - Cover happy, sad, edge, hot, and recovery paths.
 - Unit tests are required for core logic and config parsing.
+- Changes under `cmd/` or `scripts/` require `./scripts/test-naming-strategy.sh` or `make test-naming-strategy`.
 - Native validation should use ASan, UBSan, and Valgrind where available.
+- Any change to native code in `cmd/`, `internal/`, `tests/unit/`, or `native/` requires a Valgrind run before closeout, using `./scripts/test-valgrind.sh` or an equivalent wrapper such as `make test-valgrind`.
+- If the current host cannot execute Valgrind successfully, treat that as a validation blocker unless the failure is an environment limitation that is captured and reported explicitly.
 - `make test` is the local validation artifact.
 - Context and durable docs must stay in sync with implementation changes.
 

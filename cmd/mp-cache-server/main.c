@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 
-static void mp_cache_print_usage(FILE *stream) {
+static void mp_cache_server_print_usage(FILE *usage_stream) {
     (void)fprintf(
-        stream,
+        usage_stream,
         "usage: mp-cache-server [--config <path>] [--print-config]\n"
         "default config path: configs/bootstrap.ini\n");
 }
@@ -13,27 +13,27 @@ static void mp_cache_print_usage(FILE *stream) {
 int main(int argc, char **argv) {
     const char *config_path = "configs/bootstrap.ini";
     int print_config_only = 0;
-    int index = 0;
+    int arg_index = 0;
 
-    for (index = 1; index < argc; index++) {
-        if (strcmp(argv[index], "--config") == 0) {
-            if (index + 1 >= argc) {
-                mp_cache_print_usage(stderr);
+    for (arg_index = 1; arg_index < argc; arg_index++) {
+        if (strcmp(argv[arg_index], "--config") == 0) {
+            if (arg_index + 1 >= argc) {
+                mp_cache_server_print_usage(stderr);
                 return 1;
             }
-            config_path = argv[++index];
+            config_path = argv[++arg_index];
             continue;
         }
-        if (strcmp(argv[index], "--print-config") == 0) {
+        if (strcmp(argv[arg_index], "--print-config") == 0) {
             print_config_only = 1;
             continue;
         }
-        if (strcmp(argv[index], "--help") == 0 || strcmp(argv[index], "-h") == 0) {
-            mp_cache_print_usage(stdout);
+        if (strcmp(argv[arg_index], "--help") == 0 || strcmp(argv[arg_index], "-h") == 0) {
+            mp_cache_server_print_usage(stdout);
             return 0;
         }
 
-        mp_cache_print_usage(stderr);
+        mp_cache_server_print_usage(stderr);
         return 1;
     }
 

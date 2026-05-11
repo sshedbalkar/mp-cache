@@ -5,15 +5,17 @@ project_foundation_file: README.md
 
 ## Bootstrap
 
-- Read order: `AGENTS.md` -> `README.md` -> `AI_PERSONA.md` -> `docs/engineering-standards.md` -> `docs/commit-messages.md` -> `context/repo-map.md` -> `context/standards-routing-map.md` -> `context/doc-cards.md` -> relevant validators when validation involved -> target docs.
+- Read order: `AGENTS.md` -> `README.md` -> `AI_PERSONA.md` -> `docs/engineering-standards.md` -> `docs/naming-strategy.md` -> `docs/commit-messages.md` -> `context/repo-map.md` -> `context/standards-routing-map.md` -> `context/doc-cards.md` -> relevant validators when validation involved -> target docs.
 - Resolve local durable docs through `context/doc-cards.md`.
 - Validator index: `context/validators/README.md`.
 - For Git commit-message work, read `docs/commit-messages.md` before writing a commit message.
 
 ## Hard Rules
 
-- Use `README.md`, `AI_PERSONA.md`, `docs/engineering-standards.md`, `docs/commit-messages.md`, and local durable docs as source truth.
+- Use `README.md`, `AI_PERSONA.md`, `docs/engineering-standards.md`, `docs/naming-strategy.md`, `docs/commit-messages.md`, and local durable docs as source truth.
 - Use `native/mp_logger` as the only logging backend for `mp-cache`. Do not add alternate logging frameworks or ad hoc runtime log sinks; reserve direct stdio for user-facing CLI output, config/template emission, and fatal bootstrap diagnostics before `mp_logger` is available.
+- Any change under `cmd/` or `scripts/` must include a naming-strategy validation run through `./scripts/test-naming-strategy.sh` or `make test-naming-strategy`, with the outcome reported at closeout.
+- Any change under `cmd/`, `internal/`, `tests/unit/`, or `native/` must include a Valgrind validation run through `./scripts/test-valgrind.sh` or `make test-valgrind`, with the outcome reported at closeout. If the host cannot run Valgrind, report that blocker explicitly.
 - Keep `context/` thin. Do not duplicate rule bodies from local durable standards docs.
 - Prefer the local folder conventions unless `mp-cache` has a documented reason to diverge.
 - Commit messages must follow `docs/commit-messages.md`.

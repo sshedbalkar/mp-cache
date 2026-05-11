@@ -41,6 +41,7 @@ Still future-facing:
 Authoritative local standards:
 
 - `docs/engineering-standards.md`
+- `docs/naming-strategy.md`
 - `docs/commit-messages.md`
 
 ## Prerequisites
@@ -76,6 +77,9 @@ Primary commands:
 make native-config
 make native-build
 make test
+make test-naming-strategy
+make test-hardening
+make test-valgrind
 make benchmark
 make package
 make deploy-local
@@ -152,6 +156,7 @@ Deployment docs:
 
 - architecture: `docs/architecture/mp-cache-architecture.md`
 - engineering standards: `docs/engineering-standards.md`
+- naming strategy: `docs/naming-strategy.md`
 - commit messages: `docs/commit-messages.md`
 - API contract: `api/http/v1/cache-service.md`
 - runbooks: `docs/runbooks/`

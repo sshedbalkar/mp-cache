@@ -46,6 +46,6 @@ Naming and durable rule.
 
 Implement: selective key-purge API, explicit token invalidation beyond rotation.
 
-Valgrind check - rule for any c based native development.
+Valgrind check - rule for any c based native development. Done
 
-In 'mp-cache', use the 'mp_logger' submodule for any kind of logging needs. Make sure this is treated as a durable rule and followed in the future as well.
+In 'mp-cache', use the 'mp_logger' submodule for any kind of logging needs. Make sure this is treated as a durable rule and followed in the future as well. Done

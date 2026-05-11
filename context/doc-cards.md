@@ -13,6 +13,10 @@
   - path: `docs/engineering-standards.md`
   - status: active
   - purpose: authoritative local engineering, API, security, build, test, and layout rules
+- `standards.naming`
+  - path: `docs/naming-strategy.md`
+  - status: active
+  - purpose: authoritative local naming strategy for entrypoints, scripts, interfaces, and exported names
 
 ## Workflow
 

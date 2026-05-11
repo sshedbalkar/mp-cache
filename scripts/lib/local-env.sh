@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-mp_repo_root() {
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  cd "$script_dir/../.." && pwd
+mp_detect_repo_root() {
+  local repo_root_script_dir
+  repo_root_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  cd "$repo_root_script_dir/../.." && pwd
 }
 
-MP_REPO_ROOT="${MP_REPO_ROOT:-$(mp_repo_root)}"
+MP_REPO_ROOT="${MP_REPO_ROOT:-$(mp_detect_repo_root)}"
 MP_CONFIG_PATH="${MP_CONFIG_PATH:-$MP_REPO_ROOT/configs/bootstrap.ini}"
 MP_SOCKET_PATH="${MP_SOCKET_PATH:-/tmp/mp-cache/run/mp-cache.sock}"
 MP_PID_FILE="${MP_PID_FILE:-/tmp/mp-cache/run/mp-cache.pid}"
 MP_CONSOLE_LOG="${MP_CONSOLE_LOG:-$MP_REPO_ROOT/.tmp/logs/console.log}"
 MP_LOCAL_SECRET_ENV_FILE="${MP_LOCAL_SECRET_ENV_FILE:-$MP_REPO_ROOT/.tmp/secrets/local.env}"
 
-mp_die() {
+mp_exit_with_error() {
   printf 'error: %s\n' "$1" >&2
   exit 1
 }
@@ -37,17 +37,17 @@ mp_detect_env_id() {
   esac
 }
 
-mp_assert_env() {
-  local expected="$1"
-  local detected
-  detected="$(mp_detect_env_id)"
-  if [ "$detected" != "$expected" ] && [ "${MP_ALLOW_ENV_MISMATCH:-0}" != "1" ]; then
-    mp_die "this script targets $expected but detected $detected; set MP_ALLOW_ENV_MISMATCH=1 to override"
+mp_assert_target_env_id() {
+  local expected_env_id="$1"
+  local detected_env_id
+  detected_env_id="$(mp_detect_env_id)"
+  if [ "$detected_env_id" != "$expected_env_id" ] && [ "${MP_ALLOW_ENV_MISMATCH:-0}" != "1" ]; then
+    mp_exit_with_error "this script targets $expected_env_id but detected $detected_env_id; set MP_ALLOW_ENV_MISMATCH=1 to override"
   fi
 }
 
 mp_require_command() {
-  command -v "$1" >/dev/null 2>&1 || mp_die "missing required command: $1"
+  command -v "$1" >/dev/null 2>&1 || mp_exit_with_error "missing required command: $1"
 }
 
 mp_load_local_secrets() {
@@ -67,16 +67,16 @@ mp_require_local_dependencies() {
   mp_require_command cmake
   mp_require_command make
   if ! command -v cc >/dev/null 2>&1 && ! command -v gcc >/dev/null 2>&1 && ! command -v clang >/dev/null 2>&1; then
-    mp_die "missing required C compiler"
+    mp_exit_with_error "missing required C compiler"
   fi
   mp_require_command git
   mp_require_command curl
 }
 
 mp_build_server() {
-  local env_id="${1:-}"
-  [ -n "$env_id" ] || mp_die "environment id is required"
-  mp_assert_env "$env_id"
+  local target_env_id="${1:-}"
+  [ -n "$target_env_id" ] || mp_exit_with_error "environment id is required"
+  mp_assert_target_env_id "$target_env_id"
   mp_require_local_dependencies
   mp_prepare_runtime_paths
   (cd "$MP_REPO_ROOT" && cmake --fresh --preset local-debug && cmake --build --preset local-debug)
@@ -90,10 +90,10 @@ mp_is_server_running() {
 mp_start_server() {
   mp_prepare_runtime_paths
   mp_load_local_secrets
-  [ -x "$MP_REPO_ROOT/build/local-debug/mp-cache-server" ] || mp_die "missing binary: build/local-debug/mp-cache-server"
+  [ -x "$MP_REPO_ROOT/build/local-debug/mp-cache-server" ] || mp_exit_with_error "missing binary: build/local-debug/mp-cache-server"
 
   if mp_is_server_running; then
-    mp_die "server already running with pid $(cat "$MP_PID_FILE")"
+    mp_exit_with_error "server already running with pid $(cat "$MP_PID_FILE")"
   fi
 
   (
@@ -103,31 +103,31 @@ mp_start_server() {
 
   sleep 1
   if ! mp_is_server_running; then
-    mp_die "server failed to start; inspect $MP_CONSOLE_LOG"
+    mp_exit_with_error "server failed to start; inspect $MP_CONSOLE_LOG"
   fi
 }
 
 mp_stop_server() {
-  local pid=""
-  local attempts=0
+  local server_pid=""
+  local stop_attempt_count=0
 
   if ! [ -f "$MP_PID_FILE" ]; then
     printf 'server is not running\n'
     return 0
   fi
 
-  pid="$(cat "$MP_PID_FILE")"
-  if ! kill -0 "$pid" 2>/dev/null; then
+  server_pid="$(cat "$MP_PID_FILE")"
+  if ! kill -0 "$server_pid" 2>/dev/null; then
     rm -f "$MP_PID_FILE"
     printf 'removed stale pid file\n'
     return 0
   fi
 
-  kill -TERM "$pid"
-  while kill -0 "$pid" 2>/dev/null; do
-    attempts=$((attempts + 1))
-    if [ "$attempts" -ge 20 ]; then
-      mp_die "server did not stop within the expected time"
+  kill -TERM "$server_pid"
+  while kill -0 "$server_pid" 2>/dev/null; do
+    stop_attempt_count=$((stop_attempt_count + 1))
+    if [ "$stop_attempt_count" -ge 20 ]; then
+      mp_exit_with_error "server did not stop within the expected time"
     fi
     sleep 1
   done
@@ -135,17 +135,17 @@ mp_stop_server() {
   rm -f "$MP_PID_FILE"
 }
 
-mp_test_health() {
+mp_test_health_endpoint() {
   curl --fail --silent --show-error --unix-socket "$MP_SOCKET_PATH" http://localhost/v1/health
 }
 
 mp_deploy_server() {
-  local env_id="${1:-}"
-  mp_build_server "$env_id"
+  local target_env_id="${1:-}"
+  mp_build_server "$target_env_id"
   mp_start_server
 }
 
-mp_doctor() {
+mp_report_local_environment() {
   printf 'repo_root=%s\n' "$MP_REPO_ROOT"
   printf 'env_id=%s\n' "$(mp_detect_env_id)"
   printf 'config_path=%s\n' "$MP_CONFIG_PATH"

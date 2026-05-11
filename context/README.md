@@ -7,7 +7,7 @@ Thin retrieval index for `mp-cache`.
 - `README.md`
 - `AI_PERSONA.md`
 - local durable docs under `docs/` and `api/`
-- local standards under `docs/engineering-standards.md` and `docs/commit-messages.md`
+- local standards under `docs/engineering-standards.md`, `docs/naming-strategy.md`, and `docs/commit-messages.md`
 
 ## Local Context Files
 

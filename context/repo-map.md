@@ -8,18 +8,19 @@
 
 ## Jump Index
 
-- source-truth: `README.md`, `AI_PERSONA.md`, `docs/engineering-standards.md`, `docs/commit-messages.md`, local durable docs
+- source-truth: `README.md`, `AI_PERSONA.md`, `docs/engineering-standards.md`, `docs/naming-strategy.md`, `docs/commit-messages.md`, local durable docs
 - git-workflow-root: `docs/commit-messages.md`
 - build-deploy-roots: `Makefile`, `CMakeLists.txt`, `configs/build/CMakePresets.json`, `scripts/*.sh`, `deploy/*/README.md`
 - implementation-roots: `cmd/`, `internal/`, `native/mp_logger`
 - api-doc-roots: `api/http/v1/`
-- validation-roots: `tests/`, `scripts/check-context.sh`, `scripts/check-standards.sh`, `scripts/test-unit.sh`
+- validation-roots: `tests/`, `scripts/check-context.sh`, `scripts/check-standards.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-unit.sh`
 
 ## Source Truth
 
 - `README.md`: project foundation, scope, commands, layout.
 - `AI_PERSONA.md`: decision priorities and architecture posture.
 - `docs/engineering-standards.md`: local engineering, API, security, build, testing, and layout rules.
+- `docs/naming-strategy.md`: local naming strategy for scripts, entrypoints, variables, and external names.
 - `docs/commit-messages.md`: authoritative local Git commit-message standard.
 - `docs/architecture/mp-cache-architecture.md`: accepted service architecture and phased implementation plan.
 - `api/http/v1/cache-service.md`: HTTP API contract and role model.

@@ -9,7 +9,7 @@ Every commit must use both a subject and a body. One-line commits are not allowe
 ```text
 <type>(<scope>): <short summary>                          ← required
 <empty line>
-<body — explains the WHY, not the WHAT, under 20 words>   ← required
+<body — explains the WHY, not the WHAT, under 40 words>   ← required
 <empty line>
 <footer>                                                  ← situational
 ```
