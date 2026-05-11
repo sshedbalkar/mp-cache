@@ -56,6 +56,9 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Enforce role-based access for `admin`, `operator`, and `client`.
 - Redact secrets and tokens from logs and diagnostics.
 - Expose liveness/readiness-style health signals and useful structured logs.
+- All service and library logging must go through `native/mp_logger`, preferably via the local observability wrapper in `internal/observability/`.
+- Do not add alternate logging dependencies or direct runtime log emission to `stdout`, `stderr`, or `syslog`.
+- Direct stdio is reserved for user-facing CLI output, config/template emission, and fatal bootstrap diagnostics before `mp_logger` is initialized.
 - Use least-privilege runtime identities and writable paths.
 
 ## Build, Release, And Deployment

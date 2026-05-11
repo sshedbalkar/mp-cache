@@ -38,7 +38,7 @@ Approved. Deafult TTL should be configurable through the config file. Also creat
 
 Add curl commands to test each and every one of the APIs in docs/manual-testing-guide.md
 
-Check if Phase 2, 3, and 4 of the 'mp-cache/docs/architecture/mp-cache-architecture.md' are implemented or not. Make sure they are implemented, tested, verified, context is updated.
+Check if Phase 2, 3, and 4 of the 'mp-cache/docs/architecture/mp-cache-architecture.md' are implemented or not. Make sure they are implemented, tested, verified, context is updated. Done.
 
 comments and durable rule.
 
@@ -47,3 +47,5 @@ Naming and durable rule.
 Implement: selective key-purge API, explicit token invalidation beyond rotation.
 
 Valgrind check - rule for any c based native development.
+
+In 'mp-cache', use the 'mp_logger' submodule for any kind of logging needs. Make sure this is treated as a durable rule and followed in the future as well.

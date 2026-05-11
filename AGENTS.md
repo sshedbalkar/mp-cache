@@ -13,6 +13,7 @@ project_foundation_file: README.md
 ## Hard Rules
 
 - Use `README.md`, `AI_PERSONA.md`, `docs/engineering-standards.md`, `docs/commit-messages.md`, and local durable docs as source truth.
+- Use `native/mp_logger` as the only logging backend for `mp-cache`. Do not add alternate logging frameworks or ad hoc runtime log sinks; reserve direct stdio for user-facing CLI output, config/template emission, and fatal bootstrap diagnostics before `mp_logger` is available.
 - Keep `context/` thin. Do not duplicate rule bodies from local durable standards docs.
 - Prefer the local folder conventions unless `mp-cache` has a documented reason to diverge.
 - Commit messages must follow `docs/commit-messages.md`.

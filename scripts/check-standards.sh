@@ -26,6 +26,7 @@ checks=(
   docs/runbooks/local-service-lifecycle.md
   scripts/benchmark-cache.sh
   scripts/build-local.sh
+  scripts/check-logging.sh
   scripts/deploy-local.sh
   scripts/test-hardening.sh
   scripts/test-local.sh
