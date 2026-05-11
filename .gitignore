@@ -11,3 +11,4 @@ coverage/
 testing/
 logging/*
 !logging/.gitkeep
+vgcore.*

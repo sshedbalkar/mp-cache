@@ -38,3 +38,7 @@
   - path: `docs/runbooks/local-service-lifecycle.md`
   - status: active
   - purpose: start, stop, restart, and validation steps
+- `runbook.valgrind-host-setup`
+  - path: `docs/runbooks/valgrind-host-setup.md`
+  - status: active
+  - purpose: diagnose and fix host-side Valgrind startup failures on Arch and CachyOS systems

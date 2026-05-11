@@ -89,6 +89,17 @@ make stop-local
 make restart-local
 ```
 
+On Arch Linux and CachyOS, Valgrind can fail before any project code runs when the system dynamic loader is stripped and matching glibc debuginfo is missing. If `make test-valgrind` reports that host blocker, populate the loader debuginfo cache and rerun Valgrind:
+
+```sh
+DEBUGINFOD_URLS="${DEBUGINFOD_URLS:-https://debuginfod.archlinux.org https://debuginfod.cachyos.org}" debuginfod-find debuginfo /lib64/ld-linux-x86-64.so.2
+make test-valgrind
+```
+
+If `debuginfod-find` cannot fetch the loader symbols, install the matching `glibc-debug` package from your enabled debug repository and rerun the command.
+
+On CachyOS `znver4` systems, a second host-level blocker can remain after debuginfo is available: the installed `glibc` loader may use `x86_64_v4` instructions that current Valgrind cannot emulate. In that case, switch `glibc` and `lib32-glibc` to the generic Arch `core` packages before rerunning Valgrind, or run the Valgrind step inside a generic Arch container or chroot.
+
 Build output:
 
 ```text
@@ -160,6 +171,7 @@ Deployment docs:
 - engineering standards: `docs/engineering-standards.md`
 - naming strategy: `docs/naming-strategy.md`
 - commit messages: `docs/commit-messages.md`
+- Valgrind host setup runbook: `docs/runbooks/valgrind-host-setup.md`
 - API contract: `api/http/v1/cache-service.md`
 - runbooks: `docs/runbooks/`
 - retrieval context: `context/`

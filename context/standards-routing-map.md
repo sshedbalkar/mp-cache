@@ -24,4 +24,4 @@ Use local standards from `docs/engineering-standards.md`, `docs/naming-strategy.
   - local files: `docs/`, `context/`
 - `route.testing`
   - section: `Testing And Validation`
-  - local files: `tests/`, `scripts/test-unit.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-hardening.sh`, `scripts/test-valgrind.sh`, `scripts/check-standards.sh`
+  - local files: `tests/`, `scripts/test-unit.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-hardening.sh`, `scripts/test-valgrind.sh`, `scripts/check-standards.sh`, `docs/runbooks/valgrind-host-setup.md`
