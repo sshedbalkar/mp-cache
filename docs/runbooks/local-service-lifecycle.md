@@ -47,6 +47,7 @@ Stop the local server and revert to the last known-good artifact or config file.
 - `./build/local-debug/mp-cachectl health` returns `200`
 - `MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats` returns cache and request counters
 - `curl --unix-socket /tmp/mp-cache/run/mp-cache.sock http://localhost/health`
+- for full host-side API coverage, use `docs/runbooks/manual-end-to-end-testing.md`
 
 ## Escalation
 

@@ -36,7 +36,7 @@ Done
 
 Approved. Deafult TTL should be configurable through the config file. Also create context folder similar to 'multi-player-app-ai' project. Create README, AGENTS, files. Create a basic README at the root of the folder 'multi-player-app' folder to route to the child projects. Done
 
-Add curl commands to test each and every one of the APIs in docs/manual-testing-guide.md
+Tell me exact commands to run from a normal local shell, update the commands in a doc for manual testing. In the same doc for manual tetsing give curl commands to test every single verifiable thing including all of the APIs. Take sample data. Mention what set up is needed, how can secretes be created/deployed for the build to run, any other pre-condition for the build to run, etc. Create a comprehensive doc for end to end manual testing. Done
 
 Check if Phase 2, 3, and 4 of the 'mp-cache/docs/architecture/mp-cache-architecture.md' are implemented or not. Make sure they are implemented, tested, verified, context is updated. Done.
 
@@ -58,4 +58,4 @@ Create a doc on the host setup, what was the issue with Valgrind,what was the ro
 
 -Wall fix.
 
-Trying to build, deploy, run, test, and validate the 'mp-cache' project and this is the final report: "Built and validated 'mp-cache'. Two environment-specific issues remain. First, the default local deploy path still fails if you reuse the repo’s current state.checkpoint with a different MP_SECRET_LOCAL_STORAGE_KEY; to fix that, either reuse the original storage key or clear state.checkpoint and state.journal before rerunning make deploy-local. Second, direct Unix-socket bind/connect is denied inside this Codex sandbox, so I had to validate the live smoke test outside the sandbox; on a normal local shell that restriction should not apply." How can this be fixed?
+Trying to build, deploy, run, test, and validate the 'mp-cache' project and this is the final report: "Built and validated 'mp-cache'. Two environment-specific issues remain. First, the default local deploy path still fails if you reuse the repo’s current state.checkpoint with a different MP_SECRET_LOCAL_STORAGE_KEY; to fix that, either reuse the original storage key or clear state.checkpoint and state.journal before rerunning make deploy-local. Second, direct Unix-socket bind/connect is denied inside this Codex sandbox, so I had to validate the live smoke test outside the sandbox; on a normal local shell that restriction should not apply." How can this be fixed? Done

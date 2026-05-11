@@ -175,6 +175,7 @@ Deployment docs:
 - engineering standards: `docs/engineering-standards.md`
 - naming strategy: `docs/naming-strategy.md`
 - commit messages: `docs/commit-messages.md`
+- manual end-to-end testing runbook for CachyOS: `docs/runbooks/manual-end-to-end-testing.md`
 - Valgrind host setup runbook: `docs/runbooks/valgrind-host-setup.md`
 - API contract: `api/http/v1/cache-service.md`
 - runbooks: `docs/runbooks/`

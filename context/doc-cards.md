@@ -38,6 +38,10 @@
   - path: `docs/runbooks/local-service-lifecycle.md`
   - status: active
   - purpose: start, stop, restart, and validation steps
+- `runbook.manual-end-to-end-testing`
+  - path: `docs/runbooks/manual-end-to-end-testing.md`
+  - status: active
+  - purpose: full CachyOS host-side build, secret setup, API verification, and persistence validation commands
 - `runbook.valgrind-host-setup`
   - path: `docs/runbooks/valgrind-host-setup.md`
   - status: active
