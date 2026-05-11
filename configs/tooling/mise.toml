@@ -1,0 +1,11 @@
+[tasks.build]
+run = "make build"
+
+[tasks.test]
+run = "make test"
+
+[tasks.deploy]
+run = "./scripts/deploy-local.sh"
+
+[tasks.doctor]
+run = "./scripts/doctor-local.sh"

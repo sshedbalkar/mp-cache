@@ -1,0 +1,13 @@
+build/
+dist/
+.tmp/
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.log
+coverage/
+testing/
+logging/*
+!logging/.gitkeep

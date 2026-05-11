@@ -1,0 +1,4 @@
+[submodule "native/mp_logger"]
+	path = native/mp_logger
+	url = git@github.com:sshedbalkar/mp_logger.git
+	branch = development

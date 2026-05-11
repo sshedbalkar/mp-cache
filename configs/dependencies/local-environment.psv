@@ -1,0 +1,9 @@
+# id|status|scopes|checks|min_version|arch|install_mode|purpose
+cmake|required|build,test,deploy|cmake|3.20|cmake|package|CMake configure and build
+c-toolchain|required|build,test,deploy|cc,gcc,clang|c17|base-devel|package|C17 compiler and build tools
+make|required|build,test,deploy|make|4.0|make|package|Top-level build driver
+git|required|build,deploy|git|2.0|git|package|Source and submodule operations
+curl|required|deploy,test|curl|7.0|curl|package|Local health checks
+valgrind|optional|test|valgrind|3.0|valgrind|package|Native memory checks
+shellcheck|optional|test|shellcheck|0.9|shellcheck|package|Shell linting
+jq|optional|deploy,test|jq|1.6|jq|package|JSON inspection
