@@ -10,6 +10,10 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(native/mp_logger)
 
+function(mp_cache_enable_warnings target_name)
+  target_compile_options(${target_name} PRIVATE -Wall -Wextra -Wpedantic)
+endfunction()
+
 add_library(mp_cache_core
   internal/cache/cache.c
   internal/config/config.c
@@ -32,44 +36,49 @@ target_compile_definitions(mp_cache_core
     MP_CACHE_VERSION="${PROJECT_VERSION}"
 )
 
-target_compile_options(mp_cache_core PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(mp_cache_core PUBLIC mp_logger Threads::Threads)
+target_link_libraries(
+  mp_cache_core
+  PUBLIC
+    mp_logger
+    Threads::Threads
+)
+mp_cache_enable_warnings(mp_cache_core)
 
 add_executable(mp-cache-server cmd/mp-cache-server/main.c)
 target_link_libraries(mp-cache-server PRIVATE mp_cache_core)
-target_compile_options(mp-cache-server PRIVATE -Wall -Wextra -Wpedantic)
+mp_cache_enable_warnings(mp-cache-server)
 
 add_executable(mp-cachectl cmd/mp-cachectl/main.c)
 target_link_libraries(mp-cachectl PRIVATE mp_cache_core)
-target_compile_options(mp-cachectl PRIVATE -Wall -Wextra -Wpedantic)
+mp_cache_enable_warnings(mp-cachectl)
 
 enable_testing()
 
 add_executable(mp_cache_config_tests tests/unit/config_tests.c)
 target_link_libraries(mp_cache_config_tests PRIVATE mp_cache_core)
-target_compile_options(mp_cache_config_tests PRIVATE -Wall -Wextra -Wpedantic)
+mp_cache_enable_warnings(mp_cache_config_tests)
 add_test(NAME mp_cache_config COMMAND mp_cache_config_tests)
 
 add_executable(mp_cache_store_tests tests/unit/cache_tests.c)
 target_link_libraries(mp_cache_store_tests PRIVATE mp_cache_core)
-target_compile_options(mp_cache_store_tests PRIVATE -Wall -Wextra -Wpedantic)
+mp_cache_enable_warnings(mp_cache_store_tests)
 add_test(NAME mp_cache_store COMMAND mp_cache_store_tests)
 
 add_executable(mp_cache_security_tests tests/unit/security_tests.c)
 target_link_libraries(mp_cache_security_tests PRIVATE mp_cache_core)
-target_compile_options(mp_cache_security_tests PRIVATE -Wall -Wextra -Wpedantic)
+mp_cache_enable_warnings(mp_cache_security_tests)
 add_test(NAME mp_cache_security COMMAND mp_cache_security_tests)
 
 add_executable(mp_cache_storage_tests tests/unit/storage_tests.c)
 target_link_libraries(mp_cache_storage_tests PRIVATE mp_cache_core)
-target_compile_options(mp_cache_storage_tests PRIVATE -Wall -Wextra -Wpedantic)
+mp_cache_enable_warnings(mp_cache_storage_tests)
 add_test(NAME mp_cache_storage COMMAND mp_cache_storage_tests)
 
 add_executable(mp_cache_http_tests tests/unit/http_tests.c)
 target_link_libraries(mp_cache_http_tests PRIVATE mp_cache_core)
-target_compile_options(mp_cache_http_tests PRIVATE -Wall -Wextra -Wpedantic)
+mp_cache_enable_warnings(mp_cache_http_tests)
 add_test(NAME mp_cache_http COMMAND mp_cache_http_tests)
 
 add_executable(mp_cache_benchmark tests/bench/cache_benchmark.c)
 target_link_libraries(mp_cache_benchmark PRIVATE mp_cache_core)
-target_compile_options(mp_cache_benchmark PRIVATE -Wall -Wextra -Wpedantic)
+mp_cache_enable_warnings(mp_cache_benchmark)

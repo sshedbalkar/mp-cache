@@ -52,10 +52,10 @@ Valgrind check - rule for any c based native development. Done
 
 In 'mp-cache', use the 'mp_logger' submodule for any kind of logging needs. Make sure this is treated as a durable rule and followed in the future as well. Done
 
-Make sure the project 'mp_cache' can be deployed and tested (all tests) rootless, except for the valgrind test. 
+Make sure the project 'mp_cache' can be deployed and tested (all tests) rootless, except for the valgrind test. Done
 
 Create a doc on the host setup, what was the issue with Valgrind,what was the root cause, how was it fixed. This doc should be reusable in the future, if needed. Place it in 'docs/'. Done
 
--Wall fix.
+-Wall, -Wextra, -Wpedantic fix. Done
 
 Trying to build, deploy, run, test, and validate the 'mp-cache' project and this is the final report: "Built and validated 'mp-cache'. Two environment-specific issues remain. First, the default local deploy path still fails if you reuse the repo’s current state.checkpoint with a different MP_SECRET_LOCAL_STORAGE_KEY; to fix that, either reuse the original storage key or clear state.checkpoint and state.journal before rerunning make deploy-local. Second, direct Unix-socket bind/connect is denied inside this Codex sandbox, so I had to validate the live smoke test outside the sandbox; on a normal local shell that restriction should not apply." How can this be fixed? Done
