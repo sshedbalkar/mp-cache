@@ -170,6 +170,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     char *body = NULL;
     char *import_body = NULL;
     char client_token[MP_CACHE_TOKEN_TEXT_CAP];
+    char rotated_client_token[MP_CACHE_TOKEN_TEXT_CAP];
     char export_path[MP_CACHE_PATH_CAP];
     int status_code = 0;
     FILE *log_file = NULL;
@@ -205,6 +206,16 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     free(request);
     free(body);
 
+    request = make_request(
+        "PUT",
+        "/v1/cache/beta",
+        client_token,
+        "{\"value_base64\":\"d29ybGQ=\",\"ttl_seconds\":60}");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 200);
+    free(request);
+    free(body);
+
     request = make_request("GET", "/v1/cache/alpha", client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
@@ -221,7 +232,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     request = make_request("GET", "/v1/stats", "bootstrap-admin-token", "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
-    assert(strstr(body, "\"cache_sets\":1") != NULL);
+    assert(strstr(body, "\"cache_sets\":2") != NULL);
     free(request);
     free(body);
 
@@ -242,6 +253,59 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     free(request);
     free(body);
 
+    request = make_request(
+        "POST",
+        "/v1/purge/keys",
+        "bootstrap-admin-token",
+        "{\"keys\":[\"alpha\",\"missing-key\"]}");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 200);
+    assert(strstr(body, "\"requested_keys\":2") != NULL);
+    assert(strstr(body, "\"purged_keys\":1") != NULL);
+    assert(strstr(body, "\"missing_keys\":1") != NULL);
+    free(request);
+    free(body);
+
+    request = make_request("GET", "/v1/cache/alpha", client_token, "");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 404);
+    free(request);
+    free(body);
+
+    request = make_request("GET", "/v1/cache/beta", client_token, "");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 200);
+    assert(strstr(body, "\"value_base64\":\"d29ybGQ=\"") != NULL);
+    free(request);
+    free(body);
+
+    request = make_request("POST", "/v1/clients/client-one/invalidate-token", "bootstrap-admin-token", "{}");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 200);
+    assert(strstr(body, "\"token_active\":false") != NULL);
+    free(request);
+    free(body);
+
+    request = make_request("GET", "/v1/cache/beta", client_token, "");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 401);
+    free(request);
+    free(body);
+
+    request = make_request("POST", "/v1/clients/client-one/rotate-token", "bootstrap-admin-token", "{}");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 200);
+    extract_json_string(body, "token", rotated_client_token, sizeof(rotated_client_token));
+    free(request);
+    free(body);
+
+    request = make_request("GET", "/v1/cache/beta", rotated_client_token, "");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 200);
+    assert(strstr(body, "\"value_base64\":\"d29ybGQ=\"") != NULL);
+    free(request);
+    free(body);
+
     request = make_request("POST", "/v1/export", "bootstrap-admin-token", "{}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
@@ -255,7 +319,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/alpha", client_token, "");
+    request = make_request("GET", "/v1/cache/beta", rotated_client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 404);
     free(request);
@@ -269,10 +333,20 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/alpha", client_token, "");
+    request = make_request("GET", "/v1/cache/beta", rotated_client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
-    assert(strstr(body, "\"value_base64\":\"aGVsbG8=\"") != NULL);
+    assert(strstr(body, "\"value_base64\":\"d29ybGQ=\"") != NULL);
+    free(request);
+    free(body);
+
+    request = make_request("GET", "/v1/stats", "bootstrap-admin-token", "");
+    assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
+    assert(status_code == 200);
+    assert(strstr(body, "\"cache_sets\":2") != NULL);
+    assert(strstr(body, "\"cache_deletes\":1") != NULL);
+    assert(strstr(body, "\"token_rotations\":1") != NULL);
+    assert(strstr(body, "\"token_invalidations\":1") != NULL);
     free(request);
     free(body);
 

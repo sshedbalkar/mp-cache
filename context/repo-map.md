@@ -36,8 +36,8 @@
 - `internal/observability`: `mp_logger` integration wrapper.
 - `internal/platform`: filesystem and process helpers.
 - `internal/runtime`: service composition and lifecycle.
-- `internal/security`: reserved for auth and RBAC logic.
-- `internal/storage`: reserved for encrypted persistence and export/import.
+- `internal/security`: reserved for auth, RBAC, and client token lifecycle logic.
+- `internal/storage`: reserved for encrypted persistence, export/import, and journal replay.
 - `native/mp_logger`: logging submodule.
 
 ## Validation

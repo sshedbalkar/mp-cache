@@ -4,6 +4,8 @@ Use this route when work touches:
 
 - health endpoints
 - authenticated cache APIs
+- selective purge flows
+- client token lifecycle APIs
 - export/import flows
 - logs and rate limiting
 - deployment docs

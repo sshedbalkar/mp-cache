@@ -75,13 +75,13 @@ Shutdown order:
   - all operator APIs
   - client registration
   - token rotation
+  - token invalidation
   - export/import
+  - selective key purge
   - purge all
 
 ## Future Extensions
 
-- selective key purge
-- token invalidation without rotation
 - broader multi-file export partitioning
 
 ## Phases

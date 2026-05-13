@@ -227,7 +227,8 @@ mp_cache_security_status_t mp_cache_security_authenticate(
     }
 
     for (index = 0u; index < security->count; index++) {
-        if (mp_cache_constant_time_equals(
+        if (security->records[index].token_active &&
+            mp_cache_constant_time_equals(
                 token_hash,
                 security->records[index].token_hash,
                 sizeof(security->records[index].token_hash))) {
@@ -269,6 +270,7 @@ mp_cache_security_status_t mp_cache_security_register_client(
     memset(record, 0, sizeof(*record));
     (void)snprintf(record->client_id, sizeof(record->client_id), "%s", client_id);
     record->role = role;
+    record->token_active = true;
     mp_cache_hash_token(out_client_token, record->token_hash);
     return MP_CACHE_SECURITY_STATUS_OK;
 }
@@ -295,7 +297,27 @@ mp_cache_security_status_t mp_cache_security_rotate_client_token(
         return status;
     }
 
+    record->token_active = true;
     mp_cache_hash_token(out_client_token, record->token_hash);
+    return MP_CACHE_SECURITY_STATUS_OK;
+}
+
+mp_cache_security_status_t mp_cache_security_invalidate_client_token(
+    mp_cache_security_t *security,
+    const char *client_id) {
+    mp_cache_client_record_t *record = NULL;
+
+    if (security == NULL || !mp_cache_client_id_is_valid(client_id)) {
+        return MP_CACHE_SECURITY_STATUS_INVALID_ARGUMENT;
+    }
+
+    record = mp_cache_security_find_record(security, client_id, NULL);
+    if (record == NULL) {
+        return MP_CACHE_SECURITY_STATUS_NOT_FOUND;
+    }
+
+    record->token_active = false;
+    memset(record->token_hash, 0, sizeof(record->token_hash));
     return MP_CACHE_SECURITY_STATUS_OK;
 }
 
@@ -303,11 +325,15 @@ mp_cache_security_status_t mp_cache_security_import_client_hash(
     mp_cache_security_t *security,
     const char *client_id,
     mp_cache_role_t role,
-    const uint8_t token_hash[MP_CACHE_TOKEN_HASH_SIZE]) {
+    const uint8_t token_hash[MP_CACHE_TOKEN_HASH_SIZE],
+    bool is_token_active) {
     mp_cache_security_status_t status;
     mp_cache_client_record_t *record = NULL;
 
-    if (security == NULL || token_hash == NULL || role == MP_CACHE_ROLE_NONE || !mp_cache_client_id_is_valid(client_id)) {
+    if (security == NULL || role == MP_CACHE_ROLE_NONE || !mp_cache_client_id_is_valid(client_id)) {
+        return MP_CACHE_SECURITY_STATUS_INVALID_ARGUMENT;
+    }
+    if (is_token_active && token_hash == NULL) {
         return MP_CACHE_SECURITY_STATUS_INVALID_ARGUMENT;
     }
 
@@ -323,7 +349,12 @@ mp_cache_security_status_t mp_cache_security_import_client_hash(
     }
 
     record->role = role;
-    memcpy(record->token_hash, token_hash, MP_CACHE_TOKEN_HASH_SIZE);
+    record->token_active = is_token_active;
+    if (is_token_active) {
+        memcpy(record->token_hash, token_hash, MP_CACHE_TOKEN_HASH_SIZE);
+    } else {
+        memset(record->token_hash, 0, sizeof(record->token_hash));
+    }
     return MP_CACHE_SECURITY_STATUS_OK;
 }
 

@@ -37,6 +37,7 @@ typedef struct {
     uint64_t cache_deletes;
     uint64_t client_registrations;
     uint64_t token_rotations;
+    uint64_t token_invalidations;
     uint64_t exports;
     uint64_t imports;
     uint64_t log_reads;

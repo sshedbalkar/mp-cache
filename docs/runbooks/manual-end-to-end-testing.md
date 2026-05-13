@@ -11,7 +11,7 @@ This runbook covers:
 - isolated manual-test config creation
 - build, start, smoke test, and cleanup
 - every implemented HTTP API endpoint
-- deterministic auth, role, conflict, not-found, method, size-limit, import-integrity, and rate-limit checks
+- deterministic auth, role, token invalidation, selective purge, conflict, not-found, method, size-limit, import-integrity, and rate-limit checks
 - persistence across restart
 
 This runbook is written for CachyOS hosts and does not require the Codex sandbox. Run it directly on the host.
@@ -588,6 +588,51 @@ jq -r '.text' .tmp/manual-e2e/responses/logs-operator.json
 
 ## Admin API Checks
 
+Store `gamma` so selective purge has a live target without disturbing the later `beta` checks:
+
+```sh
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/cache-put-gamma.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "$CLIENT_AUTH_HEADER" \
+  -H 'Content-Type: application/json' \
+  -X PUT \
+  http://localhost/v1/cache/gamma \
+  --data '{"value_base64":"Z2FtbWE=","ttl_seconds":60}'
+
+jq -e '.key=="gamma" and .ttl_seconds==60' .tmp/manual-e2e/responses/cache-put-gamma.json
+```
+
+Purge one selected key and one missing key:
+
+```sh
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/purge-selected.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "$MANUAL_ADMIN_AUTH_HEADER" \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  http://localhost/v1/purge/keys \
+  --data '{"keys":["gamma","missing-key"]}'
+
+jq -e '.requested_keys==2 and .purged_keys==1 and .missing_keys==1' .tmp/manual-e2e/responses/purge-selected.json
+```
+
+Verify `gamma` is gone:
+
+```sh
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/cache-get-gamma-after-purge.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "$CLIENT_AUTH_HEADER" \
+  http://localhost/v1/cache/gamma
+
+jq -e '.error=="not_found" and .message=="cache key not found"' .tmp/manual-e2e/responses/cache-get-gamma-after-purge.json
+```
+
 Use the second admin token on an admin-only route:
 
 ```sh
@@ -664,6 +709,100 @@ curl --silent --show-error \
   http://localhost/v1/cache/beta
 
 jq -e '.key=="beta" and .value_base64=="d29ybGQ="' .tmp/manual-e2e/responses/cache-get-beta-new-token.json
+```
+
+Invalidate the current client token without rotating it:
+
+```sh
+export INVALIDATED_CLIENT_TOKEN="$CLIENT_TOKEN"
+
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/invalidate-client-token.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "$MANUAL_ADMIN_AUTH_HEADER" \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  http://localhost/v1/clients/manual-client/invalidate-token \
+  --data '{}'
+
+jq -e '.client_id=="manual-client" and .token_active==false' .tmp/manual-e2e/responses/invalidate-client-token.json
+```
+
+Verify the invalidated token now fails:
+
+```sh
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/cache-get-beta-invalidated-token.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "Authorization: Bearer $INVALIDATED_CLIENT_TOKEN" \
+  http://localhost/v1/cache/beta
+
+jq -e '.error=="unauthorized" and .message=="invalid bearer token"' .tmp/manual-e2e/responses/cache-get-beta-invalidated-token.json
+```
+
+Rotate again to reissue a fresh client token after invalidation:
+
+```sh
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/rotate-client-token-reissued.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "$MANUAL_ADMIN_AUTH_HEADER" \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  http://localhost/v1/clients/manual-client/rotate-token \
+  --data '{}'
+
+jq -e '.client_id=="manual-client" and (.token | length > 0)' .tmp/manual-e2e/responses/rotate-client-token-reissued.json
+
+export CLIENT_TOKEN="$(jq -r '.token' .tmp/manual-e2e/responses/rotate-client-token-reissued.json)"
+export CLIENT_AUTH_HEADER="Authorization: Bearer $CLIENT_TOKEN"
+```
+
+Verify the reissued token works:
+
+```sh
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/cache-get-beta-reissued-token.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "$CLIENT_AUTH_HEADER" \
+  http://localhost/v1/cache/beta
+
+jq -e '.key=="beta" and .value_base64=="d29ybGQ="' .tmp/manual-e2e/responses/cache-get-beta-reissued-token.json
+```
+
+Export the current state again so later import restores the latest client token state:
+
+```sh
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/export-admin-latest.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "$MANUAL_ADMIN_AUTH_HEADER" \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  http://localhost/v1/export \
+  --data '{}'
+
+jq -e '.entry_count >= 1 and .client_count >= 3 and (.path | length > 0)' .tmp/manual-e2e/responses/export-admin-latest.json
+
+export EXPORT_PATH="$(jq -r '.path' .tmp/manual-e2e/responses/export-admin-latest.json)"
+```
+
+Confirm the admin stats counters reflect the extra token lifecycle operations:
+
+```sh
+curl --silent --show-error \
+  --output .tmp/manual-e2e/responses/stats-admin-after-token-lifecycle.json \
+  --write-out '%{http_code}\n' \
+  --unix-socket "$MP_SOCKET_PATH" \
+  -H "$MANUAL_ADMIN_AUTH_HEADER" \
+  http://localhost/v1/stats
+
+jq -e '.token_rotations >= 2 and .token_invalidations >= 1 and .cache_deletes >= 2' .tmp/manual-e2e/responses/stats-admin-after-token-lifecycle.json
 ```
 
 Create a tampered export file and verify import rejection:
@@ -897,5 +1036,6 @@ If all commands above pass:
 - the Unix-socket HTTP server starts and responds
 - all implemented APIs behave as documented
 - auth and role boundaries work
+- selective key purge and explicit token invalidation work
 - export/import and persistence behave correctly
 - oversize payloads, conflicts, invalid requests, unknown routes, wrong methods, and rate limits return the expected errors

@@ -25,15 +25,14 @@ Current repository features:
 - bearer-token authentication with `admin`, `operator`, and `client` roles;
 - authenticated `GET` / `PUT` / `DELETE` cache APIs plus health, stats, memory, uptime, and log-tail endpoints;
 - encrypted journal, encrypted checkpoint, and integrity-checked export/import files;
-- persisted client registry with admin registration and token rotation;
+- persisted client registry with admin registration, token rotation, and explicit token invalidation;
+- admin selective key-purge and purge-all APIs;
 - per-principal rate limiting on authenticated APIs;
 - local build, benchmark, sanitizer, and Valgrind validation scripts;
 - systemd-ready deployment assets under `deploy/systemd/`.
 
 Still future-facing:
 
-- selective key-purge API;
-- explicit token invalidation beyond rotation;
 - live Unix-socket integration coverage inside CI or a less-restricted runtime than this sandbox.
 
 ## Project Standards
@@ -150,6 +149,8 @@ Primary `mp-cachectl` commands:
 ./build/local-debug/mp-cachectl health
 MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats
 MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl register-client client-one client
+MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl invalidate-client client-one
+MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl purge-keys alpha beta
 MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl export
 ```
 

@@ -29,13 +29,15 @@ static void test_bootstrap_admin_authentication(void) {
     mp_cache_security_destroy(&security);
 }
 
-/* Verify client registration, token rotation, and authentication for stored principals. */
-static void test_client_registration_and_rotation(void) {
+/* Verify client registration, token rotation, invalidation, and reissue flows. */
+static void test_client_registration_rotation_and_invalidation(void) {
     mp_cache_config_t config;
     mp_cache_security_t security;
     mp_cache_principal_t principal;
     char token[MP_CACHE_TOKEN_TEXT_CAP];
     char rotated_token[MP_CACHE_TOKEN_TEXT_CAP];
+    char reissued_token[MP_CACHE_TOKEN_TEXT_CAP];
+    const mp_cache_client_record_t *record = NULL;
 
     assert(setenv("MP_TEST_BOOTSTRAP_ADMIN_TOKEN", "bootstrap-admin-token", 1) == 0);
     mp_cache_config_init_defaults(&config);
@@ -62,12 +64,32 @@ static void test_client_registration_and_rotation(void) {
     assert(
         mp_cache_security_authenticate(&security, rotated_token, &principal) == MP_CACHE_SECURITY_STATUS_OK);
 
+    assert(
+        mp_cache_security_invalidate_client_token(&security, "client-one") ==
+        MP_CACHE_SECURITY_STATUS_OK);
+    record = mp_cache_security_find_client(&security, "client-one");
+    assert(record != NULL);
+    assert(record->token_active == false);
+    assert(
+        mp_cache_security_authenticate(&security, rotated_token, &principal) ==
+        MP_CACHE_SECURITY_STATUS_UNAUTHORIZED);
+
+    assert(
+        mp_cache_security_rotate_client_token(&security, "client-one", reissued_token, sizeof(reissued_token)) ==
+        MP_CACHE_SECURITY_STATUS_OK);
+    assert(strcmp(rotated_token, reissued_token) != 0);
+    assert(
+        mp_cache_security_authenticate(&security, reissued_token, &principal) ==
+        MP_CACHE_SECURITY_STATUS_OK);
+    assert(principal.role == MP_CACHE_ROLE_CLIENT);
+    assert(strcmp(principal.client_id, "client-one") == 0);
+
     mp_cache_security_destroy(&security);
 }
 
 /* Run the security unit-test group. */
 int main(void) {
     test_bootstrap_admin_authentication();
-    test_client_registration_and_rotation();
+    test_client_registration_rotation_and_invalidation();
     return 0;
 }

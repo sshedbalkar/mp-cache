@@ -32,10 +32,11 @@ typedef enum {
     MP_CACHE_SECURITY_STATUS_LIMIT_EXCEEDED = 8
 } mp_cache_security_status_t;
 
-/* Stores one persisted client principal and the SHA-256 hash of its bearer token. */
+/* Stores one persisted client principal and whether its bearer token is currently active. */
 typedef struct {
     char client_id[MP_CACHE_CLIENT_ID_CAP];
     mp_cache_role_t role;
+    bool token_active;
     uint8_t token_hash[MP_CACHE_TOKEN_HASH_SIZE];
 } mp_cache_client_record_t;
 
@@ -93,12 +94,18 @@ mp_cache_security_status_t mp_cache_security_rotate_client_token(
     char *out_client_token,
     size_t out_client_token_capacity);
 
-/* Import a pre-hashed client token during restore or import workflows. */
+/* Mark an existing client token inactive without removing the stored client principal. */
+mp_cache_security_status_t mp_cache_security_invalidate_client_token(
+    mp_cache_security_t *security,
+    const char *client_id);
+
+/* Import one client principal during restore or import workflows. */
 mp_cache_security_status_t mp_cache_security_import_client_hash(
     mp_cache_security_t *security,
     const char *client_id,
     mp_cache_role_t role,
-    const uint8_t token_hash[MP_CACHE_TOKEN_HASH_SIZE]);
+    const uint8_t token_hash[MP_CACHE_TOKEN_HASH_SIZE],
+    bool is_token_active);
 
 /* Remove every registered non-bootstrap client. */
 void mp_cache_security_clear_clients(mp_cache_security_t *security);

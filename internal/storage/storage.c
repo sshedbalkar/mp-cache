@@ -18,8 +18,8 @@
 #define MP_CACHE_JOURNAL_MAGIC "MPCJNL1"
 #define MP_CACHE_EXPORT_MAGIC "MPCEXPT1"
 #define MP_CACHE_PACKET_HEADER_SIZE 64u
-#define MP_CACHE_STATE_VERSION 1u
-#define MP_CACHE_JOURNAL_VERSION 1u
+#define MP_CACHE_STATE_VERSION 2u
+#define MP_CACHE_JOURNAL_VERSION 2u
 
 /* Tags the operation type encoded inside one journal packet payload. */
 typedef enum {
@@ -586,6 +586,7 @@ static int mp_cache_serialize_client_record(const mp_cache_client_record_t *reco
     id_length = strlen(record->client_id);
     if (mp_cache_buffer_append_u32(buffer, (uint32_t)id_length) != 0 ||
         mp_cache_buffer_append_u32(buffer, (uint32_t)record->role) != 0 ||
+        mp_cache_buffer_append_u32(buffer, record->token_active ? 1u : 0u) != 0 ||
         mp_cache_buffer_append(buffer, record->token_hash, sizeof(record->token_hash)) != 0 ||
         mp_cache_buffer_append(buffer, record->client_id, id_length) != 0) {
         return -1;
@@ -653,7 +654,7 @@ static int mp_cache_storage_deserialize_state(
 
     if (mp_cache_consume_u32(payload, payload_length, &offset, &version) != 0 ||
         mp_cache_consume_u64(payload, payload_length, &offset, &checkpointed_at) != 0 ||
-        version != MP_CACHE_STATE_VERSION) {
+        version == 0u || version > MP_CACHE_STATE_VERSION) {
         errno = EINVAL;
         return -1;
     }
@@ -690,12 +691,14 @@ static int mp_cache_storage_deserialize_state(
     for (index = 0u; index < client_count; index++) {
         uint32_t id_length = 0u;
         uint32_t role_value = 0u;
+        uint32_t token_active = 1u;
         const uint8_t *token_hash = NULL;
         const uint8_t *client_id_bytes = NULL;
         char client_id[MP_CACHE_CLIENT_ID_CAP];
 
         if (mp_cache_consume_u32(payload, payload_length, &offset, &id_length) != 0 ||
             mp_cache_consume_u32(payload, payload_length, &offset, &role_value) != 0 ||
+            (version >= 2u && mp_cache_consume_u32(payload, payload_length, &offset, &token_active) != 0) ||
             mp_cache_consume_bytes(payload, payload_length, &offset, MP_CACHE_TOKEN_HASH_SIZE, &token_hash) != 0 ||
             id_length == 0u || id_length >= sizeof(client_id) ||
             mp_cache_consume_bytes(payload, payload_length, &offset, id_length, &client_id_bytes) != 0) {
@@ -709,7 +712,8 @@ static int mp_cache_storage_deserialize_state(
                 security,
                 client_id,
                 (mp_cache_role_t)role_value,
-                token_hash) != MP_CACHE_SECURITY_STATUS_OK) {
+                token_hash,
+                token_active != 0u) != MP_CACHE_SECURITY_STATUS_OK) {
             errno = EINVAL;
             return -1;
         }
@@ -727,6 +731,7 @@ static int mp_cache_storage_build_journal_payload(
     const void *value,
     size_t value_length,
     uint64_t extra_value,
+    uint64_t extra_flag,
     mp_cache_buffer_t *out_buffer) {
     if (out_buffer == NULL) {
         errno = EINVAL;
@@ -758,6 +763,7 @@ static int mp_cache_storage_build_journal_payload(
         case MP_CACHE_JOURNAL_OP_CLIENT_UPSERT:
             if (mp_cache_buffer_append_u32(out_buffer, (uint32_t)subject_length) != 0 ||
                 mp_cache_buffer_append_u32(out_buffer, (uint32_t)extra_value) != 0 ||
+                mp_cache_buffer_append_u32(out_buffer, (uint32_t)extra_flag) != 0 ||
                 mp_cache_buffer_append(out_buffer, value, MP_CACHE_TOKEN_HASH_SIZE) != 0 ||
                 mp_cache_buffer_append(out_buffer, subject, subject_length) != 0) {
                 return -1;
@@ -790,7 +796,7 @@ static int mp_cache_storage_apply_journal_payload(
     if (mp_cache_consume_u32(payload, payload_length, &offset, &version) != 0 ||
         mp_cache_consume_u32(payload, payload_length, &offset, &operation) != 0 ||
         mp_cache_consume_u64(payload, payload_length, &offset, &recorded_at) != 0 ||
-        version != MP_CACHE_JOURNAL_VERSION) {
+        version == 0u || version > MP_CACHE_JOURNAL_VERSION) {
         errno = EINVAL;
         return -1;
     }
@@ -832,12 +838,14 @@ static int mp_cache_storage_apply_journal_payload(
         case MP_CACHE_JOURNAL_OP_CLIENT_UPSERT: {
             uint32_t id_length = 0u;
             uint32_t role_value = 0u;
+            uint32_t token_active = 1u;
             const uint8_t *token_hash = NULL;
             const uint8_t *client_id_bytes = NULL;
             char client_id[MP_CACHE_CLIENT_ID_CAP];
 
             if (mp_cache_consume_u32(payload, payload_length, &offset, &id_length) != 0 ||
                 mp_cache_consume_u32(payload, payload_length, &offset, &role_value) != 0 ||
+                (version >= 2u && mp_cache_consume_u32(payload, payload_length, &offset, &token_active) != 0) ||
                 mp_cache_consume_bytes(payload, payload_length, &offset, MP_CACHE_TOKEN_HASH_SIZE, &token_hash) != 0 ||
                 id_length == 0u || id_length >= sizeof(client_id) ||
                 mp_cache_consume_bytes(payload, payload_length, &offset, id_length, &client_id_bytes) != 0) {
@@ -849,7 +857,8 @@ static int mp_cache_storage_apply_journal_payload(
                     security,
                     client_id,
                     (mp_cache_role_t)role_value,
-                    token_hash) != MP_CACHE_SECURITY_STATUS_OK) {
+                    token_hash,
+                    token_active != 0u) != MP_CACHE_SECURITY_STATUS_OK) {
                 errno = EINVAL;
                 return -1;
             }
@@ -1089,6 +1098,7 @@ int mp_cache_storage_append_set(
         value,
         value_length,
         (uint64_t)expires_at_utc_seconds,
+        0u,
         &payload);
     if (result == 0) {
         result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_JOURNAL_MAGIC, payload.bytes, payload.length);
@@ -1112,6 +1122,7 @@ int mp_cache_storage_append_delete(mp_cache_storage_t *storage, const char *key,
         key,
         key_length,
         NULL,
+        0u,
         0u,
         0u,
         &payload);
@@ -1139,6 +1150,7 @@ int mp_cache_storage_append_client(mp_cache_storage_t *storage, const mp_cache_c
         record->token_hash,
         MP_CACHE_TOKEN_HASH_SIZE,
         (uint64_t)record->role,
+        record->token_active ? 1u : 0u,
         &payload);
     if (result == 0) {
         result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_JOURNAL_MAGIC, payload.bytes, payload.length);
@@ -1162,6 +1174,7 @@ int mp_cache_storage_append_purge_all(mp_cache_storage_t *storage) {
         NULL,
         0u,
         NULL,
+        0u,
         0u,
         0u,
         &payload);

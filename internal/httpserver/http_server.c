@@ -22,6 +22,7 @@
 #define MP_CACHE_HTTP_HEADER_CAPACITY 2048u
 #define MP_CACHE_HTTP_PATH_CAPACITY 512u
 #define MP_CACHE_HTTP_BODY_CAPACITY 32768u
+#define MP_CACHE_HTTP_JSON_ARRAY_LIMIT 256u
 
 /* Carries one parsed HTTP request inside the in-process parser and test harness. */
 typedef struct {
@@ -368,6 +369,188 @@ static int mp_cache_http_extract_json_string(
     }
     out_string_value[out_index] = '\0';
     return 0;
+}
+
+/* Advance cursor past any ASCII whitespace accepted by the minimal JSON parser. */
+static void mp_cache_http_skip_json_whitespace(const char **cursor) {
+    if (cursor == NULL || *cursor == NULL) {
+        return;
+    }
+
+    while (**cursor != '\0' && isspace((unsigned char)**cursor) != 0) {
+        (*cursor)++;
+    }
+}
+
+/* Release one heap-owned array of decoded JSON string values. */
+static void mp_cache_http_free_json_string_array(char **string_values, size_t value_count) {
+    size_t index = 0u;
+
+    if (string_values == NULL) {
+        return;
+    }
+
+    for (index = 0u; index < value_count; index++) {
+        free(string_values[index]);
+    }
+    free(string_values);
+}
+
+/* Extract one JSON array of quoted strings into a heap-owned result list. */
+static int mp_cache_http_extract_json_string_array(
+    const char *json_body,
+    const char *field_name,
+    char ***out_string_values,
+    size_t *out_value_count) {
+    char *field = NULL;
+    const char *cursor = NULL;
+    char **string_values = NULL;
+    size_t value_count = 0u;
+    size_t value_capacity = 0u;
+
+    if (json_body == NULL || field_name == NULL || out_string_values == NULL || out_value_count == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    *out_string_values = NULL;
+    *out_value_count = 0u;
+    field = mp_cache_http_find_json_field(json_body, field_name);
+    if (field == NULL) {
+        errno = ENOENT;
+        return -1;
+    }
+
+    cursor = strchr(field, ':');
+    if (cursor == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+    cursor++;
+    mp_cache_http_skip_json_whitespace(&cursor);
+    if (*cursor != '[') {
+        errno = EINVAL;
+        return -1;
+    }
+    cursor++;
+    mp_cache_http_skip_json_whitespace(&cursor);
+    if (*cursor == ']') {
+        *out_string_values = NULL;
+        *out_value_count = 0u;
+        return 0;
+    }
+
+    while (*cursor != '\0') {
+        char *decoded_value = NULL;
+        size_t decoded_length = 0u;
+        size_t decoded_capacity = 16u;
+
+        if (*cursor != '"') {
+            errno = EINVAL;
+            goto fail;
+        }
+        if (value_count >= MP_CACHE_HTTP_JSON_ARRAY_LIMIT) {
+            errno = E2BIG;
+            goto fail;
+        }
+
+        cursor++;
+        decoded_value = malloc(decoded_capacity);
+        if (decoded_value == NULL) {
+            goto fail;
+        }
+
+        while (*cursor != '\0' && *cursor != '"') {
+            char next_character = *cursor++;
+
+            if (next_character == '\\') {
+                if (*cursor == '\0') {
+                    free(decoded_value);
+                    errno = EINVAL;
+                    goto fail;
+                }
+                switch (*cursor) {
+                    case '"':
+                    case '\\':
+                    case '/':
+                        next_character = *cursor;
+                        break;
+                    case 'n':
+                        next_character = '\n';
+                        break;
+                    case 'r':
+                        next_character = '\r';
+                        break;
+                    case 't':
+                        next_character = '\t';
+                        break;
+                    default:
+                        free(decoded_value);
+                        errno = EINVAL;
+                        goto fail;
+                }
+                cursor++;
+            }
+
+            if (decoded_length + 1u >= decoded_capacity) {
+                char *next_value = NULL;
+                size_t next_capacity = decoded_capacity * 2u;
+
+                next_value = realloc(decoded_value, next_capacity);
+                if (next_value == NULL) {
+                    free(decoded_value);
+                    goto fail;
+                }
+                decoded_value = next_value;
+                decoded_capacity = next_capacity;
+            }
+
+            decoded_value[decoded_length++] = next_character;
+        }
+
+        if (*cursor != '"') {
+            free(decoded_value);
+            errno = EINVAL;
+            goto fail;
+        }
+        decoded_value[decoded_length] = '\0';
+        cursor++;
+
+        if (value_count == value_capacity) {
+            char **next_values = NULL;
+            size_t next_capacity = value_capacity == 0u ? 4u : value_capacity * 2u;
+
+            next_values = realloc(string_values, next_capacity * sizeof(*string_values));
+            if (next_values == NULL) {
+                free(decoded_value);
+                goto fail;
+            }
+            string_values = next_values;
+            value_capacity = next_capacity;
+        }
+        string_values[value_count++] = decoded_value;
+
+        mp_cache_http_skip_json_whitespace(&cursor);
+        if (*cursor == ',') {
+            cursor++;
+            mp_cache_http_skip_json_whitespace(&cursor);
+            continue;
+        }
+        if (*cursor == ']') {
+            *out_string_values = string_values;
+            *out_value_count = value_count;
+            return 0;
+        }
+
+        errno = EINVAL;
+        goto fail;
+    }
+
+    errno = EINVAL;
+
+fail:
+    mp_cache_http_free_json_string_array(string_values, value_count);
+    return -1;
 }
 
 /* Extract one unsigned 32-bit JSON numeric field from a compact request body. */
@@ -801,7 +984,7 @@ static char *mp_cache_http_build_stats_body(mp_cache_http_server_t *server, int6
         "\"total_requests\":%llu,\"unauthorized_requests\":%llu,\"forbidden_requests\":%llu,"
         "\"rate_limited_requests\":%llu,\"cache_hits\":%llu,\"cache_misses\":%llu,"
         "\"cache_sets\":%llu,\"cache_deletes\":%llu,\"client_registrations\":%llu,"
-        "\"token_rotations\":%llu,\"exports\":%llu,\"imports\":%llu,\"log_reads\":%llu}",
+        "\"token_rotations\":%llu,\"token_invalidations\":%llu,\"exports\":%llu,\"imports\":%llu,\"log_reads\":%llu}",
         (long long)(now_utc_seconds - server->started_at_utc),
         stats.entry_count,
         stats.bytes_used,
@@ -816,6 +999,7 @@ static char *mp_cache_http_build_stats_body(mp_cache_http_server_t *server, int6
         (unsigned long long)server->metrics.cache_deletes,
         (unsigned long long)server->metrics.client_registrations,
         (unsigned long long)server->metrics.token_rotations,
+        (unsigned long long)server->metrics.token_invalidations,
         (unsigned long long)server->metrics.exports,
         (unsigned long long)server->metrics.imports,
         (unsigned long long)server->metrics.log_reads);
@@ -1175,6 +1359,48 @@ static int mp_cache_http_handle_rotate_client(
     return 0;
 }
 
+/* Invalidate the bearer token for an existing client principal without rotating it. */
+static int mp_cache_http_handle_invalidate_client(
+    mp_cache_http_server_t *server,
+    const char *client_id,
+    int64_t now_utc_seconds,
+    mp_cache_http_response_t *response) {
+    const mp_cache_client_record_t *record = NULL;
+    mp_cache_security_status_t status;
+
+    status = mp_cache_security_invalidate_client_token(server->security, client_id);
+    if (status == MP_CACHE_SECURITY_STATUS_NOT_FOUND) {
+        mp_cache_http_make_error(response, 404, "Not Found", "not_found", "client_id not found", NULL, NULL);
+        return 0;
+    }
+    if (status != MP_CACHE_SECURITY_STATUS_OK) {
+        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "failed to invalidate token", NULL, NULL);
+        return 0;
+    }
+
+    record = mp_cache_security_find_client(server->security, client_id);
+    if (record == NULL ||
+        (mp_cache_storage_append_client(server->storage, record) != 0 && mp_cache_http_resilient_checkpoint(server, now_utc_seconds) != 0)) {
+        mp_cache_http_make_error(
+            response,
+            500,
+            "Internal Server Error",
+            "internal_error",
+            "token was invalidated but persistence failed",
+            NULL,
+            NULL);
+        return 0;
+    }
+
+    server->metrics.token_invalidations++;
+    response->status_code = 200;
+    response->status_text = "OK";
+    response->response_body = mp_cache_http_strdup_printf(
+        "{\"client_id\":\"%s\",\"token_active\":false}",
+        client_id);
+    return 0;
+}
+
 /* Export the current cache and client registry into an encrypted artifact. */
 static int mp_cache_http_handle_export(
     mp_cache_http_server_t *server,
@@ -1221,6 +1447,83 @@ static int mp_cache_http_handle_import(
     response->status_code = 200;
     response->status_text = "OK";
     response->response_body = mp_cache_http_strdup_printf("{\"path\":\"%s\",\"imported\":true}", import_path);
+    return 0;
+}
+
+/* Purge a caller-selected set of cache keys and persist every successful deletion. */
+static int mp_cache_http_handle_purge_selected(
+    mp_cache_http_server_t *server,
+    const mp_cache_http_request_t *request,
+    int64_t now_utc_seconds,
+    mp_cache_http_response_t *response) {
+    char **request_keys = NULL;
+    size_t request_key_count = 0u;
+    size_t request_key_index = 0u;
+    size_t purged_key_count = 0u;
+    size_t missing_key_count = 0u;
+    bool persistence_needs_checkpoint = false;
+
+    if (request->request_body == NULL || request->request_body_length == 0u ||
+        mp_cache_http_extract_json_string_array(request->request_body, "keys", &request_keys, &request_key_count) != 0 ||
+        request_key_count == 0u) {
+        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "keys must be a non-empty string array", NULL, NULL);
+        mp_cache_http_free_json_string_array(request_keys, request_key_count);
+        return 0;
+    }
+
+    for (request_key_index = 0u; request_key_index < request_key_count; request_key_index++) {
+        size_t key_length = strlen(request_keys[request_key_index]);
+
+        if (request_keys[request_key_index][0] == '\0' || key_length > server->config->max_key_bytes) {
+            mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "keys must contain only valid cache keys", NULL, NULL);
+            mp_cache_http_free_json_string_array(request_keys, request_key_count);
+            return 0;
+        }
+    }
+
+    for (request_key_index = 0u; request_key_index < request_key_count; request_key_index++) {
+        const char *request_key = request_keys[request_key_index];
+        size_t key_length = strlen(request_key);
+        mp_cache_store_status_t status = mp_cache_store_delete(server->store, request_key, key_length);
+
+        if (status == MP_CACHE_STORE_STATUS_NOT_FOUND) {
+            missing_key_count++;
+            continue;
+        }
+        if (status != MP_CACHE_STORE_STATUS_OK) {
+            mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "selected key purge failed", NULL, NULL);
+            mp_cache_http_free_json_string_array(request_keys, request_key_count);
+            return 0;
+        }
+
+        purged_key_count++;
+        if (!persistence_needs_checkpoint && mp_cache_storage_append_delete(server->storage, request_key, key_length) != 0) {
+            persistence_needs_checkpoint = true;
+        }
+    }
+
+    if (persistence_needs_checkpoint && mp_cache_http_resilient_checkpoint(server, now_utc_seconds) != 0) {
+        mp_cache_http_make_error(
+            response,
+            500,
+            "Internal Server Error",
+            "internal_error",
+            "selected keys were purged but persistence failed",
+            NULL,
+            NULL);
+        mp_cache_http_free_json_string_array(request_keys, request_key_count);
+        return 0;
+    }
+
+    server->metrics.cache_deletes += (uint64_t)purged_key_count;
+    response->status_code = 200;
+    response->status_text = "OK";
+    response->response_body = mp_cache_http_strdup_printf(
+        "{\"requested_keys\":%zu,\"purged_keys\":%zu,\"missing_keys\":%zu}",
+        request_key_count,
+        purged_key_count,
+        missing_key_count);
+    mp_cache_http_free_json_string_array(request_keys, request_key_count);
     return 0;
 }
 
@@ -1289,6 +1592,7 @@ static int mp_cache_http_route_request(
     char key[MP_CACHE_NAME_CAP * 4u];
     const char *cache_prefix = "/v1/cache/";
     const char *rotate_suffix = "/rotate-token";
+    const char *invalidate_suffix = "/invalidate-token";
 
     memset(&principal, 0, sizeof(principal));
     memset(response, 0, sizeof(*response));
@@ -1401,9 +1705,9 @@ static int mp_cache_http_route_request(
     }
 
     if (strncmp(request->request_path, "/v1/clients/", 12u) == 0 && strlen(request->request_path) > 12u) {
-        const char *suffix = strstr(request->request_path + 12u, rotate_suffix);
         size_t id_length = 0u;
         char client_id[MP_CACHE_CLIENT_ID_CAP];
+        const char *suffix = strstr(request->request_path + 12u, rotate_suffix);
 
         if (suffix != NULL && strcmp(suffix, rotate_suffix) == 0) {
             if (strcmp(request->method, "POST") != 0) {
@@ -1422,6 +1726,26 @@ static int mp_cache_http_route_request(
             memcpy(client_id, request->request_path + 12u, id_length);
             client_id[id_length] = '\0';
             return mp_cache_http_handle_rotate_client(server, client_id, now_utc_seconds, response);
+        }
+
+        suffix = strstr(request->request_path + 12u, invalidate_suffix);
+        if (suffix != NULL && strcmp(suffix, invalidate_suffix) == 0) {
+            if (strcmp(request->method, "POST") != 0) {
+                mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+                return 0;
+            }
+            if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
+                return 0;
+            }
+
+            id_length = (size_t)(suffix - (request->request_path + 12u));
+            if (id_length == 0u || id_length >= sizeof(client_id)) {
+                mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "client_id is invalid", NULL, NULL);
+                return 0;
+            }
+            memcpy(client_id, request->request_path + 12u, id_length);
+            client_id[id_length] = '\0';
+            return mp_cache_http_handle_invalidate_client(server, client_id, now_utc_seconds, response);
         }
     }
 
@@ -1456,6 +1780,17 @@ static int mp_cache_http_route_request(
             return 0;
         }
         return mp_cache_http_handle_purge_all(server, now_utc_seconds, response);
+    }
+
+    if (strcmp(request->request_path, "/v1/purge/keys") == 0) {
+        if (strcmp(request->method, "POST") != 0) {
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+            return 0;
+        }
+        if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
+            return 0;
+        }
+        return mp_cache_http_handle_purge_selected(server, request, now_utc_seconds, response);
     }
 
     mp_cache_http_make_error(response, 404, "Not Found", "not_found", "route not found", NULL, NULL);

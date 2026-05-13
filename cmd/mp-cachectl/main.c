@@ -7,6 +7,61 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Escape arbitrary CLI text for safe embedding inside a JSON string literal. */
+static char *mp_cachectl_escape_json(const char *json_text) {
+    size_t text_length = 0u;
+    size_t capacity = 0u;
+    char *escaped = NULL;
+    size_t input_index = 0u;
+    size_t output_index = 0u;
+
+    if (json_text == NULL) {
+        return NULL;
+    }
+
+    text_length = strlen(json_text);
+    capacity = text_length * 6u + 1u;
+    escaped = malloc(capacity);
+    if (escaped == NULL) {
+        return NULL;
+    }
+
+    for (input_index = 0u; input_index < text_length; input_index++) {
+        unsigned char character = (unsigned char)json_text[input_index];
+
+        switch (character) {
+            case '\\':
+            case '"':
+                escaped[output_index++] = '\\';
+                escaped[output_index++] = (char)character;
+                break;
+            case '\n':
+                escaped[output_index++] = '\\';
+                escaped[output_index++] = 'n';
+                break;
+            case '\r':
+                escaped[output_index++] = '\\';
+                escaped[output_index++] = 'r';
+                break;
+            case '\t':
+                escaped[output_index++] = '\\';
+                escaped[output_index++] = 't';
+                break;
+            default:
+                if (character < 0x20u) {
+                    (void)snprintf(escaped + output_index, capacity - output_index, "\\u%04x", character);
+                    output_index += 6u;
+                } else {
+                    escaped[output_index++] = (char)character;
+                }
+                break;
+        }
+    }
+
+    escaped[output_index] = '\0';
+    return escaped;
+}
+
 /* Print the supported control CLI flags and commands. */
 static void mp_cachectl_print_usage(FILE *usage_stream) {
     (void)fprintf(
@@ -23,8 +78,10 @@ static void mp_cachectl_print_usage(FILE *usage_stream) {
         "  logs [--tail <lines>]\n"
         "  register-client <client_id> <role>\n"
         "  rotate-client <client_id>\n"
+        "  invalidate-client <client_id>\n"
         "  export\n"
         "  import <path>\n"
+        "  purge-keys <key> [<key> ...]\n"
         "  purge-all\n");
 }
 
@@ -171,18 +228,39 @@ int main(int argc, char **argv) {
         return mp_cachectl_send_http_request(socket_path, "GET", request_path, auth_token, NULL) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "register-client") == 0) {
-        char request_body[512];
+        char *client_id_json = NULL;
+        char *role_json = NULL;
+        char *request_body = NULL;
+        int request_body_length = 0;
+        int request_status = 1;
         if (arg_index + 1 >= argc) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
-        (void)snprintf(
-            request_body,
-            sizeof(request_body),
-            "{\"client_id\":\"%s\",\"role\":\"%s\"}",
-            argv[arg_index],
-            argv[arg_index + 1]);
-        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/clients", auth_token, request_body) == 0 ? 0 : 1;
+        client_id_json = mp_cachectl_escape_json(argv[arg_index]);
+        role_json = mp_cachectl_escape_json(argv[arg_index + 1]);
+        if (client_id_json == NULL || role_json == NULL) {
+            free(client_id_json);
+            free(role_json);
+            (void)fprintf(stderr, "error: failed to build request body\n");
+            return 1;
+        }
+
+        request_body_length = snprintf(NULL, 0, "{\"client_id\":\"%s\",\"role\":\"%s\"}", client_id_json, role_json);
+        request_body = malloc((size_t)request_body_length + 1u);
+        if (request_body == NULL) {
+            free(client_id_json);
+            free(role_json);
+            (void)fprintf(stderr, "error: failed to build request body\n");
+            return 1;
+        }
+        (void)snprintf(request_body, (size_t)request_body_length + 1u, "{\"client_id\":\"%s\",\"role\":\"%s\"}", client_id_json, role_json);
+        free(client_id_json);
+        free(role_json);
+
+        request_status = mp_cachectl_send_http_request(socket_path, "POST", "/v1/clients", auth_token, request_body) == 0 ? 0 : 1;
+        free(request_body);
+        return request_status;
     }
     if (strcmp(cli_command, "rotate-client") == 0) {
         char request_path[512];
@@ -193,17 +271,108 @@ int main(int argc, char **argv) {
         (void)snprintf(request_path, sizeof(request_path), "/v1/clients/%s/rotate-token", argv[arg_index]);
         return mp_cachectl_send_http_request(socket_path, "POST", request_path, auth_token, "{}") == 0 ? 0 : 1;
     }
-    if (strcmp(cli_command, "export") == 0) {
-        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/export", auth_token, "{}") == 0 ? 0 : 1;
-    }
-    if (strcmp(cli_command, "import") == 0) {
-        char request_body[MP_CACHE_PATH_CAP + 32u];
+    if (strcmp(cli_command, "invalidate-client") == 0) {
+        char request_path[512];
         if (arg_index >= argc) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
-        (void)snprintf(request_body, sizeof(request_body), "{\"path\":\"%s\"}", argv[arg_index]);
-        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/import", auth_token, request_body) == 0 ? 0 : 1;
+        (void)snprintf(request_path, sizeof(request_path), "/v1/clients/%s/invalidate-token", argv[arg_index]);
+        return mp_cachectl_send_http_request(socket_path, "POST", request_path, auth_token, "{}") == 0 ? 0 : 1;
+    }
+    if (strcmp(cli_command, "export") == 0) {
+        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/export", auth_token, "{}") == 0 ? 0 : 1;
+    }
+    if (strcmp(cli_command, "import") == 0) {
+        char *import_path_json = NULL;
+        char *request_body = NULL;
+        int request_body_length = 0;
+        int request_status = 1;
+        if (arg_index >= argc) {
+            mp_cachectl_print_usage(stderr);
+            return 1;
+        }
+        import_path_json = mp_cachectl_escape_json(argv[arg_index]);
+        if (import_path_json == NULL) {
+            (void)fprintf(stderr, "error: failed to build request body\n");
+            return 1;
+        }
+
+        request_body_length = snprintf(NULL, 0, "{\"path\":\"%s\"}", import_path_json);
+        request_body = malloc((size_t)request_body_length + 1u);
+        if (request_body == NULL) {
+            free(import_path_json);
+            (void)fprintf(stderr, "error: failed to build request body\n");
+            return 1;
+        }
+        (void)snprintf(request_body, (size_t)request_body_length + 1u, "{\"path\":\"%s\"}", import_path_json);
+        free(import_path_json);
+
+        request_status = mp_cachectl_send_http_request(socket_path, "POST", "/v1/import", auth_token, request_body) == 0 ? 0 : 1;
+        free(request_body);
+        return request_status;
+    }
+    if (strcmp(cli_command, "purge-keys") == 0) {
+        char *request_body = NULL;
+        int first_key_arg_index = arg_index;
+        int request_status = 1;
+        size_t request_body_capacity = 16u;
+        size_t request_body_length = 0u;
+        bool is_first_key = true;
+
+        if (arg_index >= argc) {
+            mp_cachectl_print_usage(stderr);
+            return 1;
+        }
+        while (first_key_arg_index < argc) {
+            request_body_capacity += (strlen(argv[first_key_arg_index]) * 6u) + 4u;
+            first_key_arg_index++;
+        }
+
+        request_body = malloc(request_body_capacity);
+        if (request_body == NULL) {
+            (void)fprintf(stderr, "error: failed to build request body\n");
+            return 1;
+        }
+
+        request_body_length = (size_t)snprintf(request_body, request_body_capacity, "{\"keys\":[");
+        while (arg_index < argc) {
+            char *escaped_key = mp_cachectl_escape_json(argv[arg_index]);
+            int written = 0;
+
+            if (escaped_key == NULL) {
+                free(request_body);
+                (void)fprintf(stderr, "error: failed to build request body\n");
+                return 1;
+            }
+
+            written = snprintf(
+                request_body + request_body_length,
+                request_body_capacity - request_body_length,
+                "%s\"%s\"",
+                is_first_key ? "" : ",",
+                escaped_key);
+            free(escaped_key);
+            if (written < 0 || (size_t)written >= request_body_capacity - request_body_length) {
+                free(request_body);
+                (void)fprintf(stderr, "error: failed to build request body\n");
+                return 1;
+            }
+            request_body_length += (size_t)written;
+            is_first_key = false;
+            arg_index++;
+        }
+
+        if (snprintf(request_body + request_body_length, request_body_capacity - request_body_length, "]}") < 0 ||
+            request_body_length + 2u >= request_body_capacity) {
+            free(request_body);
+            (void)fprintf(stderr, "error: failed to build request body\n");
+            return 1;
+        }
+
+        request_status = mp_cachectl_send_http_request(socket_path, "POST", "/v1/purge/keys", auth_token, request_body) == 0 ? 0 : 1;
+        free(request_body);
+        return request_status;
     }
     if (strcmp(cli_command, "purge-all") == 0) {
         return mp_cachectl_send_http_request(socket_path, "POST", "/v1/purge/all", auth_token, "{}") == 0 ? 0 : 1;

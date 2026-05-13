@@ -55,6 +55,7 @@ static void test_journal_checkpoint_and_export_import_round_trip(void) {
     mp_cache_storage_t storage;
     mp_cache_export_result_t export_result;
     mp_cache_principal_t principal;
+    const mp_cache_client_record_t *restored_record = NULL;
     char client_token[MP_CACHE_TOKEN_TEXT_CAP];
     uint8_t *value = NULL;
     size_t value_length = 0u;
@@ -100,6 +101,10 @@ static void test_journal_checkpoint_and_export_import_round_trip(void) {
             client_token,
             sizeof(client_token)) == MP_CACHE_SECURITY_STATUS_OK);
     assert(mp_cache_storage_append_client(&storage, mp_cache_security_find_client(&security, "client-one")) == 0);
+    assert(
+        mp_cache_security_invalidate_client_token(&security, "client-one") ==
+        MP_CACHE_SECURITY_STATUS_OK);
+    assert(mp_cache_storage_append_client(&storage, mp_cache_security_find_client(&security, "client-one")) == 0);
 
     assert(mp_cache_storage_load_state(&storage, &restored_store, &restored_security, now_utc_seconds) == 0);
     assert(
@@ -115,7 +120,11 @@ static void test_journal_checkpoint_and_export_import_round_trip(void) {
     assert(memcmp(value, "bravo", 5u) == 0);
     free(value);
     assert(
-        mp_cache_security_authenticate(&restored_security, client_token, &principal) == MP_CACHE_SECURITY_STATUS_OK);
+        mp_cache_security_authenticate(&restored_security, client_token, &principal) ==
+        MP_CACHE_SECURITY_STATUS_UNAUTHORIZED);
+    restored_record = mp_cache_security_find_client(&restored_security, "client-one");
+    assert(restored_record != NULL);
+    assert(restored_record->token_active == false);
 
     assert(mp_cache_storage_export_state(&storage, &store, &security, now_utc_seconds, &export_result) == 0);
     mp_cache_store_clear(&restored_store);
@@ -140,7 +149,11 @@ static void test_journal_checkpoint_and_export_import_round_trip(void) {
     assert(memcmp(value, "bravo", 5u) == 0);
     free(value);
     assert(
-        mp_cache_security_authenticate(&restored_security, client_token, &principal) == MP_CACHE_SECURITY_STATUS_OK);
+        mp_cache_security_authenticate(&restored_security, client_token, &principal) ==
+        MP_CACHE_SECURITY_STATUS_UNAUTHORIZED);
+    restored_record = mp_cache_security_find_client(&restored_security, "client-one");
+    assert(restored_record != NULL);
+    assert(restored_record->token_active == false);
 
     {
         FILE *export_file = fopen(export_result.export_path, "r+b");

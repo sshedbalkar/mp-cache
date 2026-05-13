@@ -40,14 +40,13 @@ Tell me exact commands to run from a normal local shell, update the commands in 
 
 Check if Phase 2, 3, and 4 of the 'mp-cache/docs/architecture/mp-cache-architecture.md' are implemented or not. Make sure they are implemented, tested, verified, context is updated. Done.
 
-comments and durable rule.
-For the 'mp-cache' project, use this as a durable rule: "All public data structures, functions, classes, etc need to have proper comments (follow a commenting standard, declare the format in docs for later reuse). All non-trivial non-public functions, data structures, classes shuld also carry appropriate comments in the same format". Scan the whole project to check if the rule is met or not, if it's not then make sure you add comments to all applicable functions, data structures, classes, etc. Verify that this is done.
+For the 'mp-cache' project, use this as a durable rule: "All public data structures, functions, classes, etc need to have proper comments (follow a commenting standard, declare the format in docs for later reuse). All non-trivial non-public functions, data structures, classes shuld also carry appropriate comments in the same format". Scan the whole project to check if the rule is met or not, if it's not then make sure you add comments to all applicable functions, data structures, classes, etc. Verify that this is done. Done
 
 Naming and durable rule. Done
 
 The rule is to be followed by any change in 'mp-cache/internal/' as well. Update the rule set. And check all of the files in the 'internal/' directory and make sure the rule is followed. Update docs/context/tests/etc. Build, deploy, and validate that the cache server is properly working. Done
 
-Implement: selective key-purge API, explicit token invalidation beyond rotation.
+For 'mp-cache' project, implement: selective key-purge API, explicit token invalidation beyond rotation. Update docs, context, tests, validation etc. Make sure to build, deploy, test, and validate the result. Done
 
 Valgrind check - rule for any c based native development. Done
 

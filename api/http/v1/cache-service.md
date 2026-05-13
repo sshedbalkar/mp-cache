@@ -18,7 +18,7 @@ Roles:
 
 - `client`: cache read/write/delete
 - `operator`: all client APIs plus stats, memory, uptime, logs
-- `admin`: all operator APIs plus client registration, token rotation, export/import, purge-all
+- `admin`: all operator APIs plus client registration, token rotation, token invalidation, export/import, selective purge, purge-all
 
 Bootstrap admin access is sourced from `bootstrap_admin_token_secret_ref`.
 
@@ -37,8 +37,10 @@ Bootstrap admin access is sourced from `bootstrap_admin_token_secret_ref`.
 | `GET` | `/v1/logs?tail=<n>` | `operator` | Tail the latest log file up to configured bounds. |
 | `POST` | `/v1/clients` | `admin` | Register a persisted client and issue a token. |
 | `POST` | `/v1/clients/{id}/rotate-token` | `admin` | Rotate a persisted client token. |
+| `POST` | `/v1/clients/{id}/invalidate-token` | `admin` | Invalidate a persisted client token without deleting the client principal. |
 | `POST` | `/v1/export` | `admin` | Write an integrity-checked encrypted export file. |
 | `POST` | `/v1/import` | `admin` | Import one export file after integrity validation. |
+| `POST` | `/v1/purge/keys` | `admin` | Delete one selected set of cache keys and report purge counts. |
 | `POST` | `/v1/purge/all` | `admin` | Clear all cached entries. |
 
 ## Request Bodies
@@ -69,6 +71,14 @@ Bootstrap admin access is sourced from `bootstrap_admin_token_secret_ref`.
 }
 ```
 
+`POST /v1/purge/keys`
+
+```json
+{
+  "keys": ["alpha", "beta"]
+}
+```
+
 ## Representative Response Fields
 
 Cache fetch:
@@ -91,6 +101,7 @@ Stats:
 | `cache_hits` | integer | Successful cache reads. |
 | `cache_misses` | integer | `not_found` or expired reads. |
 | `rate_limited_requests` | integer | Authenticated requests rejected by the limiter. |
+| `token_invalidations` | integer | Successful admin token invalidation operations. |
 
 ## HTTP Status Codes
 
