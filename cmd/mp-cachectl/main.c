@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Print the supported control CLI flags and commands. */
 static void mp_cachectl_print_usage(FILE *usage_stream) {
     (void)fprintf(
         usage_stream,
@@ -27,6 +28,7 @@ static void mp_cachectl_print_usage(FILE *usage_stream) {
         "  purge-all\n");
 }
 
+/* Forward one CLI command as a local Unix-socket HTTP request and stream the response. */
 static int mp_cachectl_send_http_request(
     const char *socket_path,
     const char *method,
@@ -43,6 +45,7 @@ static int mp_cachectl_send_http_request(
         stdout);
 }
 
+/* Parse CLI flags, map the command to an HTTP request, and execute it locally. */
 int main(int argc, char **argv) {
     const char *socket_path = "/tmp/mp-cache/run/mp-cache.sock";
     const char *auth_token = getenv("MP_CACHE_TOKEN");

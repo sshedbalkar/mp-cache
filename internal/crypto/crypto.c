@@ -10,6 +10,7 @@
 
 #define MP_CACHE_SHA256_BLOCK_SIZE 64u
 
+/* Tracks the incremental SHA-256 compression state for one digest operation. */
 typedef struct {
     uint32_t state[8];
     uint64_t bit_count;
@@ -17,6 +18,7 @@ typedef struct {
     size_t block_length;
 } mp_cache_sha256_context_t;
 
+/* Fixed SHA-256 round constants from the algorithm specification. */
 static const uint32_t mp_cache_sha256_constants[64] = {
     0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu, 0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u,
     0xd807aa98u, 0x12835b01u, 0x243185beu, 0x550c7dc3u, 0x72be5d74u, 0x80deb1feu, 0x9bdc06a7u, 0xc19bf174u,
@@ -27,6 +29,7 @@ static const uint32_t mp_cache_sha256_constants[64] = {
     0x19a4c116u, 0x1e376c08u, 0x2748774cu, 0x34b0bcb5u, 0x391c0cb3u, 0x4ed8aa4au, 0x5b9cca4fu, 0x682e6ff3u,
     0x748f82eeu, 0x78a5636fu, 0x84c87814u, 0x8cc70208u, 0x90befffau, 0xa4506cebu, 0xbef9a3f7u, 0xc67178f2u};
 
+/* Rotate one 32-bit word right for the SHA-256 schedule and round functions. */
 static uint32_t mp_cache_rotate_right(uint32_t value, uint32_t count) {
     return (value >> count) | (value << (32u - count));
 }
@@ -47,6 +50,7 @@ static uint32_t mp_cache_sha256_small_sigma1(uint32_t value) {
     return mp_cache_rotate_right(value, 17u) ^ mp_cache_rotate_right(value, 19u) ^ (value >> 10u);
 }
 
+/* Compress one 64-byte message block into the running SHA-256 state. */
 static void mp_cache_sha256_transform(mp_cache_sha256_context_t *context, const uint8_t block[64]) {
     uint32_t schedule[64];
     uint32_t working[8];
@@ -88,6 +92,7 @@ static void mp_cache_sha256_transform(mp_cache_sha256_context_t *context, const 
     }
 }
 
+/* Seed the SHA-256 state words with the standard initial constants. */
 static void mp_cache_sha256_init(mp_cache_sha256_context_t *context) {
     memset(context, 0, sizeof(*context));
     context->state[0] = 0x6a09e667u;
@@ -100,6 +105,7 @@ static void mp_cache_sha256_init(mp_cache_sha256_context_t *context) {
     context->state[7] = 0x5be0cd19u;
 }
 
+/* Feed arbitrary-length input into the staged SHA-256 block buffer. */
 static void mp_cache_sha256_update(mp_cache_sha256_context_t *context, const uint8_t *data, size_t length) {
     size_t index = 0u;
 
@@ -125,6 +131,7 @@ static void mp_cache_sha256_update(mp_cache_sha256_context_t *context, const uin
     }
 }
 
+/* Finalize padding, append the bit length, and emit the digest bytes. */
 static void mp_cache_sha256_final(mp_cache_sha256_context_t *context, uint8_t out_digest[MP_CACHE_SHA256_SIZE]) {
     uint8_t length_block[8];
     size_t index = 0u;
@@ -260,6 +267,7 @@ int mp_cache_random_bytes(uint8_t *out_random_bytes, size_t byte_length) {
     return 0;
 }
 
+/* Convert one hexadecimal character into its 4-bit numeric value. */
 static int mp_cache_hex_nibble(char character) {
     if (character >= '0' && character <= '9') {
         return character - '0';
@@ -362,6 +370,7 @@ int mp_cache_base64_encode(
     return 0;
 }
 
+/* Convert one base64 character into its 6-bit numeric value. */
 static int mp_cache_base64_value(char character) {
     if (character >= 'A' && character <= 'Z') {
         return character - 'A';

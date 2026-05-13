@@ -11,18 +11,21 @@
 #include <signal.h>
 #include <time.h>
 
+/* Tracks one subject-specific rate-limit bucket across request windows. */
 typedef struct {
     char subject[MP_CACHE_CLIENT_ID_CAP];
     int64_t window_started_at;
     uint32_t request_count;
 } mp_cache_rate_limit_entry_t;
 
+/* Owns the expandable set of active rate-limit buckets. */
 typedef struct {
     mp_cache_rate_limit_entry_t *entries;
     size_t count;
     size_t capacity;
 } mp_cache_rate_limiter_t;
 
+/* Reports cumulative service-side HTTP counters since process start. */
 typedef struct {
     uint64_t total_requests;
     uint64_t unauthorized_requests;
@@ -39,6 +42,10 @@ typedef struct {
     uint64_t log_reads;
 } mp_cache_http_metrics_t;
 
+/*
+ * Aggregates the runtime dependencies and mutable request-serving state for the HTTP layer.
+ * The pointed-to config, log, store, security, and storage objects remain caller-owned.
+ */
 typedef struct {
     int server_fd;
     time_t started_at_utc;
@@ -52,6 +59,7 @@ typedef struct {
     mp_cache_http_metrics_t metrics;
 } mp_cache_http_server_t;
 
+/* Bind the Unix domain socket, initialize counters, and prepare server for serving. */
 int mp_cache_http_server_start(
     mp_cache_http_server_t *server,
     const mp_cache_config_t *config,
@@ -61,10 +69,16 @@ int mp_cache_http_server_start(
     mp_cache_storage_t *storage,
     time_t started_at_utc);
 
+/* Accept and process requests until stop_requested becomes non-zero or a fatal error occurs. */
 int mp_cache_http_server_serve(mp_cache_http_server_t *server, volatile sig_atomic_t *stop_requested);
+
+/* Close the listening socket and release transient server-side resources. */
 void mp_cache_http_server_stop(mp_cache_http_server_t *server);
 
+/* Send a GET /health request to socket_path and stream the raw response. */
 int mp_cache_http_client_health(const char *socket_path, FILE *stream);
+
+/* Send one raw HTTP request to the local socket and stream the raw response. */
 int mp_cache_http_client_request(
     const char *socket_path,
     const char *method,
@@ -73,6 +87,8 @@ int mp_cache_http_client_request(
     const char *content_type,
     const char *request_body,
     FILE *stream);
+
+/* Execute one in-process request against server for unit tests without opening a socket. */
 int mp_cache_http_server_test_request(
     mp_cache_http_server_t *server,
     const char *raw_request,

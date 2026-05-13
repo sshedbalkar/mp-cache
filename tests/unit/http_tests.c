@@ -17,6 +17,7 @@
 #include <string.h>
 #include <unistd.h>
 
+/* Owns the per-test server, cache, storage, security, and log fixture state. */
 typedef struct {
     mp_cache_config_t config;
     mp_cache_log_t log;
@@ -26,6 +27,7 @@ typedef struct {
     mp_cache_http_server_t server;
 } http_fixture_t;
 
+/* Format expected path and JSON snippets for the HTTP test fixture. */
 static void assert_format_text(char *destination, size_t destination_capacity, const char *format, ...) {
     va_list arguments;
     int written = 0;
@@ -42,6 +44,7 @@ static void assert_format_text(char *destination, size_t destination_capacity, c
     assert((size_t)written < destination_capacity);
 }
 
+/* Redirect runtime paths into per-test temporary files and directories. */
 static void configure_temp_paths(mp_cache_config_t *config, const char *suffix) {
     assert(config != NULL);
     assert_format_text(config->data_directory, sizeof(config->data_directory), ".tmp/http-test-%s-data", suffix);
@@ -51,6 +54,7 @@ static void configure_temp_paths(mp_cache_config_t *config, const char *suffix) 
     assert_format_text(config->log_directory, sizeof(config->log_directory), ".tmp/http-test-%s-logs", suffix);
 }
 
+/* Build and start an in-process HTTP fixture with isolated storage and logging paths. */
 static void fixture_init(http_fixture_t *fixture, const char *suffix, uint32_t rate_limit_requests) {
     assert(fixture != NULL);
     assert(setenv("MP_TEST_BOOTSTRAP_ADMIN_TOKEN", "bootstrap-admin-token", 1) == 0);
@@ -87,6 +91,7 @@ static void fixture_init(http_fixture_t *fixture, const char *suffix, uint32_t r
     fixture->server.last_sweep_at_utc = 1000;
 }
 
+/* Tear down the in-process HTTP fixture and remove its transient runtime state. */
 static void fixture_destroy(http_fixture_t *fixture) {
     if (fixture == NULL) {
         return;
@@ -100,6 +105,7 @@ static void fixture_destroy(http_fixture_t *fixture) {
     mp_cache_log_shutdown(&fixture->log, fixture->config.shutdown_timeout_millis);
 }
 
+/* Allocate one formatted request or assertion helper string on the heap. */
 static char *allocf(const char *format, ...) {
     va_list arguments;
     va_list copy;
@@ -119,6 +125,7 @@ static char *allocf(const char *format, ...) {
     return buffer;
 }
 
+/* Construct one raw HTTP/1.1 request string for the in-process server harness. */
 static char *make_request(const char *method, const char *path, const char *token, const char *body) {
     return allocf(
         "%s %s HTTP/1.1\r\n"
@@ -136,6 +143,7 @@ static char *make_request(const char *method, const char *path, const char *toke
         body == NULL ? "" : body);
 }
 
+/* Extract one JSON string field from a handler response body for assertions. */
 static void extract_json_string(const char *body, const char *field_name, char *out_text, size_t out_capacity) {
     char pattern[64];
     const char *start = NULL;
@@ -154,6 +162,7 @@ static void extract_json_string(const char *body, const char *field_name, char *
     out_text[length] = '\0';
 }
 
+/* Verify the main authenticated route set across the implemented feature phases. */
 static void test_http_routes_cover_phase_two_three_and_four(void) {
     http_fixture_t fixture;
     char suffix[32];
@@ -270,6 +279,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     fixture_destroy(&fixture);
 }
 
+/* Verify per-principal rate limiting rejects requests after the configured budget is exhausted. */
 static void test_rate_limiting_is_enforced(void) {
     http_fixture_t fixture;
     char suffix[32];
@@ -295,6 +305,7 @@ static void test_rate_limiting_is_enforced(void) {
     fixture_destroy(&fixture);
 }
 
+/* Run the HTTP unit-test group. */
 int main(void) {
     test_http_routes_cover_phase_two_three_and_four();
     test_rate_limiting_is_enforced();

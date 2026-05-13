@@ -15,6 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 
+/* Format expected strings for path and payload assertions inside the storage tests. */
 static void assert_format_text(char *destination, size_t destination_capacity, const char *format, ...) {
     va_list arguments;
     int written = 0;
@@ -31,6 +32,7 @@ static void assert_format_text(char *destination, size_t destination_capacity, c
     assert((size_t)written < destination_capacity);
 }
 
+/* Redirect storage paths into per-test temporary files and directories. */
 static void configure_temp_paths(mp_cache_config_t *config, const char *suffix) {
     assert(config != NULL);
     assert_format_text(config->data_directory, sizeof(config->data_directory), ".tmp/storage-test-%s-data", suffix);
@@ -40,6 +42,7 @@ static void configure_temp_paths(mp_cache_config_t *config, const char *suffix) 
     assert_format_text(config->log_directory, sizeof(config->log_directory), ".tmp/storage-test-%s-logs", suffix);
 }
 
+/* Verify checkpoint, journal, export, and import flows round-trip live state. */
 static void test_journal_checkpoint_and_export_import_round_trip(void) {
     mp_cache_config_t config;
     mp_cache_log_t log;
@@ -164,6 +167,7 @@ static void test_journal_checkpoint_and_export_import_round_trip(void) {
     mp_cache_log_shutdown(&log, config.shutdown_timeout_millis);
 }
 
+/* Verify export fails cleanly when the formatted artifact path would overflow buffers. */
 static void test_export_rejects_paths_that_do_not_fit(void) {
     mp_cache_config_t config;
     mp_cache_log_t log;
@@ -207,6 +211,7 @@ static void test_export_rejects_paths_that_do_not_fit(void) {
     mp_cache_store_destroy(&store);
 }
 
+/* Run the storage unit-test group. */
 int main(void) {
     test_journal_checkpoint_and_export_import_round_trip();
     test_export_rejects_paths_that_do_not_fit();

@@ -23,6 +23,7 @@
 #define MP_CACHE_HTTP_PATH_CAPACITY 512u
 #define MP_CACHE_HTTP_BODY_CAPACITY 32768u
 
+/* Carries one parsed HTTP request inside the in-process parser and test harness. */
 typedef struct {
     char method[16];
     char request_target[MP_CACHE_HTTP_PATH_CAPACITY];
@@ -34,6 +35,7 @@ typedef struct {
     size_t request_body_length;
 } mp_cache_http_request_t;
 
+/* Owns one synthesized HTTP response before it is serialized to the client socket. */
 typedef struct {
     int status_code;
     const char *status_text;
@@ -42,6 +44,7 @@ typedef struct {
     const char *extra_headers;
 } mp_cache_http_response_t;
 
+/* Retry short writes until the full response buffer is sent or a hard error occurs. */
 static int mp_cache_http_send_all(int fd, const char *buffer, size_t length) {
     size_t offset = 0u;
 
@@ -62,6 +65,7 @@ static int mp_cache_http_send_all(int fd, const char *buffer, size_t length) {
     return 0;
 }
 
+/* Serialize one JSON response with the common security and cache-control headers. */
 static int mp_cache_http_write_response(
     int client_fd,
     int status_code,
@@ -106,6 +110,7 @@ static int mp_cache_http_write_response(
     return 0;
 }
 
+/* Free any heap-owned response body and clear the response scratch struct. */
 static void mp_cache_http_response_destroy(mp_cache_http_response_t *response) {
     if (response == NULL) {
         return;
@@ -115,6 +120,7 @@ static void mp_cache_http_response_destroy(mp_cache_http_response_t *response) {
     memset(response, 0, sizeof(*response));
 }
 
+/* Format one heap-allocated string sized exactly for the rendered output. */
 static char *mp_cache_http_strdup_printf(const char *format, ...) {
     va_list arguments;
     va_list copy;
@@ -140,6 +146,7 @@ static char *mp_cache_http_strdup_printf(const char *format, ...) {
     return buffer;
 }
 
+/* Escape arbitrary text for safe embedding inside JSON string values. */
 static char *mp_cache_http_escape_json(const char *json_text, size_t text_length) {
     size_t capacity = text_length * 6u + 1u;
     char *escaped = NULL;
@@ -186,6 +193,7 @@ static char *mp_cache_http_escape_json(const char *json_text, size_t text_length
     return escaped;
 }
 
+/* Build a consistent JSON error payload and attach optional Allow or auth headers. */
 static void mp_cache_http_make_error(
     mp_cache_http_response_t *response,
     int status_code,
@@ -208,11 +216,13 @@ static void mp_cache_http_make_error(
         message == NULL ? "request failed" : message);
 }
 
+/* Recognize both supported health endpoint paths. */
 static bool mp_cache_http_path_is_health(const char *request_path) {
     return request_path != NULL &&
            (strcmp(request_path, "/health") == 0 || strcmp(request_path, "/v1/health") == 0);
 }
 
+/* Decode one hexadecimal digit used by percent-decoded request paths. */
 static int mp_cache_http_hex_value(char character) {
     if (character >= '0' && character <= '9') {
         return character - '0';
@@ -226,6 +236,7 @@ static int mp_cache_http_hex_value(char character) {
     return -1;
 }
 
+/* Decode a percent-encoded path or query component into a bounded output buffer. */
 static int mp_cache_http_percent_decode(const char *encoded, char *decoded, size_t decoded_capacity) {
     size_t in_index = 0u;
     size_t out_index = 0u;
@@ -267,6 +278,7 @@ static int mp_cache_http_percent_decode(const char *encoded, char *decoded, size
     return 0;
 }
 
+/* Find the first JSON field label match in the minimal request-body parser. */
 static char *mp_cache_http_find_json_field(const char *json_body, const char *field_name) {
     char pattern[128];
 
@@ -278,6 +290,7 @@ static char *mp_cache_http_find_json_field(const char *json_body, const char *fi
     return strstr((char *)json_body, pattern);
 }
 
+/* Extract one quoted JSON string field from a compact request body. */
 static int mp_cache_http_extract_json_string(
     const char *json_body,
     const char *field_name,
@@ -357,6 +370,7 @@ static int mp_cache_http_extract_json_string(
     return 0;
 }
 
+/* Extract one unsigned 32-bit JSON numeric field from a compact request body. */
 static int mp_cache_http_extract_json_u32(
     const char *json_body,
     const char *field_name,
@@ -407,6 +421,7 @@ static int mp_cache_http_extract_json_u32(
     return 0;
 }
 
+/* Separate request_target into request_path and query_string buffers. */
 static void mp_cache_http_split_target(
     const char *request_target,
     char *request_path,
@@ -430,6 +445,7 @@ static void mp_cache_http_split_target(
     (void)snprintf(query_string, query_string_capacity, "%s", separator + 1);
 }
 
+/* Extract one unsigned 32-bit query parameter from a URL query string. */
 static int mp_cache_http_extract_query_u32(const char *query_string, const char *field_name, uint32_t *out_value) {
     const char *position = query_string;
     size_t field_length = 0u;
@@ -461,6 +477,7 @@ static int mp_cache_http_extract_query_u32(const char *query_string, const char 
     return -1;
 }
 
+/* Parse the small supported header subset from the raw request head. */
 static int mp_cache_http_parse_headers(
     char *headers_text,
     mp_cache_http_request_t *request) {
@@ -489,6 +506,7 @@ static int mp_cache_http_parse_headers(
     return 0;
 }
 
+/* Parse one raw HTTP/1.1 request buffer into method, target, headers, and body pointers. */
 static int mp_cache_http_parse_request_buffer(char *buffer, size_t total_bytes, mp_cache_http_request_t *request) {
     char *header_end = NULL;
     size_t header_length = 0u;
@@ -530,6 +548,7 @@ static int mp_cache_http_parse_request_buffer(char *buffer, size_t total_bytes, 
     return 0;
 }
 
+/* Read, bound, and parse one complete client request from the Unix socket. */
 static int mp_cache_http_read_request(int client_fd, char *buffer, size_t buffer_capacity, mp_cache_http_request_t *request) {
     size_t total_bytes = 0u;
     char *header_end = NULL;
@@ -610,6 +629,7 @@ static int mp_cache_http_read_request(int client_fd, char *buffer, size_t buffer
     return mp_cache_http_parse_request_buffer(buffer, total_bytes, request);
 }
 
+/* Return the bearer token suffix for a valid Authorization header, or NULL otherwise. */
 static const char *mp_cache_http_extract_bearer_token(const char *authorization_header) {
     if (authorization_header == NULL) {
         return NULL;
@@ -620,6 +640,7 @@ static const char *mp_cache_http_extract_bearer_token(const char *authorization_
     return authorization_header + 7u;
 }
 
+/* Periodically purge expired cache entries according to the configured sweep interval. */
 static void mp_cache_http_maybe_sweep(mp_cache_http_server_t *server, int64_t now_utc_seconds) {
     if (server == NULL) {
         return;
@@ -631,6 +652,7 @@ static void mp_cache_http_maybe_sweep(mp_cache_http_server_t *server, int64_t no
     }
 }
 
+/* Enforce the per-subject sliding request budget tracked in server->rate_limiter. */
 static bool mp_cache_http_rate_limit_allow(
     mp_cache_http_server_t *server,
     const char *subject,
@@ -679,6 +701,7 @@ static bool mp_cache_http_rate_limit_allow(
     return true;
 }
 
+/* Authenticate and authorize one request, including rate limiting and auth error shaping. */
 static int mp_cache_http_authenticate(
     mp_cache_http_server_t *server,
     const mp_cache_http_request_t *request,
@@ -744,10 +767,12 @@ static int mp_cache_http_authenticate(
     return 0;
 }
 
+/* Return the current wall-clock time in UTC seconds for request handling. */
 static int64_t mp_cache_http_now(void) {
     return (int64_t)time(NULL);
 }
 
+/* Build the JSON body returned by the health endpoints. */
 static char *mp_cache_http_build_health_body(mp_cache_http_server_t *server, int64_t now_utc_seconds) {
     mp_cache_store_stats_t stats;
 
@@ -766,6 +791,7 @@ static char *mp_cache_http_build_health_body(mp_cache_http_server_t *server, int
         stats.bytes_used);
 }
 
+/* Build the cumulative stats JSON document served to operators and admins. */
 static char *mp_cache_http_build_stats_body(mp_cache_http_server_t *server, int64_t now_utc_seconds) {
     mp_cache_store_stats_t stats;
 
@@ -795,6 +821,7 @@ static char *mp_cache_http_build_stats_body(mp_cache_http_server_t *server, int6
         (unsigned long long)server->metrics.log_reads);
 }
 
+/* Build the current cache memory-usage JSON document. */
 static char *mp_cache_http_build_memory_body(mp_cache_http_server_t *server) {
     mp_cache_store_stats_t stats;
 
@@ -806,10 +833,12 @@ static char *mp_cache_http_build_memory_body(mp_cache_http_server_t *server) {
         (unsigned long long)stats.memory_limit_bytes);
 }
 
+/* Persist a checkpoint and collapse storage failures into one handler-friendly status code. */
 static int mp_cache_http_resilient_checkpoint(mp_cache_http_server_t *server, int64_t now_utc_seconds) {
     return mp_cache_storage_checkpoint(server->storage, server->store, server->security, now_utc_seconds);
 }
 
+/* Execute the authenticated cache-read endpoint. */
 static int mp_cache_http_handle_cache_get(
     mp_cache_http_server_t *server,
     const char *key,
@@ -866,6 +895,7 @@ static int mp_cache_http_handle_cache_get(
     return 0;
 }
 
+/* Execute the authenticated cache-write endpoint, including TTL validation and journaling. */
 static int mp_cache_http_handle_cache_put(
     mp_cache_http_server_t *server,
     const char *key,
@@ -942,6 +972,7 @@ static int mp_cache_http_handle_cache_put(
     return 0;
 }
 
+/* Execute the authenticated cache-delete endpoint. */
 static int mp_cache_http_handle_cache_delete(
     mp_cache_http_server_t *server,
     const char *key,
@@ -978,6 +1009,7 @@ static int mp_cache_http_handle_cache_delete(
     return 0;
 }
 
+/* Serve the newest log-file tail within the configured line limits. */
 static int mp_cache_http_handle_logs(
     mp_cache_http_server_t *server,
     const mp_cache_http_request_t *request,
@@ -1030,6 +1062,7 @@ static int mp_cache_http_handle_logs(
     return 0;
 }
 
+/* Register a new client principal and return its freshly minted bearer token. */
 static int mp_cache_http_handle_register_client(
     mp_cache_http_server_t *server,
     const mp_cache_http_request_t *request,
@@ -1094,6 +1127,7 @@ static int mp_cache_http_handle_register_client(
     return 0;
 }
 
+/* Rotate the bearer token for an existing client principal. */
 static int mp_cache_http_handle_rotate_client(
     mp_cache_http_server_t *server,
     const char *client_id,
@@ -1141,6 +1175,7 @@ static int mp_cache_http_handle_rotate_client(
     return 0;
 }
 
+/* Export the current cache and client registry into an encrypted artifact. */
 static int mp_cache_http_handle_export(
     mp_cache_http_server_t *server,
     int64_t now_utc_seconds,
@@ -1164,6 +1199,7 @@ static int mp_cache_http_handle_export(
     return 0;
 }
 
+/* Import an encrypted artifact and replace the current cache and client registry state. */
 static int mp_cache_http_handle_import(
     mp_cache_http_server_t *server,
     const mp_cache_http_request_t *request,
@@ -1188,6 +1224,7 @@ static int mp_cache_http_handle_import(
     return 0;
 }
 
+/* Clear all cache entries, persist the change, and keep client principals intact. */
 static int mp_cache_http_handle_purge_all(
     mp_cache_http_server_t *server,
     int64_t now_utc_seconds,
@@ -1212,6 +1249,7 @@ static int mp_cache_http_handle_purge_all(
     return 0;
 }
 
+/* Return the small root help document for accidental requests to "/". */
 static int mp_cache_http_handle_root(
     const mp_cache_http_request_t *request,
     mp_cache_http_response_t *response) {
@@ -1227,6 +1265,7 @@ static int mp_cache_http_handle_root(
     return 0;
 }
 
+/* Return the process uptime snapshot derived from server->started_at_utc. */
 static int mp_cache_http_handle_uptime(
     mp_cache_http_server_t *server,
     int64_t now_utc_seconds,
@@ -1240,6 +1279,7 @@ static int mp_cache_http_handle_uptime(
     return 0;
 }
 
+/* Dispatch one parsed request through auth, method checks, and endpoint handlers. */
 static int mp_cache_http_route_request(
     mp_cache_http_server_t *server,
     const mp_cache_http_request_t *request,
@@ -1422,6 +1462,7 @@ static int mp_cache_http_route_request(
     return 0;
 }
 
+/* Read, route, and respond to one accepted client connection. */
 static int mp_cache_http_handle_client(int client_fd, mp_cache_http_server_t *server) {
     char request_buffer[MP_CACHE_HTTP_REQUEST_CAPACITY];
     mp_cache_http_request_t request;

@@ -16,13 +16,16 @@
 #include <time.h>
 #include <unistd.h>
 
+/* Shared stop flag flipped by the process signal handlers. */
 static volatile sig_atomic_t mp_cache_stop_requested = 0;
 
+/* Convert SIGINT and SIGTERM into a cooperative server-stop request. */
 static void mp_cache_runtime_signal_handler(int signal_number) {
     (void)signal_number;
     mp_cache_stop_requested = 1;
 }
 
+/* Register the runtime signal handler for the supported shutdown signals. */
 static int mp_cache_runtime_register_signals(void) {
     if (signal(SIGINT, mp_cache_runtime_signal_handler) == SIG_ERR) {
         return -1;
@@ -33,6 +36,7 @@ static int mp_cache_runtime_register_signals(void) {
     return 0;
 }
 
+/* Compose config, logging, cache, security, storage, and HTTP serving into one process lifecycle. */
 int mp_cache_runtime_run(const char *config_path, int print_config_only) {
     mp_cache_config_t config;
     mp_cache_config_status_t config_status;

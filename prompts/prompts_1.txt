@@ -41,6 +41,7 @@ Tell me exact commands to run from a normal local shell, update the commands in 
 Check if Phase 2, 3, and 4 of the 'mp-cache/docs/architecture/mp-cache-architecture.md' are implemented or not. Make sure they are implemented, tested, verified, context is updated. Done.
 
 comments and durable rule.
+For the 'mp-cache' project, use this as a durable rule: "All public data structures, functions, classes, etc need to have proper comments (follow a commenting standard, declare the format in docs for later reuse). All non-trivial non-public functions, data structures, classes shuld also carry appropriate comments in the same format". Scan the whole project to check if the rule is met or not, if it's not then make sure you add comments to all applicable functions, data structures, classes, etc. Verify that this is done.
 
 Naming and durable rule. Done
 

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
+/* Verify the compiled defaults include the required TTL-related settings. */
 static void test_defaults_include_required_ttl(void) {
     mp_cache_config_t config;
 
@@ -19,6 +20,7 @@ static void test_defaults_include_required_ttl(void) {
     assert(strcmp(config.journal_path, ".tmp/data/state.journal") == 0);
 }
 
+/* Verify file-backed config parsing overrides the default TTL and related settings. */
 static void test_load_file_overrides_default_ttl(void) {
     char path[256];
     FILE *file = NULL;
@@ -75,6 +77,7 @@ static void test_load_file_overrides_default_ttl(void) {
     assert(unlink(path) == 0);
 }
 
+/* Verify generated config templates document the default TTL setting. */
 static void test_template_write_mentions_default_ttl(void) {
     char path[256];
     char contents[8192];
@@ -97,6 +100,7 @@ static void test_template_write_mentions_default_ttl(void) {
     assert(unlink(path) == 0);
 }
 
+/* Run the config unit-test group. */
 int main(void) {
     test_defaults_include_required_ttl();
     test_load_file_overrides_default_ttl();

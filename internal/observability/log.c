@@ -12,6 +12,7 @@
 #define MP_CACHE_LOG_CONTEXT_CAPACITY 512u
 #define MP_CACHE_LOG_TAIL_READ_CAPACITY (1024u * 1024u)
 
+/* Copy one optional text value into a bounded logger config or scratch buffer. */
 static void mp_cache_log_copy(char *destination, size_t destination_capacity, const char *source) {
     if (destination == NULL || destination_capacity == 0u) {
         return;
@@ -104,6 +105,7 @@ void mp_cache_log_writef(mp_cache_log_t *log, mp_log_level_t level, const char *
     (void)mp_logger_log(log->raw_logger, level, message_buffer, context_buffer);
 }
 
+/* Find the newest regular file in log_directory and return both name and full path. */
 static int mp_cache_log_find_latest_file(
     const char *log_directory,
     char *out_log_file_path,

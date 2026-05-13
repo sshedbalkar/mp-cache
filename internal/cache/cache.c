@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Stores one live cache record in the bucket-local linked list. */
 struct mp_cache_entry {
     struct mp_cache_entry *next;
     size_t key_length;
@@ -14,6 +15,7 @@ struct mp_cache_entry {
     uint8_t *value;
 };
 
+/* Hash arbitrary key bytes with FNV-1a for bucket selection. */
 static uint64_t mp_cache_hash_bytes(const uint8_t *bytes, size_t length) {
     uint64_t hash = 1469598103934665603ull;
     size_t index = 0u;
@@ -26,6 +28,7 @@ static uint64_t mp_cache_hash_bytes(const uint8_t *bytes, size_t length) {
     return hash;
 }
 
+/* Estimate the heap footprint charged to one entry in store->bytes_used. */
 static size_t mp_cache_entry_cost(const mp_cache_entry_t *entry) {
     if (entry == NULL) {
         return 0u;
@@ -33,11 +36,13 @@ static size_t mp_cache_entry_cost(const mp_cache_entry_t *entry) {
     return sizeof(*entry) + entry->key_length + 1u + entry->value_length;
 }
 
+/* Locate the owning slot pointer for key, whether or not the entry already exists. */
 static mp_cache_entry_t **mp_cache_find_slot(
     mp_cache_store_t *store,
     const void *key,
     size_t key_length);
 
+/* Insert or replace one entry after validating size and memory-accounting limits. */
 static mp_cache_store_status_t mp_cache_store_write_entry(
     mp_cache_store_t *store,
     const void *cache_key,
@@ -106,6 +111,7 @@ static mp_cache_store_status_t mp_cache_store_write_entry(
     return MP_CACHE_STORE_STATUS_OK;
 }
 
+/* Locate the bucket slot that currently holds key or would accept a new entry for it. */
 static mp_cache_entry_t **mp_cache_find_slot(
     mp_cache_store_t *store,
     const void *key,
@@ -128,6 +134,7 @@ static mp_cache_entry_t **mp_cache_find_slot(
     return slot;
 }
 
+/* Free the owned key, value, and node allocation for one entry. */
 static void mp_cache_free_entry(mp_cache_entry_t *entry) {
     if (entry == NULL) {
         return;

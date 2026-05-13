@@ -11,6 +11,7 @@
 #define MP_CACHE_BOOTSTRAP_ADMIN_ID "bootstrap-admin"
 #define MP_CACHE_MAX_CLIENTS 1024u
 
+/* Trim leading and trailing ASCII whitespace in place. */
 static char *mp_cache_trim(char *value) {
     char *end = NULL;
 
@@ -30,6 +31,7 @@ static char *mp_cache_trim(char *value) {
     return value;
 }
 
+/* Enforce the stable client-id character and length policy used across APIs and storage. */
 static bool mp_cache_client_id_is_valid(const char *client_id) {
     size_t index = 0u;
 
@@ -47,6 +49,7 @@ static bool mp_cache_client_id_is_valid(const char *client_id) {
     return true;
 }
 
+/* Find a mutable client record by ID and optionally report its array index. */
 static mp_cache_client_record_t *mp_cache_security_find_record(
     const mp_cache_security_t *security,
     const char *client_id,
@@ -69,6 +72,7 @@ static mp_cache_client_record_t *mp_cache_security_find_record(
     return NULL;
 }
 
+/* Grow the registered-client array up to the repository-wide hard cap. */
 static mp_cache_security_status_t mp_cache_security_ensure_capacity(mp_cache_security_t *security) {
     mp_cache_client_record_t *next_records = NULL;
     size_t next_capacity = 0u;
@@ -98,10 +102,12 @@ static mp_cache_security_status_t mp_cache_security_ensure_capacity(mp_cache_sec
     return MP_CACHE_SECURITY_STATUS_OK;
 }
 
+/* Hash a bearer token into the fixed-width comparison form stored by the module. */
 static void mp_cache_hash_token(const char *auth_token, uint8_t out_hash[MP_CACHE_TOKEN_HASH_SIZE]) {
     mp_cache_sha256((const uint8_t *)auth_token, auth_token == NULL ? 0u : strlen(auth_token), out_hash);
 }
 
+/* Generate a fresh random client token and hex-encode it for API callers. */
 static mp_cache_security_status_t mp_cache_security_issue_token(char *out_client_token, size_t out_client_token_capacity) {
     uint8_t random_bytes[32];
 

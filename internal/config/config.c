@@ -13,6 +13,7 @@
 
 #define MP_CACHE_LINE_CAPACITY 2048u
 
+/* Copy source into destination with guaranteed NUL termination. */
 static void mp_cache_copy_string(char *destination, size_t destination_capacity, const char *source) {
     if (destination == NULL || destination_capacity == 0u) {
         return;
@@ -24,6 +25,7 @@ static void mp_cache_copy_string(char *destination, size_t destination_capacity,
     (void)snprintf(destination, destination_capacity, "%s", source);
 }
 
+/* Trim leading and trailing ASCII whitespace in place. */
 static char *mp_cache_trim(char *value) {
     char *end = NULL;
 
@@ -39,6 +41,7 @@ static char *mp_cache_trim(char *value) {
     return value;
 }
 
+/* Parse one base-10 unsigned 32-bit integer with trailing-space tolerance. */
 static bool mp_cache_parse_u32(const char *value, uint32_t *out_value) {
     char *end = NULL;
     unsigned long parsed = 0ul;
@@ -57,6 +60,7 @@ static bool mp_cache_parse_u32(const char *value, uint32_t *out_value) {
     return true;
 }
 
+/* Parse one base-10 unsigned 64-bit integer with trailing-space tolerance. */
 static bool mp_cache_parse_u64(const char *value, uint64_t *out_value) {
     char *end = NULL;
     unsigned long long parsed = 0ull;
@@ -75,6 +79,7 @@ static bool mp_cache_parse_u64(const char *value, uint64_t *out_value) {
     return true;
 }
 
+/* Apply one parsed section/key/value tuple to config and reject unknown keys. */
 static bool mp_cache_apply_value(
     mp_cache_config_t *config,
     const char *section,
@@ -196,6 +201,7 @@ static bool mp_cache_apply_value(
     return false;
 }
 
+/* Validate that all required config strings and numeric bounds are present and coherent. */
 static mp_cache_config_status_t mp_cache_validate(const mp_cache_config_t *config) {
     if (config->service_name[0] == '\0' ||
         config->environment_name[0] == '\0' ||

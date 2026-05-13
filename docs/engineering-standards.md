@@ -107,3 +107,8 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Long-lived architecture, API, security, deployment, and workflow rules must live in repository docs.
 - Update docs and context in the same change when durable facts change.
 - Keep `context/` thin and route-oriented; keep rule bodies in durable docs, not in context indexes.
+- Use a sentence-first documentation format for code comments.
+- Public C APIs, public structs, public enums, callback types, and macros with behavioral meaning must carry comments directly above the declaration that describe purpose and any non-obvious ownership, lifetime, bounds, units, or error semantics.
+- Non-trivial internal structs and file-local helpers must use the same format directly above the definition.
+- Prefer `/* ... */` block comments for C declarations and definitions, and `// Name ...` doc comments for exported Go identifiers.
+- Keep comments implementation-backed, concise, and synchronized with the current code path.

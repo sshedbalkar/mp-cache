@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+/* Create one directory component and tolerate already-existing directories. */
 static int mp_cache_fs_mkdir_single(const char *directory_path) {
     struct stat status;
 
@@ -32,6 +33,7 @@ static int mp_cache_fs_mkdir_single(const char *directory_path) {
     return -1;
 }
 
+/* Walk the path from left to right, creating each directory segment once. */
 int mp_cache_fs_ensure_directory(const char *filesystem_path) {
     char scratch[MP_CACHE_PATH_CAP];
     size_t index = 0u;
@@ -63,6 +65,7 @@ int mp_cache_fs_ensure_directory(const char *filesystem_path) {
     return mp_cache_fs_mkdir_single(scratch);
 }
 
+/* Create only the parent directory chain for a file-like path. */
 int mp_cache_fs_ensure_parent_directory(const char *filesystem_path) {
     char scratch[MP_CACHE_PATH_CAP];
     char *last_separator = NULL;
@@ -91,6 +94,7 @@ int mp_cache_fs_ensure_parent_directory(const char *filesystem_path) {
     return mp_cache_fs_ensure_directory(scratch);
 }
 
+/* Remove one filesystem path while treating absence as success. */
 int mp_cache_fs_remove_path_if_exists(const char *filesystem_path) {
     if (filesystem_path == NULL || *filesystem_path == '\0') {
         errno = EINVAL;
@@ -104,6 +108,7 @@ int mp_cache_fs_remove_path_if_exists(const char *filesystem_path) {
     return -1;
 }
 
+/* Write the current process ID to a plain-text pid file. */
 int mp_cache_fs_write_pid_file(const char *pid_file_path, pid_t pid) {
     FILE *file = NULL;
 

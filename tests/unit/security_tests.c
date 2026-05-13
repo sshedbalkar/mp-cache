@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Verify bootstrap-admin secret resolution and authentication. */
 static void test_bootstrap_admin_authentication(void) {
     mp_cache_config_t config;
     mp_cache_security_t security;
@@ -28,6 +29,7 @@ static void test_bootstrap_admin_authentication(void) {
     mp_cache_security_destroy(&security);
 }
 
+/* Verify client registration, token rotation, and authentication for stored principals. */
 static void test_client_registration_and_rotation(void) {
     mp_cache_config_t config;
     mp_cache_security_t security;
@@ -63,6 +65,7 @@ static void test_client_registration_and_rotation(void) {
     mp_cache_security_destroy(&security);
 }
 
+/* Run the security unit-test group. */
 int main(void) {
     test_bootstrap_admin_authentication();
     test_client_registration_and_rotation();

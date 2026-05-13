@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Verify the basic cache write, read, and delete flow. */
 static void test_set_get_delete_round_trip(void) {
     mp_cache_config_t config;
     mp_cache_store_t store;
@@ -27,6 +28,7 @@ static void test_set_get_delete_round_trip(void) {
     mp_cache_store_destroy(&store);
 }
 
+/* Verify expired entries are purged opportunistically on read. */
 static void test_expired_entry_is_removed_on_read(void) {
     mp_cache_config_t config;
     mp_cache_store_t store;
@@ -43,6 +45,7 @@ static void test_expired_entry_is_removed_on_read(void) {
     mp_cache_store_destroy(&store);
 }
 
+/* Verify the store rejects writes that would exceed the configured memory ceiling. */
 static void test_memory_limit_is_enforced(void) {
     mp_cache_config_t config;
     mp_cache_store_t store;
@@ -67,6 +70,7 @@ static void test_memory_limit_is_enforced(void) {
     mp_cache_store_destroy(&store);
 }
 
+/* Run the cache unit-test group. */
 int main(void) {
     test_set_get_delete_round_trip();
     test_expired_entry_is_removed_on_read();

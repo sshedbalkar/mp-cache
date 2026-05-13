@@ -21,6 +21,7 @@
 #define MP_CACHE_STATE_VERSION 1u
 #define MP_CACHE_JOURNAL_VERSION 1u
 
+/* Tags the operation type encoded inside one journal packet payload. */
 typedef enum {
     MP_CACHE_JOURNAL_OP_SET = 1,
     MP_CACHE_JOURNAL_OP_DELETE = 2,
@@ -28,28 +29,33 @@ typedef enum {
     MP_CACHE_JOURNAL_OP_PURGE_ALL = 4
 } mp_cache_journal_op_t;
 
+/* Owns a growable byte buffer used while serializing packets and state blobs. */
 typedef struct {
     uint8_t *bytes;
     size_t length;
     size_t capacity;
 } mp_cache_buffer_t;
 
+/* Carries counting context while scanning only currently active cache entries. */
 typedef struct {
     size_t count;
     int64_t now_utc_seconds;
 } mp_cache_active_count_t;
 
+/* Carries serialization context while emitting only currently active cache entries. */
 typedef struct {
     mp_cache_buffer_t *buffer;
     int64_t now_utc_seconds;
 } mp_cache_serialize_entries_t;
 
+/* Write one storage-scoped log line when observability is available. */
 static void mp_cache_storage_log(mp_cache_storage_t *storage, mp_log_level_t level, const char *message) {
     if (storage != NULL && storage->log != NULL) {
         mp_cache_log_writef(storage->log, level, "storage", "%s", message);
     }
 }
 
+/* Format one bounded filesystem path and fail closed when truncation would occur. */
 static int mp_cache_storage_format_path(char *out_path, size_t out_path_capacity, const char *format, ...) {
     va_list arguments;
     int written = 0;
@@ -72,6 +78,7 @@ static int mp_cache_storage_format_path(char *out_path, size_t out_path_capacity
     return 0;
 }
 
+/* Release one growable byte buffer and clear its bookkeeping. */
 static void mp_cache_buffer_destroy(mp_cache_buffer_t *buffer) {
     if (buffer == NULL) {
         return;
@@ -81,6 +88,7 @@ static void mp_cache_buffer_destroy(mp_cache_buffer_t *buffer) {
     memset(buffer, 0, sizeof(*buffer));
 }
 
+/* Grow buffer so an additional payload segment can be appended safely. */
 static int mp_cache_buffer_reserve(mp_cache_buffer_t *buffer, size_t additional_length) {
     uint8_t *next_bytes = NULL;
     size_t next_capacity = 0u;
@@ -116,6 +124,7 @@ static int mp_cache_buffer_reserve(mp_cache_buffer_t *buffer, size_t additional_
     return 0;
 }
 
+/* Append arbitrary bytes to the growable serialization buffer. */
 static int mp_cache_buffer_append(mp_cache_buffer_t *buffer, const void *bytes, size_t length) {
     if (buffer == NULL || (bytes == NULL && length > 0u)) {
         errno = EINVAL;
@@ -132,6 +141,7 @@ static int mp_cache_buffer_append(mp_cache_buffer_t *buffer, const void *bytes, 
     return 0;
 }
 
+/* Append one big-endian 32-bit integer to buffer. */
 static int mp_cache_buffer_append_u32(mp_cache_buffer_t *buffer, uint32_t value) {
     uint8_t bytes[4];
 
@@ -142,6 +152,7 @@ static int mp_cache_buffer_append_u32(mp_cache_buffer_t *buffer, uint32_t value)
     return mp_cache_buffer_append(buffer, bytes, sizeof(bytes));
 }
 
+/* Append one big-endian 64-bit integer to buffer. */
 static int mp_cache_buffer_append_u64(mp_cache_buffer_t *buffer, uint64_t value) {
     uint8_t bytes[8];
     size_t index = 0u;
@@ -152,6 +163,7 @@ static int mp_cache_buffer_append_u64(mp_cache_buffer_t *buffer, uint64_t value)
     return mp_cache_buffer_append(buffer, bytes, sizeof(bytes));
 }
 
+/* Consume one big-endian 32-bit integer from a bounded byte slice. */
 static int mp_cache_consume_u32(const uint8_t *bytes, size_t length, size_t *offset, uint32_t *out_value) {
     if (bytes == NULL || offset == NULL || out_value == NULL || *offset > length || length - *offset < 4u) {
         errno = EINVAL;
@@ -164,6 +176,7 @@ static int mp_cache_consume_u32(const uint8_t *bytes, size_t length, size_t *off
     return 0;
 }
 
+/* Consume one big-endian 64-bit integer from a bounded byte slice. */
 static int mp_cache_consume_u64(const uint8_t *bytes, size_t length, size_t *offset, uint64_t *out_value) {
     size_t index = 0u;
     uint64_t value = 0u;
@@ -181,6 +194,7 @@ static int mp_cache_consume_u64(const uint8_t *bytes, size_t length, size_t *off
     return 0;
 }
 
+/* Consume a borrowed byte span from a bounded packet payload. */
 static int mp_cache_consume_bytes(
     const uint8_t *bytes,
     size_t length,
@@ -197,6 +211,7 @@ static int mp_cache_consume_bytes(
     return 0;
 }
 
+/* Write the full buffer to file unless a hard I/O error interrupts progress. */
 static int mp_cache_storage_write_all(FILE *file, const void *buffer, size_t length) {
     size_t written = 0u;
 
@@ -211,6 +226,7 @@ static int mp_cache_storage_write_all(FILE *file, const void *buffer, size_t len
     return 0;
 }
 
+/* Read exactly length bytes from file or fail when EOF arrives too early. */
 static int mp_cache_storage_read_exact(FILE *file, void *buffer, size_t length) {
     size_t offset = 0u;
 
@@ -228,6 +244,7 @@ static int mp_cache_storage_read_exact(FILE *file, void *buffer, size_t length) 
     return 0;
 }
 
+/* Encrypt and MAC one payload into the shared on-disk packet envelope format. */
 static int mp_cache_storage_build_packet(
     mp_cache_storage_t *storage,
     const char *magic,
@@ -299,6 +316,7 @@ static int mp_cache_storage_build_packet(
     return 0;
 }
 
+/* Serialize one complete packet envelope to a standalone file path. */
 static int mp_cache_storage_write_packet_file(
     mp_cache_storage_t *storage,
     const char *file_path,
@@ -347,6 +365,7 @@ static int mp_cache_storage_write_packet_file(
     return result;
 }
 
+/* Append one packet envelope to the journal file without rewriting prior entries. */
 static int mp_cache_storage_append_packet(
     mp_cache_storage_t *storage,
     const char *file_path,
@@ -387,6 +406,7 @@ static int mp_cache_storage_append_packet(
     return result;
 }
 
+/* Read, authenticate, and decrypt one packet envelope from an open stream. */
 static int mp_cache_storage_read_packet_stream(
     mp_cache_storage_t *storage,
     FILE *file,
@@ -475,6 +495,7 @@ static int mp_cache_storage_read_packet_stream(
     return 0;
 }
 
+/* Read, authenticate, and decrypt one packet envelope from a standalone file. */
 static int mp_cache_storage_read_packet_file(
     mp_cache_storage_t *storage,
     const char *file_path,
@@ -503,6 +524,7 @@ static int mp_cache_storage_read_packet_file(
     return result;
 }
 
+/* Count only entries whose expiration still lies in the future. */
 static int mp_cache_count_active_entry(
     const char *key,
     size_t key_length,
@@ -522,6 +544,7 @@ static int mp_cache_count_active_entry(
     return 0;
 }
 
+/* Serialize one non-expired cache entry into the checkpoint or export payload. */
 static int mp_cache_serialize_active_entry(
     const char *key,
     size_t key_length,
@@ -550,6 +573,7 @@ static int mp_cache_serialize_active_entry(
     return 0;
 }
 
+/* Serialize one registered client record into the checkpoint or export payload. */
 static int mp_cache_serialize_client_record(const mp_cache_client_record_t *record, void *context) {
     mp_cache_buffer_t *buffer = context;
     size_t id_length = 0u;
@@ -570,6 +594,7 @@ static int mp_cache_serialize_client_record(const mp_cache_client_record_t *reco
     return 0;
 }
 
+/* Serialize the live store and client registry into the portable state payload. */
 static int mp_cache_storage_serialize_state(
     const mp_cache_store_t *store,
     const mp_cache_security_t *security,
@@ -607,6 +632,7 @@ static int mp_cache_storage_serialize_state(
     return 0;
 }
 
+/* Replace store and security contents from one validated state payload. */
 static int mp_cache_storage_deserialize_state(
     const uint8_t *payload,
     size_t payload_length,
@@ -692,6 +718,7 @@ static int mp_cache_storage_deserialize_state(
     return offset == payload_length ? 0 : -1;
 }
 
+/* Build the payload for one journal operation before envelope encryption and MAC. */
 static int mp_cache_storage_build_journal_payload(
     mp_cache_journal_op_t operation,
     int64_t now_utc_seconds,
@@ -744,6 +771,7 @@ static int mp_cache_storage_build_journal_payload(
     }
 }
 
+/* Replay one decrypted journal payload against the live store and security state. */
 static int mp_cache_storage_apply_journal_payload(
     const uint8_t *payload,
     size_t payload_length,
@@ -836,6 +864,7 @@ static int mp_cache_storage_apply_journal_payload(
     }
 }
 
+/* Count existing export artifacts so retention can be enforced before writing a new one. */
 static int mp_cache_storage_export_count(mp_cache_storage_t *storage, size_t *out_count) {
     DIR *directory = NULL;
     struct dirent *entry = NULL;
@@ -862,6 +891,7 @@ static int mp_cache_storage_export_count(mp_cache_storage_t *storage, size_t *ou
     return 0;
 }
 
+/* Resolve an import path relative to export_directory when the caller passes a bare file name. */
 static int mp_cache_storage_resolve_import_path(
     mp_cache_storage_t *storage,
     const char *requested_import_path,

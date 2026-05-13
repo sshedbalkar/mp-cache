@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Print the supported server CLI flags and their defaults. */
 static void mp_cache_server_print_usage(FILE *usage_stream) {
     (void)fprintf(
         usage_stream,
@@ -10,6 +11,7 @@ static void mp_cache_server_print_usage(FILE *usage_stream) {
         "default config path: configs/bootstrap.ini\n");
 }
 
+/* Parse the small server CLI surface and hand execution to the runtime module. */
 int main(int argc, char **argv) {
     const char *config_path = "configs/bootstrap.ini";
     int print_config_only = 0;

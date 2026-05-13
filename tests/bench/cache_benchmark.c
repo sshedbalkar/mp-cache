@@ -9,10 +9,12 @@
 #include <string.h>
 #include <time.h>
 
+/* Convert two monotonic timestamps into fractional elapsed seconds. */
 static double seconds_since(const struct timespec *start, const struct timespec *end) {
     return (double)(end->tv_sec - start->tv_sec) + ((double)(end->tv_nsec - start->tv_nsec) / 1000000000.0);
 }
 
+/* Measure steady-state cache set/get throughput under the local benchmark fixture. */
 int main(void) {
     mp_cache_config_t config;
     mp_cache_store_t store;
