@@ -253,8 +253,8 @@ void mp_cache_config_init_defaults(mp_cache_config_t *config) {
     memset(config, 0, sizeof(*config));
     mp_cache_copy_string(config->service_name, sizeof(config->service_name), "mp-cache");
     mp_cache_copy_string(config->environment_name, sizeof(config->environment_name), "local");
-    mp_cache_copy_string(config->socket_path, sizeof(config->socket_path), "/tmp/mp-cache/run/mp-cache.sock");
-    mp_cache_copy_string(config->pid_file_path, sizeof(config->pid_file_path), "/tmp/mp-cache/run/mp-cache.pid");
+    mp_cache_copy_string(config->socket_path, sizeof(config->socket_path), ".tmp/run/mp-cache.sock");
+    mp_cache_copy_string(config->pid_file_path, sizeof(config->pid_file_path), ".tmp/run/mp-cache.pid");
     mp_cache_copy_string(config->data_directory, sizeof(config->data_directory), ".tmp/data");
     mp_cache_copy_string(config->export_directory, sizeof(config->export_directory), ".tmp/exports");
     mp_cache_copy_string(config->checkpoint_path, sizeof(config->checkpoint_path), ".tmp/data/state.checkpoint");

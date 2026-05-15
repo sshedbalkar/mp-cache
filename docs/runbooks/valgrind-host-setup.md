@@ -79,5 +79,6 @@ DEBUGINFOD_URLS="${DEBUGINFOD_URLS:-https://debuginfod.archlinux.org}" make test
 ## Notes
 
 - `scripts/test-valgrind.sh` is expected to report both host-level blocker variants directly.
+- `scripts/test-valgrind.sh` relocates any Valgrind-generated `vgcore.*` crash dumps into `.tmp/valgrind/cores/` so repository-root temp files do not accumulate.
 - A sandboxed or network-restricted environment may still report the loader-symbol failure even after the host itself is fixed.
 - If that happens, rerun `make test-valgrind` in a less-restricted host shell and treat the direct host rerun as the source of truth for closeout and report artifacts.

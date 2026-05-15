@@ -23,7 +23,7 @@ Local development, validation, and manual testing are blocked.
 
 1. Run `./scripts/doctor-local.sh`.
 2. Check `build/local-debug/mp-cache-server` exists.
-3. Check `/tmp/mp-cache/run/mp-cache.pid` and `/tmp/mp-cache/run/mp-cache.sock`.
+3. Check `.tmp/run/mp-cache.pid` and `.tmp/run/mp-cache.sock`.
 4. Inspect `logging/` and `.tmp/logs/console.log`.
 5. Run `./build/local-debug/mp-cachectl health`.
 6. Run `MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats`.
@@ -47,7 +47,7 @@ Stop the local server and revert to the last known-good artifact or config file.
 
 - `./build/local-debug/mp-cachectl health` returns `200`
 - `MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats` returns cache and request counters
-- `curl --unix-socket /tmp/mp-cache/run/mp-cache.sock http://localhost/health`
+- `curl --unix-socket .tmp/run/mp-cache.sock http://localhost/health`
 - for a faster script-driven local deploy before manual API checks, use `docs/runbooks/manual-api-testing-with-scripted-local-deploy.md`
 - for full host-side API coverage, use `docs/runbooks/manual-end-to-end-testing.md`
 

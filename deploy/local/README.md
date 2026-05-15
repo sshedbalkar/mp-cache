@@ -22,7 +22,7 @@ If the runtime blocks Unix-socket `bind(2)` or `connect(2)`, local smoke tests m
 
 Writable local paths:
 
-1. `/tmp/mp-cache/run/`
+1. `.tmp/run/`
 2. `.tmp/data/`
 3. `.tmp/exports/`
 4. `logging/`

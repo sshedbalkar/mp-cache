@@ -71,3 +71,5 @@ In 'mp-cache', just like the doc 'mp-cache/docs/runbooks/manual-end-to-end-testi
 When I go through 'mp-cache/docs/runbooks/manual-api-testing-with-scripted-local-deploy.md' and run the script block in section 6 in a normal bash sell, I get the error: "bash: status_str: unbound variable". Please fix it. Done
 
 Error codes for application errors.
+
+.tmp folder cleanup?

@@ -9,8 +9,8 @@ mp_detect_repo_root() {
 
 MP_REPO_ROOT="${MP_REPO_ROOT:-$(mp_detect_repo_root)}"
 MP_CONFIG_PATH="${MP_CONFIG_PATH:-$MP_REPO_ROOT/configs/bootstrap.ini}"
-MP_SOCKET_PATH="${MP_SOCKET_PATH:-/tmp/mp-cache/run/mp-cache.sock}"
-MP_PID_FILE="${MP_PID_FILE:-/tmp/mp-cache/run/mp-cache.pid}"
+MP_SOCKET_PATH="${MP_SOCKET_PATH:-$MP_REPO_ROOT/.tmp/run/mp-cache.sock}"
+MP_PID_FILE="${MP_PID_FILE:-$MP_REPO_ROOT/.tmp/run/mp-cache.pid}"
 MP_CONSOLE_LOG="${MP_CONSOLE_LOG:-$MP_REPO_ROOT/.tmp/logs/console.log}"
 MP_LOCAL_SECRET_ENV_FILE="${MP_LOCAL_SECRET_ENV_FILE:-$MP_REPO_ROOT/.tmp/secrets/local.env}"
 
@@ -60,7 +60,7 @@ mp_load_local_secrets() {
 }
 
 mp_prepare_runtime_paths() {
-  mkdir -p /tmp/mp-cache/run "$MP_REPO_ROOT/.tmp/logs" "$MP_REPO_ROOT/.tmp/data" "$MP_REPO_ROOT/.tmp/exports" "$MP_REPO_ROOT/.tmp/secrets" "$MP_REPO_ROOT/logging"
+  mkdir -p "$MP_REPO_ROOT/.tmp/run" "$MP_REPO_ROOT/.tmp/logs" "$MP_REPO_ROOT/.tmp/data" "$MP_REPO_ROOT/.tmp/exports" "$MP_REPO_ROOT/.tmp/secrets" "$MP_REPO_ROOT/.tmp/valgrind/cores" "$MP_REPO_ROOT/logging"
 }
 
 mp_console_log_contains() {

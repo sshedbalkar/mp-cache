@@ -67,7 +67,7 @@ static void mp_cachectl_print_usage(FILE *usage_stream) {
     (void)fprintf(
         usage_stream,
         "usage: mp-cachectl [--socket <path>] [--token <token>] <command> [args]\n"
-        "default socket path: /tmp/mp-cache/run/mp-cache.sock\n"
+        "default socket path: $MP_SOCKET_PATH or .tmp/run/mp-cache.sock\n"
         "commands:\n"
         "  health\n"
         "  get <key>\n"
@@ -104,10 +104,14 @@ static int mp_cachectl_send_http_request(
 
 /* Parse CLI flags, map the command to an HTTP request, and execute it locally. */
 int main(int argc, char **argv) {
-    const char *socket_path = "/tmp/mp-cache/run/mp-cache.sock";
+    const char *socket_path = getenv("MP_SOCKET_PATH");
     const char *auth_token = getenv("MP_CACHE_TOKEN");
     const char *cli_command = NULL;
     int arg_index = 1;
+
+    if (socket_path == NULL || socket_path[0] == '\0') {
+        socket_path = ".tmp/run/mp-cache.sock";
+    }
 
     while (arg_index < argc) {
         if (strcmp(argv[arg_index], "--socket") == 0) {

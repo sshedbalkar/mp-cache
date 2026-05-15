@@ -136,9 +136,11 @@ If local startup fails because a previous `.tmp/data/state.checkpoint` or `.tmp/
 By default the server uses:
 
 - config path: `configs/bootstrap.ini`
-- socket path: `/tmp/mp-cache/run/mp-cache.sock`
-- pid file: `/tmp/mp-cache/run/mp-cache.pid`
+- socket path: `.tmp/run/mp-cache.sock`
+- pid file: `.tmp/run/mp-cache.pid`
 - log directory: `logging/`
+
+Repository-local temporary runtime artifacts live under `.tmp/` by default, including the local socket and pid files. `./scripts/test-valgrind.sh` also relocates any Valgrind-generated `vgcore.*` crash dumps into `.tmp/valgrind/cores/`.
 
 If `configs/bootstrap.ini` is missing at startup, the server uses compiled defaults, writes a commented bootstrap template to that path, and continues with those defaults.
 
@@ -162,9 +164,10 @@ Inside restricted sandboxes, Unix-socket `bind(2)` or client `connect(2)` may st
 The local scripts prepare these writable runtime paths:
 
 ```text
-/tmp/mp-cache/run/
+.tmp/run/
 .tmp/data/
 .tmp/exports/
+.tmp/valgrind/cores/
 logging/
 ```
 

@@ -4,13 +4,29 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"
+valgrind_core_dir=".tmp/valgrind/cores"
 mkdir -p "$report_dir"
+mkdir -p "$valgrind_core_dir"
 
 summary_report="$report_dir/valgrind-report.md"
 detail_report="$report_dir/valgrind.txt"
 valgrind_loader_binary="/lib64/ld-linux-x86-64.so.2"
 glibc_package_repository=""
 glibc_package_architecture=""
+
+relocate_valgrind_core_dumps() {
+  local core_dump_path=""
+
+  shopt -s nullglob
+  for core_dump_path in vgcore.*; do
+    if [ -f "$core_dump_path" ]; then
+      mv -f "$core_dump_path" "$valgrind_core_dir/"
+    fi
+  done
+  shopt -u nullglob
+}
+
+trap relocate_valgrind_core_dumps EXIT
 
 if [ ! -e "$valgrind_loader_binary" ]; then
   valgrind_loader_binary="$(realpath /usr/lib/ld-linux-x86-64.so.2 2>/dev/null || printf '/usr/lib/ld-linux-x86-64.so.2')"

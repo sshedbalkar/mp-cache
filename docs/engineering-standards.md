@@ -92,6 +92,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Keep durable docs in `docs/`.
 - Keep retrieval metadata in `context/`.
 - Keep automation in `scripts/`.
+- Keep repository-local temporary runtime, validation, and crash artifacts under `.tmp/` instead of the repository root.
 - Keep unit and integration tests under `tests/`.
 - Keep native or bundled third-party code under clearly bounded roots such as `native/`.
 

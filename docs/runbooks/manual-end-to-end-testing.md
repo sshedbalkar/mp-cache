@@ -30,7 +30,6 @@ If you want a faster path where local dependency install, secret creation, build
 - a CachyOS host shell
 - a local checkout of the `multi-player-app` repository
 - permission to write inside the repository's `.tmp/` directory
-- permission to write inside `/tmp/`
 - `bash`
 - `curl`
 - `jq`
@@ -147,7 +146,7 @@ cd "$MP_CACHE_REPO"
 mkdir -p .tmp/manual-e2e/payloads
 mkdir -p .tmp/manual-e2e/responses
 mkdir -p .tmp/manual-e2e/secrets
-mkdir -p /tmp/mp-cache/manual-e2e
+mkdir -p .tmp/manual-e2e/run
 
 export MP_LOCAL_SECRET_ENV_FILE="$MP_CACHE_REPO/.tmp/manual-e2e/secrets/local.env"
 MP_LOCAL_SECRET_ENV_FILE="$MP_LOCAL_SECRET_ENV_FILE" ./scripts/write-local-secret-env.sh --force
@@ -158,8 +157,8 @@ environment_name = local
 service_name = mp-cache
 
 [server]
-socket_path = /tmp/mp-cache/manual-e2e/mp-cache.sock
-pid_file_path = /tmp/mp-cache/manual-e2e/mp-cache.pid
+socket_path = .tmp/manual-e2e/run/mp-cache.sock
+pid_file_path = .tmp/manual-e2e/run/mp-cache.pid
 shutdown_timeout_millis = 5000
 
 [cache]
@@ -191,8 +190,8 @@ rate_limit_window_seconds = 60
 EOF
 
 export MP_CONFIG_PATH="$MP_CACHE_REPO/.tmp/manual-e2e/manual-e2e.ini"
-export MP_SOCKET_PATH=/tmp/mp-cache/manual-e2e/mp-cache.sock
-export MP_PID_FILE=/tmp/mp-cache/manual-e2e/mp-cache.pid
+export MP_SOCKET_PATH="$MP_CACHE_REPO/.tmp/manual-e2e/run/mp-cache.sock"
+export MP_PID_FILE="$MP_CACHE_REPO/.tmp/manual-e2e/run/mp-cache.pid"
 export MP_CONSOLE_LOG="$MP_CACHE_REPO/.tmp/manual-e2e/console.log"
 
 set -a
@@ -209,7 +208,7 @@ export ADMIN_AUTH_HEADER="Authorization: Bearer $MP_SECRET_LOCAL_BOOTSTRAP_ADMIN
 - created a brand-new test-only config file
 - created test-only secrets through `./scripts/write-local-secret-env.sh`
 - pointed the server at a test-only Unix socket
-- pointed persistence at `.tmp/manual-e2e/`
+- kept the manual test runtime files under `.tmp/manual-e2e/`
 - exported the bootstrap admin token for later API calls
 
 ### Quick sanity check
@@ -289,7 +288,7 @@ This confirms the server can read your custom config file.
 
 Look for these values in the output:
 
-- `/tmp/mp-cache/manual-e2e/mp-cache.sock`
+- `.tmp/manual-e2e/run/mp-cache.sock`
 - `.tmp/manual-e2e/data`
 - `.tmp/manual-e2e/exports`
 
@@ -397,7 +396,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 200
-jq -e '.status=="ok" and .socket_path=="/tmp/mp-cache/manual-e2e/mp-cache.sock"' .tmp/manual-e2e/responses/health-v1.json
+jq -e '.status=="ok" and .socket_path==".tmp/manual-e2e/run/mp-cache.sock"' .tmp/manual-e2e/responses/health-v1.json
 ```
 
 Expected HTTP code: `200`
@@ -1493,7 +1492,7 @@ If Valgrind fails before it starts the project tests, follow `docs/runbooks/valg
 ### 18.2 Remove the test-only artifacts
 
 ```sh
-rm -rf .tmp/manual-e2e /tmp/mp-cache/manual-e2e
+rm -rf .tmp/manual-e2e
 ```
 
 Only run that cleanup command if you are done inspecting the saved responses, exports, and logs.

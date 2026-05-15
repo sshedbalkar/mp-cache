@@ -18,7 +18,7 @@ Use **this** runbook when you want:
 
 - the default local config path
 - the default local socket path
-- the default local `.tmp/data` and `.tmp/exports` paths
+- the default local `.tmp/run`, `.tmp/data`, and `.tmp/exports` paths
 - a quick manual API pass after scripted setup
 
 Use `docs/runbooks/manual-end-to-end-testing.md` instead when you want:
@@ -53,7 +53,6 @@ If any of those scripts change in the future, this runbook should stay aligned a
 - a normal local Linux shell
 - a local checkout of `multi-player-app`
 - permission to write inside the repository
-- permission to write inside `/tmp/`
 
 This path is validated for Arch Linux / CachyOS style local development.
 
@@ -72,8 +71,8 @@ The scripted install step below also installs the required build tools.
 This fast path uses the default local deployment layout:
 
 - config path: `configs/bootstrap.ini`
-- socket path: `/tmp/mp-cache/run/mp-cache.sock`
-- pid file: `/tmp/mp-cache/run/mp-cache.pid`
+- socket path: `.tmp/run/mp-cache.sock`
+- pid file: `.tmp/run/mp-cache.pid`
 - data path: `.tmp/data/`
 - export path: `.tmp/exports/`
 
@@ -131,8 +130,8 @@ set -a
 . ./.tmp/secrets/local.env
 set +a
 
-export MP_SOCKET_PATH=/tmp/mp-cache/run/mp-cache.sock
-export MP_PID_FILE=/tmp/mp-cache/run/mp-cache.pid
+export MP_SOCKET_PATH="$MP_CACHE_REPO/.tmp/run/mp-cache.sock"
+export MP_PID_FILE="$MP_CACHE_REPO/.tmp/run/mp-cache.pid"
 export RESP_DIR="$MP_CACHE_REPO/.tmp/manual-api/responses"
 export RUN_TAG="rapid-$(date +%s)"
 export CLIENT_ID="${RUN_TAG}-client"
@@ -192,7 +191,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 200
-jq -e '.status=="ok" and .socket_path=="/tmp/mp-cache/run/mp-cache.sock"' "$RESP_DIR/health-v1.json"
+jq -e '.status=="ok" and .socket_path==".tmp/run/mp-cache.sock"' "$RESP_DIR/health-v1.json"
 ```
 
 Expected HTTP code: `200`
