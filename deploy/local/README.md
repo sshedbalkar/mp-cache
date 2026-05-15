@@ -4,12 +4,15 @@ Use local deployment for development only. After the required build tools are in
 
 Local commands:
 
-0. `mkdir -p .tmp/secrets`
-1. `cp configs/secrets/templates/local.env.template .tmp/secrets/local.env`
-2. `./scripts/build-local.sh`
-3. `./scripts/run-local-server.sh`
-4. `./scripts/test-local.sh`
-5. `./scripts/stop-local-server.sh`
+0. `./scripts/write-local-secret-env.sh`
+1. `./scripts/build-local.sh`
+2. `./scripts/run-local-server.sh`
+3. `./scripts/test-local.sh`
+4. `./scripts/stop-local-server.sh`
+
+If you need a fresh local secret file, use `./scripts/write-local-secret-env.sh --force`.
+
+If you want a faster scripted setup before manually calling the HTTP APIs yourself, use `docs/runbooks/manual-api-testing-with-scripted-local-deploy.md`.
 
 `./scripts/test-local.sh` now runs the full rootless validation suite, including sanitizers, and leaves `./scripts/test-valgrind.sh` as the only separate host-prepared memory check.
 

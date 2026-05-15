@@ -25,6 +25,7 @@ required_standard_paths=(
   docs/architecture/mp-cache-architecture.md
   api/http/v1/cache-service.md
   docs/runbooks/local-service-lifecycle.md
+  docs/runbooks/manual-api-testing-with-scripted-local-deploy.md
   scripts/benchmark-cache.sh
   scripts/build-local.sh
   scripts/check-logging.sh
@@ -34,6 +35,7 @@ required_standard_paths=(
   scripts/test-local.sh
   scripts/test-sanitizers.sh
   scripts/test-valgrind.sh
+  scripts/write-local-secret-env.sh
   tests/unit/config_tests.c
   tests/unit/cache_tests.c
   tests/unit/security_tests.c

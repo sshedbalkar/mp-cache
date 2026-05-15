@@ -59,3 +59,15 @@ Create a doc on the host setup, what was the issue with Valgrind,what was the ro
 -Wall, -Wextra, -Wpedantic fix. Done
 
 Trying to build, deploy, run, test, and validate the 'mp-cache' project and this is the final report: "Built and validated 'mp-cache'. Two environment-specific issues remain. First, the default local deploy path still fails if you reuse the repo’s current state.checkpoint with a different MP_SECRET_LOCAL_STORAGE_KEY; to fix that, either reuse the original storage key or clear state.checkpoint and state.journal before rerunning make deploy-local. Second, direct Unix-socket bind/connect is denied inside this Codex sandbox, so I had to validate the live smoke test outside the sandbox; on a normal local shell that restriction should not apply." How can this be fixed? Done
+
+In 'mp-cache' project, make sure the doc 'mp-cache/docs/runbooks/manual-end-to-end-testing.md' is up to date and update it as if it's for the audience of novice developers. It's not clear enough as it is. Handhold every step of the way. Done
+
+Rate limiting system.
+
+Self-written memory manager integration.
+
+In 'mp-cache', just like the doc 'mp-cache/docs/runbooks/manual-end-to-end-testing.md', create another doc where the setu and deployment is done through a script, but only the APIs are tested manually. The 'mp-cache/docs/runbooks/manual-end-to-end-testing.md' and the new doc can refer to each other at relevant places. The goal of the new doc is to rapidly test the APIs manually and take care of the pre-setup, setup, deployment, etc through script. Reuse existing scripts/docs as much as possible. If required, modularize the scripts so that they can be reused. Don't create copies of the same script or even sections of the same script. Update context, docs, tests, etc. Done
+
+When I go through 'mp-cache/docs/runbooks/manual-api-testing-with-scripted-local-deploy.md' and run the script block in section 6 in a normal bash sell, I get the error: "bash: status_str: unbound variable". Please fix it. Done
+
+Error codes for application errors.

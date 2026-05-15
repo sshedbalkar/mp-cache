@@ -17,6 +17,7 @@ required_context_paths=(
   docs/architecture/mp-cache-architecture.md
   api/http/v1/cache-service.md
   docs/runbooks/local-service-lifecycle.md
+  docs/runbooks/manual-api-testing-with-scripted-local-deploy.md
 )
 
 for required_path in "${required_context_paths[@]}"; do

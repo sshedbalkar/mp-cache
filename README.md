@@ -115,8 +115,7 @@ build/local-debug/
 Bootstrap and run:
 
 ```sh
-mkdir -p .tmp/secrets
-cp configs/secrets/templates/local.env.template .tmp/secrets/local.env
+./scripts/write-local-secret-env.sh
 ./scripts/build-local.sh
 ./scripts/run-local-server.sh
 ./scripts/test-local.sh
@@ -129,6 +128,8 @@ Local secrets are sourced from `.tmp/secrets/local.env`. The default bootstrap c
 
 - `MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN`
 - `MP_SECRET_LOCAL_STORAGE_KEY`
+
+Use `./scripts/write-local-secret-env.sh --force` when you want to rotate those local development secrets intentionally.
 
 If local startup fails because a previous `.tmp/data/state.checkpoint` or `.tmp/data/state.journal` was written with a different `MP_SECRET_LOCAL_STORAGE_KEY`, the local helper scripts now rotate those files to timestamped `.bak` copies and retry once with a clean cache. Set `MP_AUTO_RESET_LOCAL_STATE_ON_LOAD_FAILURE=0` to keep the old strict-fail behavior.
 
@@ -183,6 +184,7 @@ Deployment docs:
 - naming strategy: `docs/naming-strategy.md`
 - commit messages: `docs/commit-messages.md`
 - manual end-to-end testing runbook for CachyOS: `docs/runbooks/manual-end-to-end-testing.md`
+- rapid manual API testing with scripted local deploy: `docs/runbooks/manual-api-testing-with-scripted-local-deploy.md`
 - Valgrind host setup runbook: `docs/runbooks/valgrind-host-setup.md`
 - API contract: `api/http/v1/cache-service.md`
 - runbooks: `docs/runbooks/`

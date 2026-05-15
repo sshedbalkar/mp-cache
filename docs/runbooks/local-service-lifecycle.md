@@ -15,7 +15,7 @@ Local development, validation, and manual testing are blocked.
 
 - local dependencies installed
 - normal non-root shell
-- `.tmp/secrets/local.env` created from `configs/secrets/templates/local.env.template`
+- `.tmp/secrets/local.env` created by `./scripts/write-local-secret-env.sh` or from `configs/secrets/templates/local.env.template`
 - build completed
 - writable `.tmp/` and `logging/` paths
 
@@ -48,6 +48,7 @@ Stop the local server and revert to the last known-good artifact or config file.
 - `./build/local-debug/mp-cachectl health` returns `200`
 - `MP_CACHE_TOKEN="$MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN" ./build/local-debug/mp-cachectl stats` returns cache and request counters
 - `curl --unix-socket /tmp/mp-cache/run/mp-cache.sock http://localhost/health`
+- for a faster script-driven local deploy before manual API checks, use `docs/runbooks/manual-api-testing-with-scripted-local-deploy.md`
 - for full host-side API coverage, use `docs/runbooks/manual-end-to-end-testing.md`
 
 ## Escalation

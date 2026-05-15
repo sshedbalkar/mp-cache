@@ -12,3 +12,7 @@
   - API surface, access model, and admin purge/token lifecycle routes
 - `docs/runbooks/local-service-lifecycle.md`
   - local lifecycle operations
+- `docs/runbooks/manual-api-testing-with-scripted-local-deploy.md`
+  - faster script-driven local deploy before manual API checks
+- `docs/runbooks/manual-end-to-end-testing.md`
+  - exhaustive isolated host-side manual validation

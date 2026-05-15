@@ -42,6 +42,10 @@
   - path: `docs/runbooks/manual-end-to-end-testing.md`
   - status: active
   - purpose: full CachyOS host-side build, secret setup, API verification, and persistence validation commands
+- `runbook.manual-api-testing-with-scripted-local-deploy`
+  - path: `docs/runbooks/manual-api-testing-with-scripted-local-deploy.md`
+  - status: active
+  - purpose: faster local script-driven setup and deploy before manual HTTP API verification
 - `runbook.valgrind-host-setup`
   - path: `docs/runbooks/valgrind-host-setup.md`
   - status: active
