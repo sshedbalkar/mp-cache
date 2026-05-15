@@ -30,7 +30,7 @@
 - `api.http.v1.cache-service`
   - path: `api/http/v1/cache-service.md`
   - status: active
-  - purpose: implemented HTTP contract, role permissions, and request body shapes
+  - purpose: implemented HTTP contract, coded error responses, role permissions, and request body shapes
 
 ## Runbooks
 

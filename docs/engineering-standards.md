@@ -42,6 +42,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Remote network exposure must stay outside the service process through controlled SSH tunnel and proxy infrastructure.
 - Handlers must follow this order: parse, validate, authenticate, authorize, apply limits, execute service logic, map response, emit logs and metrics.
 - Known path plus wrong method returns `405`; unknown path returns `404`.
+- Every application error response must carry a project-defined `error_code`. Human text belongs in `error_description` and must not be used by clients for branching or retry decisions.
 - Auth-sensitive responses default to `Cache-Control: no-store`.
 - Large exports and imports must stay bounded and integrity-checked.
 

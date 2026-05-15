@@ -414,7 +414,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 405
-jq -e '.error=="invalid_argument" and .message=="method not allowed"' .tmp/manual-e2e/responses/health-post.json
+jq -e '.error_code=="invalid_argument" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/health-post.json
 ```
 
 Expected HTTP code: `405`
@@ -431,7 +431,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 404
-jq -e '.error=="not_found" and .message=="route not found"' .tmp/manual-e2e/responses/not-found-route.json
+jq -e '.error_code=="not_found" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/not-found-route.json
 ```
 
 Expected HTTP code: `404`
@@ -534,7 +534,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 409
-jq -e '.error=="conflict" and .message=="client_id already exists"' .tmp/manual-e2e/responses/register-client-conflict.json
+jq -e '.error_code=="conflict" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/register-client-conflict.json
 ```
 
 Expected HTTP code: `409`
@@ -555,7 +555,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 400
-jq -e '.error=="invalid_argument" and (.message | contains("role must be client, operator, or admin"))' .tmp/manual-e2e/responses/register-invalid-role.json
+jq -e '.error_code=="invalid_argument" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/register-invalid-role.json
 ```
 
 Expected HTTP code: `400`
@@ -676,7 +676,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 404
-jq -e '.error=="not_found" and .message=="cache key not found"' .tmp/manual-e2e/responses/cache-get-alpha-missing.json
+jq -e '.error_code=="not_found" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/cache-get-alpha-missing.json
 ```
 
 Expected HTTP code: `404`
@@ -697,7 +697,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 400
-jq -e '.error=="invalid_argument" and .message=="value_base64 is invalid"' .tmp/manual-e2e/responses/cache-put-invalid-base64.json
+jq -e '.error_code=="invalid_argument" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/cache-put-invalid-base64.json
 ```
 
 Expected HTTP code: `400`
@@ -718,7 +718,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 400
-jq -e '.error=="invalid_argument" and (.message | contains("ttl_seconds is outside the configured bounds"))' .tmp/manual-e2e/responses/cache-put-invalid-ttl.json
+jq -e '.error_code=="invalid_argument" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/cache-put-invalid-ttl.json
 ```
 
 Expected HTTP code: `400`
@@ -754,7 +754,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 413
-jq -e '.error=="limit_exceeded" and .message=="cache size limit exceeded"' .tmp/manual-e2e/responses/cache-put-too-large.json
+jq -e '.error_code=="limit_exceeded" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/cache-put-too-large.json
 ```
 
 Expected HTTP code: `413`
@@ -775,7 +775,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 401
-jq -e '.error=="unauthorized" and .message=="missing bearer token"' .tmp/manual-e2e/responses/stats-missing-token.json
+jq -e '.error_code=="unauthorized" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/stats-missing-token.json
 ```
 
 Expected HTTP code: `401`
@@ -793,7 +793,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 401
-jq -e '.error=="unauthorized" and .message=="invalid bearer token"' .tmp/manual-e2e/responses/stats-invalid-token.json
+jq -e '.error_code=="unauthorized" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/stats-invalid-token.json
 ```
 
 Expected HTTP code: `401`
@@ -811,7 +811,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 403
-jq -e '.error=="forbidden" and .message=="insufficient role"' .tmp/manual-e2e/responses/stats-client-forbidden.json
+jq -e '.error_code=="forbidden" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/stats-client-forbidden.json
 ```
 
 Expected HTTP code: `403`
@@ -952,7 +952,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 404
-jq -e '.error=="not_found" and .message=="cache key not found"' .tmp/manual-e2e/responses/cache-get-gamma-after-purge.json
+jq -e '.error_code=="not_found" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/cache-get-gamma-after-purge.json
 ```
 
 Expected HTTP code: `404`
@@ -993,7 +993,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 405
-jq -e '.error=="invalid_argument" and .message=="method not allowed"' .tmp/manual-e2e/responses/export-get-method.json
+jq -e '.error_code=="invalid_argument" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/export-get-method.json
 ```
 
 Expected HTTP code: `405`
@@ -1037,7 +1037,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 401
-jq -e '.error=="unauthorized" and .message=="invalid bearer token"' .tmp/manual-e2e/responses/cache-get-beta-old-token.json
+jq -e '.error_code=="unauthorized" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/cache-get-beta-old-token.json
 ```
 
 Expected HTTP code: `401`
@@ -1096,7 +1096,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 401
-jq -e '.error=="unauthorized" and .message=="invalid bearer token"' .tmp/manual-e2e/responses/cache-get-beta-invalidated-token.json
+jq -e '.error_code=="unauthorized" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/cache-get-beta-invalidated-token.json
 ```
 
 Expected HTTP code: `401`
@@ -1207,7 +1207,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 400
-jq -e '.error=="invalid_argument" and (.message | contains("state import failed integrity or bounds checks"))' .tmp/manual-e2e/responses/import-tampered.json
+jq -e '.error_code=="invalid_argument" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/import-tampered.json
 ```
 
 Expected HTTP code: `400`
@@ -1228,7 +1228,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 400
-jq -e '.error=="invalid_argument" and (.message | contains("state import failed integrity or bounds checks"))' .tmp/manual-e2e/responses/import-invalid-path.json
+jq -e '.error_code=="invalid_argument" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/import-invalid-path.json
 ```
 
 Expected HTTP code: `400`
@@ -1267,7 +1267,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 404
-jq -e '.error=="not_found" and .message=="cache key not found"' .tmp/manual-e2e/responses/cache-get-beta-after-purge.json
+jq -e '.error_code=="not_found" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/cache-get-beta-after-purge.json
 ```
 
 Expected HTTP code: `404`
@@ -1379,7 +1379,7 @@ You should see:
 
 ```sh
 awk 'NR==240 { ok_240 = ($2 == "200") } NR==241 { ok_241 = ($2 == "429") } END { exit !(ok_240 && ok_241) }' .tmp/manual-e2e/responses/rate-limit-codes.txt
-jq -e '.error=="limit_exceeded" and .message=="rate limit exceeded"' .tmp/manual-e2e/responses/rate-limit-241.json
+jq -e '.error_code=="limit_exceeded" and (.error_description | type=="string" and length > 0)' .tmp/manual-e2e/responses/rate-limit-241.json
 ```
 
 If this block passes, the rate limiter behaved correctly.

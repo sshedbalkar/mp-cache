@@ -389,7 +389,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 401
-jq -e '.error=="unauthorized" and .message=="missing bearer token"' "$RESP_DIR/stats-missing-token.json"
+jq -e '.error_code=="unauthorized" and (.error_description | type=="string" and length > 0)' "$RESP_DIR/stats-missing-token.json"
 ```
 
 Expected HTTP code: `401`
@@ -407,7 +407,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 403
-jq -e '.error=="forbidden" and .message=="insufficient role"' "$RESP_DIR/stats-client-forbidden.json"
+jq -e '.error_code=="forbidden" and (.error_description | type=="string" and length > 0)' "$RESP_DIR/stats-client-forbidden.json"
 ```
 
 Expected HTTP code: `403`
@@ -598,7 +598,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 401
-jq -e '.error=="unauthorized" and .message=="invalid bearer token"' "$RESP_DIR/cache-get-beta-old-token.json"
+jq -e '.error_code=="unauthorized" and (.error_description | type=="string" and length > 0)' "$RESP_DIR/cache-get-beta-old-token.json"
 ```
 
 Expected HTTP code: `401`
@@ -639,7 +639,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 401
-jq -e '.error=="unauthorized" and .message=="invalid bearer token"' "$RESP_DIR/cache-get-beta-invalidated-token.json"
+jq -e '.error_code=="unauthorized" and (.error_description | type=="string" and length > 0)' "$RESP_DIR/cache-get-beta-invalidated-token.json"
 ```
 
 Expected HTTP code: `401`
@@ -720,7 +720,7 @@ http_code="$(
 )"
 printf '%s\n' "$http_code"
 expect_code "$http_code" 404
-jq -e '.error=="not_found" and .message=="cache key not found"' "$RESP_DIR/cache-get-beta-after-purge.json"
+jq -e '.error_code=="not_found" and (.error_description | type=="string" and length > 0)' "$RESP_DIR/cache-get-beta-after-purge.json"
 ```
 
 Expected HTTP code: `404`

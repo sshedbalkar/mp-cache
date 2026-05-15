@@ -116,6 +116,24 @@ Stats:
 - `429 Too Many Requests`
 - `500 Internal Server Error`
 
+## Error Response Body
+
+Every application error response is JSON and includes a project-defined machine code plus a human-oriented description:
+
+```json
+{
+  "error_code": "invalid_argument",
+  "error_description": "value_base64 is invalid"
+}
+```
+
+Clients must branch on `error_code`, not on `error_description`. Descriptions are for humans, diagnostics, and logs only and may be reworded without changing the API decision contract.
+
+For `v1` compatibility, error responses also include legacy aliases:
+
+- `error`: same value as `error_code`
+- `message`: same value as `error_description`
+
 ## Error Codes
 
 - `invalid_argument`

@@ -24,6 +24,15 @@
 #define MP_CACHE_HTTP_BODY_CAPACITY 32768u
 #define MP_CACHE_HTTP_JSON_ARRAY_LIMIT 256u
 
+/* Project-owned HTTP error codes used by clients for response handling. */
+#define MP_CACHE_HTTP_ERROR_CODE_CONFLICT "conflict"
+#define MP_CACHE_HTTP_ERROR_CODE_FORBIDDEN "forbidden"
+#define MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR "internal_error"
+#define MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT "invalid_argument"
+#define MP_CACHE_HTTP_ERROR_CODE_LIMIT_EXCEEDED "limit_exceeded"
+#define MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND "not_found"
+#define MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED "unauthorized"
+
 /* Carries one parsed HTTP request inside the in-process parser and test harness. */
 typedef struct {
     char method[16];
@@ -194,7 +203,19 @@ static char *mp_cache_http_escape_json(const char *json_text, size_t text_length
     return escaped;
 }
 
-/* Build a consistent JSON error payload and attach optional Allow or auth headers. */
+/* Return whether a response error code is part of the project-owned HTTP API vocabulary. */
+static bool mp_cache_http_error_code_is_defined(const char *error_code) {
+    return error_code != NULL &&
+           (strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_CONFLICT) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_FORBIDDEN) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_LIMIT_EXCEEDED) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED) == 0);
+}
+
+/* Build a consistent coded JSON error payload and attach optional Allow or auth headers. */
 static void mp_cache_http_make_error(
     mp_cache_http_response_t *response,
     int status_code,
@@ -212,8 +233,10 @@ static void mp_cache_http_make_error(
     response->allow_header_value = allow_header;
     response->extra_headers = extra_headers;
     response->response_body = mp_cache_http_strdup_printf(
-        "{\"error\":\"%s\",\"message\":\"%s\"}",
-        error_code == NULL ? "internal_error" : error_code,
+        "{\"error_code\":\"%s\",\"error_description\":\"%s\",\"error\":\"%s\",\"message\":\"%s\"}",
+        mp_cache_http_error_code_is_defined(error_code) ? error_code : MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
+        message == NULL ? "request failed" : message,
+        mp_cache_http_error_code_is_defined(error_code) ? error_code : MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
         message == NULL ? "request failed" : message);
 }
 
@@ -907,7 +930,7 @@ static int mp_cache_http_authenticate(
             out_response,
             401,
             "Unauthorized",
-            "unauthorized",
+            MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED,
             "missing bearer token",
             NULL,
             "WWW-Authenticate: Bearer realm=\"mp-cache\"\r\n");
@@ -921,7 +944,7 @@ static int mp_cache_http_authenticate(
             out_response,
             401,
             "Unauthorized",
-            "unauthorized",
+            MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED,
             "invalid bearer token",
             NULL,
             "WWW-Authenticate: Bearer realm=\"mp-cache\"\r\n");
@@ -930,7 +953,7 @@ static int mp_cache_http_authenticate(
 
     if (!mp_cache_role_allows(out_principal->role, required_role)) {
         server->metrics.forbidden_requests++;
-        mp_cache_http_make_error(out_response, 403, "Forbidden", "forbidden", "insufficient role", NULL, NULL);
+        mp_cache_http_make_error(out_response, 403, "Forbidden", MP_CACHE_HTTP_ERROR_CODE_FORBIDDEN, "insufficient role", NULL, NULL);
         return 1;
     }
 
@@ -940,7 +963,7 @@ static int mp_cache_http_authenticate(
             out_response,
             429,
             "Too Many Requests",
-            "limit_exceeded",
+            MP_CACHE_HTTP_ERROR_CODE_LIMIT_EXCEEDED,
             "rate limit exceeded",
             NULL,
             "Retry-After: 60\r\n");
@@ -1045,12 +1068,12 @@ static int mp_cache_http_handle_cache_get(
         &expires_at_utc_seconds);
     if (status == MP_CACHE_STORE_STATUS_NOT_FOUND || status == MP_CACHE_STORE_STATUS_EXPIRED) {
         server->metrics.cache_misses++;
-        mp_cache_http_make_error(response, 404, "Not Found", "not_found", "cache key not found", NULL, NULL);
+        mp_cache_http_make_error(response, 404, "Not Found", MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND, "cache key not found", NULL, NULL);
         free(value);
         return 0;
     }
     if (status != MP_CACHE_STORE_STATUS_OK) {
-        mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "cache read failed", NULL, NULL);
+        mp_cache_http_make_error(response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "cache read failed", NULL, NULL);
         free(value);
         return 0;
     }
@@ -1060,7 +1083,7 @@ static int mp_cache_http_handle_cache_get(
                                   0) {
         free(value);
         free(value_base64);
-        mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "value encoding failed", NULL, NULL);
+        mp_cache_http_make_error(response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "value encoding failed", NULL, NULL);
         return 0;
     }
 
@@ -1096,15 +1119,15 @@ static int mp_cache_http_handle_cache_put(
 
     if (request->request_body == NULL || request->request_body_length == 0u ||
         mp_cache_http_extract_json_string(request->request_body, "value_base64", value_base64, sizeof(value_base64)) != 0) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "value_base64 is required", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "value_base64 is required", NULL, NULL);
         return 0;
     }
     if (mp_cache_http_extract_json_u32(request->request_body, "ttl_seconds", &ttl_seconds, &ttl_found) != 0 && errno != ENOENT) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "ttl_seconds must be an integer", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "ttl_seconds must be an integer", NULL, NULL);
         return 0;
     }
     if (ttl_seconds < server->config->min_ttl_seconds || ttl_seconds > server->config->max_ttl_seconds) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "ttl_seconds is outside the configured bounds", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "ttl_seconds is outside the configured bounds", NULL, NULL);
         return 0;
     }
 
@@ -1113,19 +1136,19 @@ static int mp_cache_http_handle_cache_put(
     if (value_bytes == NULL ||
         mp_cache_base64_decode(value_base64, value_bytes, decoded_capacity, &value_length) != 0) {
         free(value_bytes);
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "value_base64 is invalid", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "value_base64 is invalid", NULL, NULL);
         return 0;
     }
 
     status = mp_cache_store_set(server->store, key, strlen(key), value_bytes, value_length, ttl_seconds, now_utc_seconds);
     if (status == MP_CACHE_STORE_STATUS_LIMIT_EXCEEDED) {
         free(value_bytes);
-        mp_cache_http_make_error(response, 413, "Payload Too Large", "limit_exceeded", "cache size limit exceeded", NULL, NULL);
+        mp_cache_http_make_error(response, 413, "Payload Too Large", MP_CACHE_HTTP_ERROR_CODE_LIMIT_EXCEEDED, "cache size limit exceeded", NULL, NULL);
         return 0;
     }
     if (status != MP_CACHE_STORE_STATUS_OK) {
         free(value_bytes);
-        mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "cache write failed", NULL, NULL);
+        mp_cache_http_make_error(response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "cache write failed", NULL, NULL);
         return 0;
     }
 
@@ -1136,7 +1159,7 @@ static int mp_cache_http_handle_cache_put(
             response,
             500,
             "Internal Server Error",
-            "internal_error",
+            MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
             "cache was updated but persistence failed",
             NULL,
             NULL);
@@ -1165,11 +1188,11 @@ static int mp_cache_http_handle_cache_delete(
     mp_cache_store_status_t status = mp_cache_store_delete(server->store, key, strlen(key));
 
     if (status == MP_CACHE_STORE_STATUS_NOT_FOUND) {
-        mp_cache_http_make_error(response, 404, "Not Found", "not_found", "cache key not found", NULL, NULL);
+        mp_cache_http_make_error(response, 404, "Not Found", MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND, "cache key not found", NULL, NULL);
         return 0;
     }
     if (status != MP_CACHE_STORE_STATUS_OK) {
-        mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "cache delete failed", NULL, NULL);
+        mp_cache_http_make_error(response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "cache delete failed", NULL, NULL);
         return 0;
     }
 
@@ -1179,7 +1202,7 @@ static int mp_cache_http_handle_cache_delete(
             response,
             500,
             "Internal Server Error",
-            "internal_error",
+            MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
             "cache was deleted but persistence failed",
             NULL,
             NULL);
@@ -1204,7 +1227,7 @@ static int mp_cache_http_handle_logs(
     char *escaped = NULL;
 
     if (mp_cache_http_extract_query_u32(request->query_string, "tail", &tail_lines) != 0 && errno != ENOENT) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "tail must be a positive integer", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "tail must be a positive integer", NULL, NULL);
         return 0;
     }
 
@@ -1221,14 +1244,14 @@ static int mp_cache_http_handle_logs(
             response->response_body = mp_cache_http_strdup_printf("{\"file\":null,\"tail_lines\":0,\"text\":\"\"}");
             return 0;
         }
-        mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "failed to read logs", NULL, NULL);
+        mp_cache_http_make_error(response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "failed to read logs", NULL, NULL);
         return 0;
     }
 
     escaped = mp_cache_http_escape_json(log_text, strlen(log_text));
     if (escaped == NULL) {
         free(log_text);
-        mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "failed to encode logs", NULL, NULL);
+        mp_cache_http_make_error(response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "failed to encode logs", NULL, NULL);
         return 0;
     }
 
@@ -1261,13 +1284,13 @@ static int mp_cache_http_handle_register_client(
 
     if (mp_cache_http_extract_json_string(request->request_body, "client_id", client_id, sizeof(client_id)) != 0 ||
         mp_cache_http_extract_json_string(request->request_body, "role", role_text, sizeof(role_text)) != 0) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "client_id and role are required", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "client_id and role are required", NULL, NULL);
         return 0;
     }
 
     role = mp_cache_role_from_string(role_text);
     if (role == MP_CACHE_ROLE_NONE) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "role must be client, operator, or admin", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "role must be client, operator, or admin", NULL, NULL);
         return 0;
     }
 
@@ -1278,11 +1301,11 @@ static int mp_cache_http_handle_register_client(
         issued_client_token,
         sizeof(issued_client_token));
     if (status == MP_CACHE_SECURITY_STATUS_CONFLICT) {
-        mp_cache_http_make_error(response, 409, "Conflict", "conflict", "client_id already exists", NULL, NULL);
+        mp_cache_http_make_error(response, 409, "Conflict", MP_CACHE_HTTP_ERROR_CODE_CONFLICT, "client_id already exists", NULL, NULL);
         return 0;
     }
     if (status != MP_CACHE_SECURITY_STATUS_OK) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "failed to register client", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "failed to register client", NULL, NULL);
         return 0;
     }
 
@@ -1293,7 +1316,7 @@ static int mp_cache_http_handle_register_client(
             response,
             500,
             "Internal Server Error",
-            "internal_error",
+            MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
             "client was created but persistence failed",
             NULL,
             NULL);
@@ -1327,11 +1350,11 @@ static int mp_cache_http_handle_rotate_client(
         rotated_client_token,
         sizeof(rotated_client_token));
     if (status == MP_CACHE_SECURITY_STATUS_NOT_FOUND) {
-        mp_cache_http_make_error(response, 404, "Not Found", "not_found", "client_id not found", NULL, NULL);
+        mp_cache_http_make_error(response, 404, "Not Found", MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND, "client_id not found", NULL, NULL);
         return 0;
     }
     if (status != MP_CACHE_SECURITY_STATUS_OK) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "failed to rotate token", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "failed to rotate token", NULL, NULL);
         return 0;
     }
 
@@ -1342,7 +1365,7 @@ static int mp_cache_http_handle_rotate_client(
             response,
             500,
             "Internal Server Error",
-            "internal_error",
+            MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
             "token was rotated but persistence failed",
             NULL,
             NULL);
@@ -1370,11 +1393,11 @@ static int mp_cache_http_handle_invalidate_client(
 
     status = mp_cache_security_invalidate_client_token(server->security, client_id);
     if (status == MP_CACHE_SECURITY_STATUS_NOT_FOUND) {
-        mp_cache_http_make_error(response, 404, "Not Found", "not_found", "client_id not found", NULL, NULL);
+        mp_cache_http_make_error(response, 404, "Not Found", MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND, "client_id not found", NULL, NULL);
         return 0;
     }
     if (status != MP_CACHE_SECURITY_STATUS_OK) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "failed to invalidate token", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "failed to invalidate token", NULL, NULL);
         return 0;
     }
 
@@ -1385,7 +1408,7 @@ static int mp_cache_http_handle_invalidate_client(
             response,
             500,
             "Internal Server Error",
-            "internal_error",
+            MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
             "token was invalidated but persistence failed",
             NULL,
             NULL);
@@ -1409,7 +1432,7 @@ static int mp_cache_http_handle_export(
     mp_cache_export_result_t export_result;
 
     if (mp_cache_storage_export_state(server->storage, server->store, server->security, now_utc_seconds, &export_result) != 0) {
-        mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "state export failed", NULL, NULL);
+        mp_cache_http_make_error(response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "state export failed", NULL, NULL);
         return 0;
     }
 
@@ -1434,12 +1457,12 @@ static int mp_cache_http_handle_import(
     char import_path[MP_CACHE_PATH_CAP];
 
     if (mp_cache_http_extract_json_string(request->request_body, "path", import_path, sizeof(import_path)) != 0) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "path is required", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "path is required", NULL, NULL);
         return 0;
     }
 
     if (mp_cache_storage_import_state(server->storage, import_path, server->store, server->security, now_utc_seconds) != 0) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "state import failed integrity or bounds checks", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "state import failed integrity or bounds checks", NULL, NULL);
         return 0;
     }
 
@@ -1466,7 +1489,7 @@ static int mp_cache_http_handle_purge_selected(
     if (request->request_body == NULL || request->request_body_length == 0u ||
         mp_cache_http_extract_json_string_array(request->request_body, "keys", &request_keys, &request_key_count) != 0 ||
         request_key_count == 0u) {
-        mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "keys must be a non-empty string array", NULL, NULL);
+        mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "keys must be a non-empty string array", NULL, NULL);
         mp_cache_http_free_json_string_array(request_keys, request_key_count);
         return 0;
     }
@@ -1475,7 +1498,7 @@ static int mp_cache_http_handle_purge_selected(
         size_t key_length = strlen(request_keys[request_key_index]);
 
         if (request_keys[request_key_index][0] == '\0' || key_length > server->config->max_key_bytes) {
-            mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "keys must contain only valid cache keys", NULL, NULL);
+            mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "keys must contain only valid cache keys", NULL, NULL);
             mp_cache_http_free_json_string_array(request_keys, request_key_count);
             return 0;
         }
@@ -1491,7 +1514,7 @@ static int mp_cache_http_handle_purge_selected(
             continue;
         }
         if (status != MP_CACHE_STORE_STATUS_OK) {
-            mp_cache_http_make_error(response, 500, "Internal Server Error", "internal_error", "selected key purge failed", NULL, NULL);
+            mp_cache_http_make_error(response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "selected key purge failed", NULL, NULL);
             mp_cache_http_free_json_string_array(request_keys, request_key_count);
             return 0;
         }
@@ -1507,7 +1530,7 @@ static int mp_cache_http_handle_purge_selected(
             response,
             500,
             "Internal Server Error",
-            "internal_error",
+            MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
             "selected keys were purged but persistence failed",
             NULL,
             NULL);
@@ -1539,7 +1562,7 @@ static int mp_cache_http_handle_purge_all(
             response,
             500,
             "Internal Server Error",
-            "internal_error",
+            MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR,
             "cache was purged but persistence failed",
             NULL,
             NULL);
@@ -1557,7 +1580,7 @@ static int mp_cache_http_handle_root(
     const mp_cache_http_request_t *request,
     mp_cache_http_response_t *response) {
     if (strcmp(request->method, "GET") != 0) {
-        mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
+        mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
         return 0;
     }
 
@@ -1601,7 +1624,7 @@ static int mp_cache_http_route_request(
 
     if (mp_cache_http_path_is_health(request->request_path)) {
         if (strcmp(request->method, "GET") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
         }
         response->status_code = 200;
@@ -1616,7 +1639,7 @@ static int mp_cache_http_route_request(
 
     if (strncmp(request->request_path, cache_prefix, strlen(cache_prefix)) == 0) {
         if (mp_cache_http_percent_decode(request->request_path + strlen(cache_prefix), key, sizeof(key)) != 0 || key[0] == '\0') {
-            mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "cache key is invalid", NULL, NULL);
+            mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "cache key is invalid", NULL, NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_CLIENT, now_utc_seconds, &principal, response) != 0) {
@@ -1636,7 +1659,7 @@ static int mp_cache_http_route_request(
             response,
             405,
             "Method Not Allowed",
-            "invalid_argument",
+            MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT,
             "method not allowed",
             "GET, PUT, DELETE",
             NULL);
@@ -1645,7 +1668,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/stats") == 0) {
         if (strcmp(request->method, "GET") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_OPERATOR, now_utc_seconds, &principal, response) != 0) {
@@ -1659,7 +1682,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/metrics/memory") == 0) {
         if (strcmp(request->method, "GET") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_OPERATOR, now_utc_seconds, &principal, response) != 0) {
@@ -1673,7 +1696,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/uptime") == 0) {
         if (strcmp(request->method, "GET") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_OPERATOR, now_utc_seconds, &principal, response) != 0) {
@@ -1684,7 +1707,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/logs") == 0) {
         if (strcmp(request->method, "GET") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "GET", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_OPERATOR, now_utc_seconds, &principal, response) != 0) {
@@ -1695,7 +1718,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/clients") == 0) {
         if (strcmp(request->method, "POST") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
@@ -1711,7 +1734,7 @@ static int mp_cache_http_route_request(
 
         if (suffix != NULL && strcmp(suffix, rotate_suffix) == 0) {
             if (strcmp(request->method, "POST") != 0) {
-                mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+                mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
                 return 0;
             }
             if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
@@ -1720,7 +1743,7 @@ static int mp_cache_http_route_request(
 
             id_length = (size_t)(suffix - (request->request_path + 12u));
             if (id_length == 0u || id_length >= sizeof(client_id)) {
-                mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "client_id is invalid", NULL, NULL);
+                mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "client_id is invalid", NULL, NULL);
                 return 0;
             }
             memcpy(client_id, request->request_path + 12u, id_length);
@@ -1731,7 +1754,7 @@ static int mp_cache_http_route_request(
         suffix = strstr(request->request_path + 12u, invalidate_suffix);
         if (suffix != NULL && strcmp(suffix, invalidate_suffix) == 0) {
             if (strcmp(request->method, "POST") != 0) {
-                mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+                mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
                 return 0;
             }
             if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
@@ -1740,7 +1763,7 @@ static int mp_cache_http_route_request(
 
             id_length = (size_t)(suffix - (request->request_path + 12u));
             if (id_length == 0u || id_length >= sizeof(client_id)) {
-                mp_cache_http_make_error(response, 400, "Bad Request", "invalid_argument", "client_id is invalid", NULL, NULL);
+                mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "client_id is invalid", NULL, NULL);
                 return 0;
             }
             memcpy(client_id, request->request_path + 12u, id_length);
@@ -1751,7 +1774,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/export") == 0) {
         if (strcmp(request->method, "POST") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
@@ -1762,7 +1785,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/import") == 0) {
         if (strcmp(request->method, "POST") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
@@ -1773,7 +1796,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/purge/all") == 0) {
         if (strcmp(request->method, "POST") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
@@ -1784,7 +1807,7 @@ static int mp_cache_http_route_request(
 
     if (strcmp(request->request_path, "/v1/purge/keys") == 0) {
         if (strcmp(request->method, "POST") != 0) {
-            mp_cache_http_make_error(response, 405, "Method Not Allowed", "invalid_argument", "method not allowed", "POST", NULL);
+            mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
         }
         if (mp_cache_http_authenticate(server, request, MP_CACHE_ROLE_ADMIN, now_utc_seconds, &principal, response) != 0) {
@@ -1793,7 +1816,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_purge_selected(server, request, now_utc_seconds, response);
     }
 
-    mp_cache_http_make_error(response, 404, "Not Found", "not_found", "route not found", NULL, NULL);
+    mp_cache_http_make_error(response, 404, "Not Found", MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND, "route not found", NULL, NULL);
     return 0;
 }
 
@@ -1804,7 +1827,7 @@ static int mp_cache_http_handle_client(int client_fd, mp_cache_http_server_t *se
     mp_cache_http_response_t response;
 
     if (mp_cache_http_read_request(client_fd, request_buffer, sizeof(request_buffer), &request) != 0) {
-        mp_cache_http_make_error(&response, 400, "Bad Request", "invalid_argument", "malformed request", NULL, NULL);
+        mp_cache_http_make_error(&response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "malformed request", NULL, NULL);
         (void)mp_cache_http_write_response(
             client_fd,
             response.status_code,
@@ -1817,7 +1840,7 @@ static int mp_cache_http_handle_client(int client_fd, mp_cache_http_server_t *se
     }
 
     if (mp_cache_http_route_request(server, &request, &response) != 0) {
-        mp_cache_http_make_error(&response, 500, "Internal Server Error", "internal_error", "request handling failed", NULL, NULL);
+        mp_cache_http_make_error(&response, 500, "Internal Server Error", MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR, "request handling failed", NULL, NULL);
     }
 
     (void)mp_cache_http_write_response(
