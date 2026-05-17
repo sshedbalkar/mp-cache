@@ -165,13 +165,13 @@ static void extract_json_string(const char *body, const char *field_name, char *
 /* Return whether an HTTP error code belongs to the project-owned API vocabulary. */
 static bool is_project_error_code(const char *error_code) {
     return error_code != NULL &&
-           (strcmp(error_code, "conflict") == 0 ||
-            strcmp(error_code, "forbidden") == 0 ||
-            strcmp(error_code, "internal_error") == 0 ||
-            strcmp(error_code, "invalid_argument") == 0 ||
-            strcmp(error_code, "limit_exceeded") == 0 ||
-            strcmp(error_code, "not_found") == 0 ||
-            strcmp(error_code, "unauthorized") == 0);
+           (strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_CONFLICT) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_FORBIDDEN) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_LIMIT_EXCEEDED) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND) == 0 ||
+            strcmp(error_code, MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED) == 0);
 }
 
 /* Verify error responses carry machine-stable codes and human-only descriptions. */
@@ -260,7 +260,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     request = make_request("GET", "/v1/stats", client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 403);
-    assert_error_response_code(body, "forbidden");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_FORBIDDEN);
     free(request);
     free(body);
 
@@ -304,7 +304,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     request = make_request("GET", "/v1/cache/alpha", client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 404);
-    assert_error_response_code(body, "not_found");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND);
     free(request);
     free(body);
 
@@ -325,7 +325,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     request = make_request("GET", "/v1/cache/beta", client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 401);
-    assert_error_response_code(body, "unauthorized");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED);
     free(request);
     free(body);
 
@@ -359,7 +359,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     request = make_request("GET", "/v1/cache/beta", rotated_client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 404);
-    assert_error_response_code(body, "not_found");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND);
     free(request);
     free(body);
 
@@ -406,21 +406,21 @@ static void test_error_responses_include_project_error_codes(void) {
     request = make_request("GET", "/v1/stats", NULL, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 401);
-    assert_error_response_code(body, "unauthorized");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED);
     free(request);
     free(body);
 
     request = make_request("POST", "/v1/health", NULL, "{}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 405);
-    assert_error_response_code(body, "invalid_argument");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT);
     free(request);
     free(body);
 
     request = make_request("GET", "/v1/missing", NULL, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 404);
-    assert_error_response_code(body, "not_found");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND);
     free(request);
     free(body);
 
@@ -442,14 +442,14 @@ static void test_error_responses_include_project_error_codes(void) {
         "{\"client_id\":\"client-errors\",\"role\":\"client\"}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 409);
-    assert_error_response_code(body, "conflict");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_CONFLICT);
     free(request);
     free(body);
 
     request = make_request("PUT", "/v1/cache/bad-value", client_token, "{\"value_base64\":\"not-base64\"}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 400);
-    assert_error_response_code(body, "invalid_argument");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT);
     free(request);
     free(body);
 
@@ -476,7 +476,7 @@ static void test_rate_limiting_is_enforced(void) {
     free(body);
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 429);
-    assert_error_response_code(body, "limit_exceeded");
+    assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_LIMIT_EXCEEDED);
     free(body);
     free(request);
 

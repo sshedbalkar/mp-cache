@@ -376,18 +376,18 @@ void mp_cache_store_get_stats(const mp_cache_store_t *store, mp_cache_store_stat
 const char *mp_cache_store_status_name(mp_cache_store_status_t status) {
     switch (status) {
         case MP_CACHE_STORE_STATUS_OK:
-            return "OK";
+            return MP_CACHE_STATUS_NAME_OK;
         case MP_CACHE_STORE_STATUS_NOT_FOUND:
-            return "NOT_FOUND";
+            return MP_CACHE_STATUS_NAME_NOT_FOUND;
         case MP_CACHE_STORE_STATUS_EXPIRED:
-            return "EXPIRED";
+            return MP_CACHE_STATUS_NAME_EXPIRED;
         case MP_CACHE_STORE_STATUS_INVALID_ARGUMENT:
-            return "INVALID_ARGUMENT";
+            return MP_CACHE_STATUS_NAME_INVALID_ARGUMENT;
         case MP_CACHE_STORE_STATUS_LIMIT_EXCEEDED:
-            return "LIMIT_EXCEEDED";
+            return MP_CACHE_STATUS_NAME_LIMIT_EXCEEDED;
         case MP_CACHE_STORE_STATUS_NO_MEMORY:
-            return "NO_MEMORY";
+            return MP_CACHE_STATUS_NAME_NO_MEMORY;
         default:
-            return "UNKNOWN";
+            return MP_CACHE_STATUS_NAME_UNKNOWN;
     }
 }

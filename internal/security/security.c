@@ -426,24 +426,24 @@ mp_cache_role_t mp_cache_role_from_string(const char *role_text) {
 const char *mp_cache_security_status_name(mp_cache_security_status_t status) {
     switch (status) {
         case MP_CACHE_SECURITY_STATUS_OK:
-            return "OK";
+            return MP_CACHE_STATUS_NAME_OK;
         case MP_CACHE_SECURITY_STATUS_NOT_FOUND:
-            return "NOT_FOUND";
+            return MP_CACHE_STATUS_NAME_NOT_FOUND;
         case MP_CACHE_SECURITY_STATUS_CONFLICT:
-            return "CONFLICT";
+            return MP_CACHE_STATUS_NAME_CONFLICT;
         case MP_CACHE_SECURITY_STATUS_INVALID_ARGUMENT:
-            return "INVALID_ARGUMENT";
+            return MP_CACHE_STATUS_NAME_INVALID_ARGUMENT;
         case MP_CACHE_SECURITY_STATUS_SECRET_ERROR:
-            return "SECRET_ERROR";
+            return MP_CACHE_STATUS_NAME_SECRET_ERROR;
         case MP_CACHE_SECURITY_STATUS_NO_MEMORY:
-            return "NO_MEMORY";
+            return MP_CACHE_STATUS_NAME_NO_MEMORY;
         case MP_CACHE_SECURITY_STATUS_IO_ERROR:
-            return "IO_ERROR";
+            return MP_CACHE_STATUS_NAME_IO_ERROR;
         case MP_CACHE_SECURITY_STATUS_UNAUTHORIZED:
-            return "UNAUTHORIZED";
+            return MP_CACHE_STATUS_NAME_UNAUTHORIZED;
         case MP_CACHE_SECURITY_STATUS_LIMIT_EXCEEDED:
-            return "LIMIT_EXCEEDED";
+            return MP_CACHE_STATUS_NAME_LIMIT_EXCEEDED;
         default:
-            return "UNKNOWN";
+            return MP_CACHE_STATUS_NAME_UNKNOWN;
     }
 }

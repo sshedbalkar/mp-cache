@@ -54,6 +54,18 @@ for required_path in "${required_standard_paths[@]}"; do
 done
 
 constant_drift_report="$(rg -n '^#define MP_CACHE_' internal cmd tests 2>/dev/null | grep -v 'internal/config/constants.h' | grep -v '#define MP_CACHE_INTERNAL_' || true)"
+error_code_pattern="$(awk '
+  /^#define MP_CACHE_HTTP_ERROR_CODE_/ {
+    value = $3
+    gsub(/"/, "", value)
+    printf "%s%s", separator, value
+    separator = "|"
+  }
+' internal/config/constants.h)"
+error_code_drift_report=""
+if [ -n "$error_code_pattern" ]; then
+  error_code_drift_report="$(rg -n "\"(${error_code_pattern})\"" internal cmd tests 2>/dev/null | grep -v 'internal/config/constants.h' || true)"
+fi
 standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_standard_path_count" 'BEGIN { printf "%.0f", (p * 100) / t }')"
 
 {
@@ -62,11 +74,15 @@ standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_stand
   printf '|:------|:------|\n'
   printf '| Checks present | %s/%s |\n' "$present_standard_path_count" "$required_standard_path_count"
   printf '| Score | %s |\n' "$standards_score"
-  printf '| Constants source | %s |\n' "$([ -z "$constant_drift_report" ] && printf 'centralized' || printf 'drift detected')"
+  printf '| Constants source | %s |\n' "$([ -z "$constant_drift_report" ] && [ -z "$error_code_drift_report" ] && printf 'centralized' || printf 'drift detected')"
 } > "$report_dir/standards-report.md"
 
 if [ -n "$constant_drift_report" ]; then
   printf 'project constants must be defined in internal/config/constants.h:\n%s\n' "$constant_drift_report" >&2
+  exit 1
+fi
+if [ -n "$error_code_drift_report" ]; then
+  printf 'project HTTP error_code literals must use internal/config/constants.h macros:\n%s\n' "$error_code_drift_report" >&2
   exit 1
 fi
 

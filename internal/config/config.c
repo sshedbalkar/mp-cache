@@ -470,18 +470,18 @@ void mp_cache_config_print(FILE *stream, const mp_cache_config_t *config, const 
 const char *mp_cache_config_status_name(mp_cache_config_status_t status) {
     switch (status) {
         case MP_CACHE_CONFIG_STATUS_OK:
-            return "OK";
+            return MP_CACHE_STATUS_NAME_OK;
         case MP_CACHE_CONFIG_STATUS_NOT_FOUND:
-            return "NOT_FOUND";
+            return MP_CACHE_STATUS_NAME_NOT_FOUND;
         case MP_CACHE_CONFIG_STATUS_IO_ERROR:
-            return "IO_ERROR";
+            return MP_CACHE_STATUS_NAME_IO_ERROR;
         case MP_CACHE_CONFIG_STATUS_PARSE_ERROR:
-            return "PARSE_ERROR";
+            return MP_CACHE_STATUS_NAME_PARSE_ERROR;
         case MP_CACHE_CONFIG_STATUS_VALIDATION_ERROR:
-            return "VALIDATION_ERROR";
+            return MP_CACHE_STATUS_NAME_VALIDATION_ERROR;
         case MP_CACHE_CONFIG_STATUS_INVALID_ARGUMENT:
-            return "INVALID_ARGUMENT";
+            return MP_CACHE_STATUS_NAME_INVALID_ARGUMENT;
         default:
-            return "UNKNOWN";
+            return MP_CACHE_STATUS_NAME_UNKNOWN;
     }
 }
