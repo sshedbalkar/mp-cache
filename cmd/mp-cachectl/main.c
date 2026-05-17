@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
-        (void)snprintf(request_path, sizeof(request_path), "/v1/cache/%s", argv[arg_index]);
+        (void)snprintf(request_path, sizeof(request_path), MP_CACHE_HTTP_ROUTE_CACHE_FORMAT, argv[arg_index]);
         return mp_cachectl_send_http_request(socket_path, "GET", request_path, auth_token, NULL) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "set") == 0) {
@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
-        (void)snprintf(request_path, sizeof(request_path), "/v1/cache/%s", argv[arg_index]);
+        (void)snprintf(request_path, sizeof(request_path), MP_CACHE_HTTP_ROUTE_CACHE_FORMAT, argv[arg_index]);
         cache_value_text = argv[arg_index + 1];
         arg_index += 2;
 
@@ -216,19 +216,19 @@ int main(int argc, char **argv) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
-        (void)snprintf(request_path, sizeof(request_path), "/v1/cache/%s", argv[arg_index]);
+        (void)snprintf(request_path, sizeof(request_path), MP_CACHE_HTTP_ROUTE_CACHE_FORMAT, argv[arg_index]);
         return mp_cachectl_send_http_request(socket_path, "DELETE", request_path, auth_token, NULL) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "stats") == 0) {
-        return mp_cachectl_send_http_request(socket_path, "GET", "/v1/stats", auth_token, NULL) == 0 ? 0 : 1;
+        return mp_cachectl_send_http_request(socket_path, "GET", MP_CACHE_HTTP_ROUTE_STATS, auth_token, NULL) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "uptime") == 0) {
-        return mp_cachectl_send_http_request(socket_path, "GET", "/v1/uptime", auth_token, NULL) == 0 ? 0 : 1;
+        return mp_cachectl_send_http_request(socket_path, "GET", MP_CACHE_HTTP_ROUTE_UPTIME, auth_token, NULL) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "logs") == 0) {
-        char request_path[MP_CACHE_HTTP_PATH_CAPACITY] = "/v1/logs";
+        char request_path[MP_CACHE_HTTP_PATH_CAPACITY] = MP_CACHE_HTTP_ROUTE_LOGS;
         if (arg_index < argc && strcmp(argv[arg_index], "--tail") == 0 && arg_index + 1 < argc) {
-            (void)snprintf(request_path, sizeof(request_path), "/v1/logs?tail=%s", argv[arg_index + 1]);
+            (void)snprintf(request_path, sizeof(request_path), MP_CACHE_HTTP_ROUTE_LOGS_TAIL_FORMAT, argv[arg_index + 1]);
         }
         return mp_cachectl_send_http_request(socket_path, "GET", request_path, auth_token, NULL) == 0 ? 0 : 1;
     }
@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
         free(client_id_json);
         free(role_json);
 
-        request_status = mp_cachectl_send_http_request(socket_path, "POST", "/v1/clients", auth_token, request_body) == 0 ? 0 : 1;
+        request_status = mp_cachectl_send_http_request(socket_path, "POST", MP_CACHE_HTTP_ROUTE_CLIENTS, auth_token, request_body) == 0 ? 0 : 1;
         free(request_body);
         return request_status;
     }
@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
-        (void)snprintf(request_path, sizeof(request_path), "/v1/clients/%s/rotate-token", argv[arg_index]);
+        (void)snprintf(request_path, sizeof(request_path), MP_CACHE_HTTP_ROUTE_CLIENT_ROTATE_FORMAT, argv[arg_index]);
         return mp_cachectl_send_http_request(socket_path, "POST", request_path, auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "invalidate-client") == 0) {
@@ -282,11 +282,11 @@ int main(int argc, char **argv) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
-        (void)snprintf(request_path, sizeof(request_path), "/v1/clients/%s/invalidate-token", argv[arg_index]);
+        (void)snprintf(request_path, sizeof(request_path), MP_CACHE_HTTP_ROUTE_CLIENT_INVALIDATE_FORMAT, argv[arg_index]);
         return mp_cachectl_send_http_request(socket_path, "POST", request_path, auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "export") == 0) {
-        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/export", auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
+        return mp_cachectl_send_http_request(socket_path, "POST", MP_CACHE_HTTP_ROUTE_EXPORT, auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "import") == 0) {
         char *import_path_json = NULL;
@@ -313,7 +313,7 @@ int main(int argc, char **argv) {
         (void)snprintf(request_body, (size_t)request_body_length + 1u, "{\"path\":\"%s\"}", import_path_json);
         free(import_path_json);
 
-        request_status = mp_cachectl_send_http_request(socket_path, "POST", "/v1/import", auth_token, request_body) == 0 ? 0 : 1;
+        request_status = mp_cachectl_send_http_request(socket_path, "POST", MP_CACHE_HTTP_ROUTE_IMPORT, auth_token, request_body) == 0 ? 0 : 1;
         free(request_body);
         return request_status;
     }
@@ -375,12 +375,12 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        request_status = mp_cachectl_send_http_request(socket_path, "POST", "/v1/purge/keys", auth_token, request_body) == 0 ? 0 : 1;
+        request_status = mp_cachectl_send_http_request(socket_path, "POST", MP_CACHE_HTTP_ROUTE_PURGE_KEYS, auth_token, request_body) == 0 ? 0 : 1;
         free(request_body);
         return request_status;
     }
     if (strcmp(cli_command, "purge-all") == 0) {
-        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/purge/all", auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
+        return mp_cachectl_send_http_request(socket_path, "POST", MP_CACHE_HTTP_ROUTE_PURGE_ALL, auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
     }
 
     mp_cachectl_print_usage(stderr);

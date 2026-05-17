@@ -117,6 +117,23 @@ mp_expand_repo_relative_path() {
   esac
 }
 
+mp_read_c_string_constant() {
+  local constant_name="$1"
+  awk -v constant_name="$constant_name" '
+    $1 == "#define" && $2 == constant_name {
+      value = $3
+      gsub(/^"/, "", value)
+      gsub(/"$/, "", value)
+      print value
+      found = 1
+    }
+    END {
+      if (found != 1) {
+        exit 1
+      }
+    }' "$MP_REPO_ROOT/internal/config/constants.h"
+}
+
 mp_rotate_state_file_if_present() {
   local configured_path="$1"
   local rotation_tag="$2"
@@ -251,8 +268,12 @@ mp_stop_server() {
 
 mp_test_health_endpoint() {
   local curl_output=""
+  local health_endpoint_path=""
 
-  if curl_output="$(curl --fail --silent --show-error --unix-socket "$MP_SOCKET_PATH" http://localhost/v1/health 2>&1)"; then
+  health_endpoint_path="$(mp_read_c_string_constant MP_CACHE_HTTP_ROUTE_HEALTH)" ||
+    mp_exit_with_error "failed to read MP_CACHE_HTTP_ROUTE_HEALTH from internal/config/constants.h"
+
+  if curl_output="$(curl --fail --silent --show-error --unix-socket "$MP_SOCKET_PATH" "http://localhost${health_endpoint_path}" 2>&1)"; then
     printf '%s\n' "$curl_output"
     return 0
   fi

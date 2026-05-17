@@ -66,6 +66,22 @@ error_code_drift_report=""
 if [ -n "$error_code_pattern" ]; then
   error_code_drift_report="$(rg -n "\"(${error_code_pattern})\"" internal cmd tests 2>/dev/null | grep -v 'internal/config/constants.h' || true)"
 fi
+endpoint_pattern="$(awk '
+  /^#define MP_CACHE_HTTP_ROUTE_/ {
+    value = $3
+    if (value !~ /^"\// || value ~ /%/ || value == "\"/\"") {
+      next
+    }
+    gsub(/"/, "", value)
+    gsub(/[][(){}.^$*+?|\\]/, "\\\\&", value)
+    printf "%s%s", separator, value
+    separator = "|"
+  }
+' internal/config/constants.h)"
+endpoint_drift_report=""
+if [ -n "$endpoint_pattern" ]; then
+  endpoint_drift_report="$(rg -n "\"[^\"[:space:]]*(${endpoint_pattern})" internal cmd tests scripts 2>/dev/null | grep -v 'internal/config/constants.h' || true)"
+fi
 standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_standard_path_count" 'BEGIN { printf "%.0f", (p * 100) / t }')"
 
 {
@@ -74,7 +90,7 @@ standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_stand
   printf '|:------|:------|\n'
   printf '| Checks present | %s/%s |\n' "$present_standard_path_count" "$required_standard_path_count"
   printf '| Score | %s |\n' "$standards_score"
-  printf '| Constants source | %s |\n' "$([ -z "$constant_drift_report" ] && [ -z "$error_code_drift_report" ] && printf 'centralized' || printf 'drift detected')"
+  printf '| Constants source | %s |\n' "$([ -z "$constant_drift_report" ] && [ -z "$error_code_drift_report" ] && [ -z "$endpoint_drift_report" ] && printf 'centralized' || printf 'drift detected')"
 } > "$report_dir/standards-report.md"
 
 if [ -n "$constant_drift_report" ]; then
@@ -83,6 +99,10 @@ if [ -n "$constant_drift_report" ]; then
 fi
 if [ -n "$error_code_drift_report" ]; then
   printf 'project HTTP error_code literals must use internal/config/constants.h macros:\n%s\n' "$error_code_drift_report" >&2
+  exit 1
+fi
+if [ -n "$endpoint_drift_report" ]; then
+  printf 'project HTTP endpoint literals must use internal/config/constants.h macros:\n%s\n' "$endpoint_drift_report" >&2
   exit 1
 fi
 

@@ -229,7 +229,8 @@ static void mp_cache_http_make_error(
 /* Recognize both supported health endpoint paths. */
 static bool mp_cache_http_path_is_health(const char *request_path) {
     return request_path != NULL &&
-           (strcmp(request_path, "/health") == 0 || strcmp(request_path, "/v1/health") == 0);
+           (strcmp(request_path, MP_CACHE_HTTP_ROUTE_LEGACY_HEALTH) == 0 ||
+            strcmp(request_path, MP_CACHE_HTTP_ROUTE_HEALTH) == 0);
 }
 
 /* Decode one hexadecimal digit used by percent-decoded request paths. */
@@ -1573,7 +1574,7 @@ static int mp_cache_http_handle_root(
     response->status_code = 200;
     response->status_text = "OK";
     response->response_body = mp_cache_http_strdup_printf(
-        "{\"service\":\"mp-cache\",\"message\":\"use /health or /v1/* endpoints\"}");
+        "{\"service\":\"mp-cache\",\"message\":\"" MP_CACHE_HTTP_ROUTE_HELP_MESSAGE "\"}");
     return 0;
 }
 
@@ -1599,9 +1600,6 @@ static int mp_cache_http_route_request(
     int64_t now_utc_seconds = mp_cache_http_now();
     mp_cache_principal_t principal;
     char key[MP_CACHE_NAME_CAP * 4u];
-    const char *cache_prefix = "/v1/cache/";
-    const char *rotate_suffix = "/rotate-token";
-    const char *invalidate_suffix = "/invalidate-token";
 
     memset(&principal, 0, sizeof(principal));
     memset(response, 0, sizeof(*response));
@@ -1619,12 +1617,12 @@ static int mp_cache_http_route_request(
         return 0;
     }
 
-    if (strcmp(request->request_path, "/") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_ROOT) == 0) {
         return mp_cache_http_handle_root(request, response);
     }
 
-    if (strncmp(request->request_path, cache_prefix, strlen(cache_prefix)) == 0) {
-        if (mp_cache_http_percent_decode(request->request_path + strlen(cache_prefix), key, sizeof(key)) != 0 || key[0] == '\0') {
+    if (strncmp(request->request_path, MP_CACHE_HTTP_ROUTE_CACHE_PREFIX, strlen(MP_CACHE_HTTP_ROUTE_CACHE_PREFIX)) == 0) {
+        if (mp_cache_http_percent_decode(request->request_path + strlen(MP_CACHE_HTTP_ROUTE_CACHE_PREFIX), key, sizeof(key)) != 0 || key[0] == '\0') {
             mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "cache key is invalid", NULL, NULL);
             return 0;
         }
@@ -1652,7 +1650,7 @@ static int mp_cache_http_route_request(
         return 0;
     }
 
-    if (strcmp(request->request_path, "/v1/stats") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_STATS) == 0) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
@@ -1666,7 +1664,7 @@ static int mp_cache_http_route_request(
         return 0;
     }
 
-    if (strcmp(request->request_path, "/v1/metrics/memory") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_MEMORY_METRICS) == 0) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
@@ -1680,7 +1678,7 @@ static int mp_cache_http_route_request(
         return 0;
     }
 
-    if (strcmp(request->request_path, "/v1/uptime") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_UPTIME) == 0) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
@@ -1691,7 +1689,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_uptime(server, now_utc_seconds, response);
     }
 
-    if (strcmp(request->request_path, "/v1/logs") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_LOGS) == 0) {
         if (strcmp(request->method, "GET") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "GET", NULL);
             return 0;
@@ -1702,7 +1700,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_logs(server, request, response);
     }
 
-    if (strcmp(request->request_path, "/v1/clients") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_CLIENTS) == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
@@ -1713,12 +1711,15 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_register_client(server, request, now_utc_seconds, response);
     }
 
-    if (strncmp(request->request_path, "/v1/clients/", 12u) == 0 && strlen(request->request_path) > 12u) {
+    if (strncmp(request->request_path, MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX, strlen(MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX)) == 0 &&
+        strlen(request->request_path) > strlen(MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX)) {
         size_t id_length = 0u;
         char client_id[MP_CACHE_CLIENT_ID_CAP];
-        const char *suffix = strstr(request->request_path + 12u, rotate_suffix);
+        const char *suffix = strstr(
+            request->request_path + strlen(MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX),
+            MP_CACHE_HTTP_ROUTE_CLIENT_ROTATE_SUFFIX);
 
-        if (suffix != NULL && strcmp(suffix, rotate_suffix) == 0) {
+        if (suffix != NULL && strcmp(suffix, MP_CACHE_HTTP_ROUTE_CLIENT_ROTATE_SUFFIX) == 0) {
             if (strcmp(request->method, "POST") != 0) {
                 mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
                 return 0;
@@ -1727,18 +1728,20 @@ static int mp_cache_http_route_request(
                 return 0;
             }
 
-            id_length = (size_t)(suffix - (request->request_path + 12u));
+            id_length = (size_t)(suffix - (request->request_path + strlen(MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX)));
             if (id_length == 0u || id_length >= sizeof(client_id)) {
                 mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "client_id is invalid", NULL, NULL);
                 return 0;
             }
-            memcpy(client_id, request->request_path + 12u, id_length);
+            memcpy(client_id, request->request_path + strlen(MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX), id_length);
             client_id[id_length] = '\0';
             return mp_cache_http_handle_rotate_client(server, client_id, now_utc_seconds, response);
         }
 
-        suffix = strstr(request->request_path + 12u, invalidate_suffix);
-        if (suffix != NULL && strcmp(suffix, invalidate_suffix) == 0) {
+        suffix = strstr(
+            request->request_path + strlen(MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX),
+            MP_CACHE_HTTP_ROUTE_CLIENT_INVALIDATE_SUFFIX);
+        if (suffix != NULL && strcmp(suffix, MP_CACHE_HTTP_ROUTE_CLIENT_INVALIDATE_SUFFIX) == 0) {
             if (strcmp(request->method, "POST") != 0) {
                 mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
                 return 0;
@@ -1747,18 +1750,18 @@ static int mp_cache_http_route_request(
                 return 0;
             }
 
-            id_length = (size_t)(suffix - (request->request_path + 12u));
+            id_length = (size_t)(suffix - (request->request_path + strlen(MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX)));
             if (id_length == 0u || id_length >= sizeof(client_id)) {
                 mp_cache_http_make_error(response, 400, "Bad Request", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "client_id is invalid", NULL, NULL);
                 return 0;
             }
-            memcpy(client_id, request->request_path + 12u, id_length);
+            memcpy(client_id, request->request_path + strlen(MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX), id_length);
             client_id[id_length] = '\0';
             return mp_cache_http_handle_invalidate_client(server, client_id, now_utc_seconds, response);
         }
     }
 
-    if (strcmp(request->request_path, "/v1/export") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_EXPORT) == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
@@ -1769,7 +1772,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_export(server, now_utc_seconds, response);
     }
 
-    if (strcmp(request->request_path, "/v1/import") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_IMPORT) == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
@@ -1780,7 +1783,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_import(server, request, now_utc_seconds, response);
     }
 
-    if (strcmp(request->request_path, "/v1/purge/all") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_PURGE_ALL) == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
@@ -1791,7 +1794,7 @@ static int mp_cache_http_route_request(
         return mp_cache_http_handle_purge_all(server, now_utc_seconds, response);
     }
 
-    if (strcmp(request->request_path, "/v1/purge/keys") == 0) {
+    if (strcmp(request->request_path, MP_CACHE_HTTP_ROUTE_PURGE_KEYS) == 0) {
         if (strcmp(request->method, "POST") != 0) {
             mp_cache_http_make_error(response, 405, "Method Not Allowed", MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT, "method not allowed", "POST", NULL);
             return 0;
@@ -2045,7 +2048,7 @@ int mp_cache_http_client_request(
 }
 
 int mp_cache_http_client_health(const char *socket_path, FILE *stream) {
-    return mp_cache_http_client_request(socket_path, "GET", "/v1/health", NULL, MP_CACHE_HTTP_CONTENT_TYPE_JSON, "", stream);
+    return mp_cache_http_client_request(socket_path, "GET", MP_CACHE_HTTP_ROUTE_HEALTH, NULL, MP_CACHE_HTTP_CONTENT_TYPE_JSON, "", stream);
 }
 
 int mp_cache_http_server_test_request(

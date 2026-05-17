@@ -30,7 +30,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 
 - Configuration must be explicit, layered, and reviewable.
 - Safe defaults may exist in code for bootstrap and local development.
-- Durable service constants, compiled defaults, config section/key names, environment variable names, protocol markers, role names, and reusable capacity limits must be defined in `internal/config/constants.h`.
+- Durable service constants, compiled defaults, config section/key names, environment variable names, HTTP endpoint paths, HTTP error codes, protocol markers, role names, and reusable capacity limits must be defined in `internal/config/constants.h`.
 - Do not scatter project-level constants or default values across `cmd/`, `internal/`, or tests; consuming modules must include the central constants header through their normal module boundary.
 - If the bootstrap config file is missing, export a commented template and continue with safe defaults.
 - Secrets must never be committed.

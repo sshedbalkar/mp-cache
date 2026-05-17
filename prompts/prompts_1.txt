@@ -74,4 +74,6 @@ In 'mp-cache' project, make it a durable rule that anytime an application error 
 
 .tmp folder cleanup?
 
-In 'mp-cache' project, constants, appropriate readonly values, appropriate default values, appropriate config values, etc should be defined in one place for easier discovery and update. Make sure this is followed as a durable rule. Don't scatter them around in multiple source files across the project. Update docs/context/tests wherever required. Perform validation.
+In 'mp-cache' project, constants, appropriate readonly values, appropriate default values, appropriate config values, etc should be defined in one place for easier discovery and update. Make sure this is followed as a durable rule. Don't scatter them around in multiple source files across the project. Update docs/context/tests wherever required. Perform validation. Done
+
+Make sure all of the API endpoints like '/v1/status', /v1/health', etc are also moved to a central place. We don't want those to be scattered across the project multiple times as well. This also needs to go in the durable rule. Update, check, and validate.

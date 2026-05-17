@@ -212,7 +212,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     (void)snprintf(suffix, sizeof(suffix), "%ld", (long)getpid());
     fixture_init(&fixture, suffix, 50u);
 
-    request = make_request("GET", "/v1/health", NULL, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_HEALTH, NULL, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "\"status\":\"ok\"") != NULL);
@@ -221,7 +221,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
 
     request = make_request(
         "POST",
-        "/v1/clients",
+        MP_CACHE_HTTP_ROUTE_CLIENTS,
         "bootstrap-admin-token",
         "{\"client_id\":\"client-one\",\"role\":\"client\"}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
@@ -232,7 +232,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
 
     request = make_request(
         "PUT",
-        "/v1/cache/alpha",
+        MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "alpha",
         client_token,
         "{\"value_base64\":\"aGVsbG8=\",\"ttl_seconds\":60}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
@@ -242,7 +242,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
 
     request = make_request(
         "PUT",
-        "/v1/cache/beta",
+        MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "beta",
         client_token,
         "{\"value_base64\":\"d29ybGQ=\",\"ttl_seconds\":60}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
@@ -250,21 +250,21 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/alpha", client_token, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "alpha", client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "\"value_base64\":\"aGVsbG8=\"") != NULL);
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/stats", client_token, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_STATS, client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 403);
     assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_FORBIDDEN);
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/stats", "bootstrap-admin-token", "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_STATS, "bootstrap-admin-token", "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "\"cache_sets\":2") != NULL);
@@ -281,7 +281,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     assert(fprintf(log_file, "line-1\nline-2\n") > 0);
     assert(fclose(log_file) == 0);
 
-    request = make_request("GET", "/v1/logs?tail=1", "bootstrap-admin-token", "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_LOGS "?tail=1", "bootstrap-admin-token", "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "line-2") != NULL);
@@ -290,7 +290,7 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
 
     request = make_request(
         "POST",
-        "/v1/purge/keys",
+        MP_CACHE_HTTP_ROUTE_PURGE_KEYS,
         "bootstrap-admin-token",
         "{\"keys\":[\"alpha\",\"missing-key\"]}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
@@ -301,62 +301,62 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/alpha", client_token, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "alpha", client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 404);
     assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND);
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/beta", client_token, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "beta", client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "\"value_base64\":\"d29ybGQ=\"") != NULL);
     free(request);
     free(body);
 
-    request = make_request("POST", "/v1/clients/client-one/invalidate-token", "bootstrap-admin-token", "{}");
+    request = make_request("POST", MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX "client-one" MP_CACHE_HTTP_ROUTE_CLIENT_INVALIDATE_SUFFIX, "bootstrap-admin-token", "{}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "\"token_active\":false") != NULL);
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/beta", client_token, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "beta", client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 401);
     assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED);
     free(request);
     free(body);
 
-    request = make_request("POST", "/v1/clients/client-one/rotate-token", "bootstrap-admin-token", "{}");
+    request = make_request("POST", MP_CACHE_HTTP_ROUTE_CLIENTS_PREFIX "client-one" MP_CACHE_HTTP_ROUTE_CLIENT_ROTATE_SUFFIX, "bootstrap-admin-token", "{}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     extract_json_string(body, "token", rotated_client_token, sizeof(rotated_client_token));
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/beta", rotated_client_token, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "beta", rotated_client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "\"value_base64\":\"d29ybGQ=\"") != NULL);
     free(request);
     free(body);
 
-    request = make_request("POST", "/v1/export", "bootstrap-admin-token", "{}");
+    request = make_request("POST", MP_CACHE_HTTP_ROUTE_EXPORT, "bootstrap-admin-token", "{}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     extract_json_string(body, "path", export_path, sizeof(export_path));
     free(request);
     free(body);
 
-    request = make_request("POST", "/v1/purge/all", "bootstrap-admin-token", "{}");
+    request = make_request("POST", MP_CACHE_HTTP_ROUTE_PURGE_ALL, "bootstrap-admin-token", "{}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/beta", rotated_client_token, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "beta", rotated_client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 404);
     assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND);
@@ -364,21 +364,21 @@ static void test_http_routes_cover_phase_two_three_and_four(void) {
     free(body);
 
     import_body = allocf("{\"path\":\"%s\"}", export_path);
-    request = make_request("POST", "/v1/import", "bootstrap-admin-token", import_body);
+    request = make_request("POST", MP_CACHE_HTTP_ROUTE_IMPORT, "bootstrap-admin-token", import_body);
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     free(import_body);
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/cache/beta", rotated_client_token, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "beta", rotated_client_token, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "\"value_base64\":\"d29ybGQ=\"") != NULL);
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/stats", "bootstrap-admin-token", "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_STATS, "bootstrap-admin-token", "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     assert(strstr(body, "\"cache_sets\":2") != NULL);
@@ -403,21 +403,21 @@ static void test_error_responses_include_project_error_codes(void) {
     (void)snprintf(suffix, sizeof(suffix), "%ld-errors", (long)getpid());
     fixture_init(&fixture, suffix, 50u);
 
-    request = make_request("GET", "/v1/stats", NULL, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_STATS, NULL, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 401);
     assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED);
     free(request);
     free(body);
 
-    request = make_request("POST", "/v1/health", NULL, "{}");
+    request = make_request("POST", MP_CACHE_HTTP_ROUTE_HEALTH, NULL, "{}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 405);
     assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT);
     free(request);
     free(body);
 
-    request = make_request("GET", "/v1/missing", NULL, "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_HEALTH "-missing", NULL, "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 404);
     assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND);
@@ -426,7 +426,7 @@ static void test_error_responses_include_project_error_codes(void) {
 
     request = make_request(
         "POST",
-        "/v1/clients",
+        MP_CACHE_HTTP_ROUTE_CLIENTS,
         "bootstrap-admin-token",
         "{\"client_id\":\"client-errors\",\"role\":\"client\"}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
@@ -437,7 +437,7 @@ static void test_error_responses_include_project_error_codes(void) {
 
     request = make_request(
         "POST",
-        "/v1/clients",
+        MP_CACHE_HTTP_ROUTE_CLIENTS,
         "bootstrap-admin-token",
         "{\"client_id\":\"client-errors\",\"role\":\"client\"}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
@@ -446,7 +446,7 @@ static void test_error_responses_include_project_error_codes(void) {
     free(request);
     free(body);
 
-    request = make_request("PUT", "/v1/cache/bad-value", client_token, "{\"value_base64\":\"not-base64\"}");
+    request = make_request("PUT", MP_CACHE_HTTP_ROUTE_CACHE_PREFIX "bad-value", client_token, "{\"value_base64\":\"not-base64\"}");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 400);
     assert_error_response_code(body, MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT);
@@ -467,7 +467,7 @@ static void test_rate_limiting_is_enforced(void) {
     (void)snprintf(suffix, sizeof(suffix), "%ld-rl", (long)getpid());
     fixture_init(&fixture, suffix, 2u);
 
-    request = make_request("GET", "/v1/stats", "bootstrap-admin-token", "");
+    request = make_request("GET", MP_CACHE_HTTP_ROUTE_STATS, "bootstrap-admin-token", "");
     assert(mp_cache_http_server_test_request(&fixture.server, request, &status_code, &body) == 0);
     assert(status_code == 200);
     free(body);
