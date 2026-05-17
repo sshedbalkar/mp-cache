@@ -1,4 +1,5 @@
 #include "internal/crypto/crypto.h"
+#include "internal/config/constants.h"
 #include "internal/httpserver/http_server.h"
 
 #include <stdbool.h>
@@ -20,7 +21,7 @@ static char *mp_cachectl_escape_json(const char *json_text) {
     }
 
     text_length = strlen(json_text);
-    capacity = text_length * 6u + 1u;
+    capacity = text_length * MP_CACHE_JSON_ESCAPE_EXPANSION + 1u;
     escaped = malloc(capacity);
     if (escaped == NULL) {
         return NULL;
@@ -67,7 +68,7 @@ static void mp_cachectl_print_usage(FILE *usage_stream) {
     (void)fprintf(
         usage_stream,
         "usage: mp-cachectl [--socket <path>] [--token <token>] <command> [args]\n"
-        "default socket path: $MP_SOCKET_PATH or .tmp/run/mp-cache.sock\n"
+        "default socket path: $" MP_CACHE_ENV_SOCKET_PATH " or " MP_CACHE_DEFAULT_SOCKET_PATH "\n"
         "commands:\n"
         "  health\n"
         "  get <key>\n"
@@ -97,20 +98,20 @@ static int mp_cachectl_send_http_request(
         method,
         request_path,
         auth_token,
-        "application/json",
+        MP_CACHE_HTTP_CONTENT_TYPE_JSON,
         request_body == NULL ? "" : request_body,
         stdout);
 }
 
 /* Parse CLI flags, map the command to an HTTP request, and execute it locally. */
 int main(int argc, char **argv) {
-    const char *socket_path = getenv("MP_SOCKET_PATH");
-    const char *auth_token = getenv("MP_CACHE_TOKEN");
+    const char *socket_path = getenv(MP_CACHE_ENV_SOCKET_PATH);
+    const char *auth_token = getenv(MP_CACHE_ENV_TOKEN);
     const char *cli_command = NULL;
     int arg_index = 1;
 
     if (socket_path == NULL || socket_path[0] == '\0') {
-        socket_path = ".tmp/run/mp-cache.sock";
+        socket_path = MP_CACHE_DEFAULT_SOCKET_PATH;
     }
 
     while (arg_index < argc) {
@@ -145,7 +146,7 @@ int main(int argc, char **argv) {
         return mp_cache_http_client_health(socket_path, stdout) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "get") == 0) {
-        char request_path[512];
+        char request_path[MP_CACHE_HTTP_PATH_CAPACITY];
         if (arg_index >= argc) {
             mp_cachectl_print_usage(stderr);
             return 1;
@@ -154,11 +155,11 @@ int main(int argc, char **argv) {
         return mp_cachectl_send_http_request(socket_path, "GET", request_path, auth_token, NULL) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "set") == 0) {
-        char request_path[512];
+        char request_path[MP_CACHE_HTTP_PATH_CAPACITY];
         const char *cache_value_text = NULL;
         char *cache_value_base64 = NULL;
         size_t cache_value_base64_length = 0u;
-        char request_body[4096];
+        char request_body[MP_CACHE_CONTROL_CLI_REQUEST_BODY_CAPACITY];
         uint32_t ttl_seconds = 0u;
         bool is_ttl_provided = false;
         size_t required_value_base64_capacity = 0u;
@@ -210,7 +211,7 @@ int main(int argc, char **argv) {
         return mp_cachectl_send_http_request(socket_path, "PUT", request_path, auth_token, request_body) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "delete") == 0) {
-        char request_path[512];
+        char request_path[MP_CACHE_HTTP_PATH_CAPACITY];
         if (arg_index >= argc) {
             mp_cachectl_print_usage(stderr);
             return 1;
@@ -225,7 +226,7 @@ int main(int argc, char **argv) {
         return mp_cachectl_send_http_request(socket_path, "GET", "/v1/uptime", auth_token, NULL) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "logs") == 0) {
-        char request_path[512] = "/v1/logs";
+        char request_path[MP_CACHE_HTTP_PATH_CAPACITY] = "/v1/logs";
         if (arg_index < argc && strcmp(argv[arg_index], "--tail") == 0 && arg_index + 1 < argc) {
             (void)snprintf(request_path, sizeof(request_path), "/v1/logs?tail=%s", argv[arg_index + 1]);
         }
@@ -267,25 +268,25 @@ int main(int argc, char **argv) {
         return request_status;
     }
     if (strcmp(cli_command, "rotate-client") == 0) {
-        char request_path[512];
+        char request_path[MP_CACHE_HTTP_PATH_CAPACITY];
         if (arg_index >= argc) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
         (void)snprintf(request_path, sizeof(request_path), "/v1/clients/%s/rotate-token", argv[arg_index]);
-        return mp_cachectl_send_http_request(socket_path, "POST", request_path, auth_token, "{}") == 0 ? 0 : 1;
+        return mp_cachectl_send_http_request(socket_path, "POST", request_path, auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "invalidate-client") == 0) {
-        char request_path[512];
+        char request_path[MP_CACHE_HTTP_PATH_CAPACITY];
         if (arg_index >= argc) {
             mp_cachectl_print_usage(stderr);
             return 1;
         }
         (void)snprintf(request_path, sizeof(request_path), "/v1/clients/%s/invalidate-token", argv[arg_index]);
-        return mp_cachectl_send_http_request(socket_path, "POST", request_path, auth_token, "{}") == 0 ? 0 : 1;
+        return mp_cachectl_send_http_request(socket_path, "POST", request_path, auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "export") == 0) {
-        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/export", auth_token, "{}") == 0 ? 0 : 1;
+        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/export", auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
     }
     if (strcmp(cli_command, "import") == 0) {
         char *import_path_json = NULL;
@@ -329,7 +330,7 @@ int main(int argc, char **argv) {
             return 1;
         }
         while (first_key_arg_index < argc) {
-            request_body_capacity += (strlen(argv[first_key_arg_index]) * 6u) + 4u;
+            request_body_capacity += (strlen(argv[first_key_arg_index]) * MP_CACHE_JSON_ESCAPE_EXPANSION) + 4u;
             first_key_arg_index++;
         }
 
@@ -379,7 +380,7 @@ int main(int argc, char **argv) {
         return request_status;
     }
     if (strcmp(cli_command, "purge-all") == 0) {
-        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/purge/all", auth_token, "{}") == 0 ? 0 : 1;
+        return mp_cachectl_send_http_request(socket_path, "POST", "/v1/purge/all", auth_token, MP_CACHE_HTTP_EMPTY_JSON_OBJECT) == 0 ? 0 : 1;
     }
 
     mp_cachectl_print_usage(stderr);

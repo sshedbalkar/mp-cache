@@ -9,6 +9,7 @@ Use local standards from `docs/engineering-standards.md`, `docs/naming-strategy.
   - local files: `Makefile`, `configs/build/CMakePresets.json`, `scripts/package.sh`, `deploy/`
 - `route.c-service`
   - sections: `Common Engineering`, `Naming And Terminology`, `C Service And CMake`, `Security And Operations`, `Dependency Management`
+  - durable checks: project-level constants and defaults must be routed through `internal/config/constants.h`
   - local files: `cmd/`, `internal/`, `native/mp_logger`
 - `route.naming`
   - section: `Naming And Terminology`

@@ -8,9 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MP_CACHE_BOOTSTRAP_ADMIN_ID "bootstrap-admin"
-#define MP_CACHE_MAX_CLIENTS 1024u
-
 /* Trim leading and trailing ASCII whitespace in place. */
 static char *mp_cache_trim(char *value) {
     char *end = NULL;
@@ -87,7 +84,7 @@ static mp_cache_security_status_t mp_cache_security_ensure_capacity(mp_cache_sec
         return MP_CACHE_SECURITY_STATUS_LIMIT_EXCEEDED;
     }
 
-    next_capacity = security->capacity == 0u ? 8u : security->capacity * 2u;
+    next_capacity = security->capacity == 0u ? MP_CACHE_INITIAL_CLIENT_CAPACITY : security->capacity * 2u;
     if (next_capacity > MP_CACHE_MAX_CLIENTS) {
         next_capacity = MP_CACHE_MAX_CLIENTS;
     }
@@ -109,7 +106,7 @@ static void mp_cache_hash_token(const char *auth_token, uint8_t out_hash[MP_CACH
 
 /* Generate a fresh random client token and hex-encode it for API callers. */
 static mp_cache_security_status_t mp_cache_security_issue_token(char *out_client_token, size_t out_client_token_capacity) {
-    uint8_t random_bytes[32];
+    uint8_t random_bytes[MP_CACHE_TOKEN_RANDOM_BYTES];
 
     if (out_client_token == NULL || out_client_token_capacity < MP_CACHE_TOKEN_TEXT_CAP) {
         return MP_CACHE_SECURITY_STATUS_INVALID_ARGUMENT;
@@ -134,8 +131,8 @@ int mp_cache_secret_resolve(const char *secret_ref, char *out_secret, size_t out
         return -1;
     }
 
-    if (strncmp(secret_ref, "env:", 4u) == 0) {
-        resolved_secret_value = getenv(secret_ref + 4u);
+    if (strncmp(secret_ref, MP_CACHE_SECRET_ENV_PREFIX, MP_CACHE_SECRET_ENV_PREFIX_LENGTH) == 0) {
+        resolved_secret_value = getenv(secret_ref + MP_CACHE_SECRET_ENV_PREFIX_LENGTH);
         if (resolved_secret_value == NULL || *resolved_secret_value == '\0') {
             errno = ENOENT;
             return -1;
@@ -144,8 +141,8 @@ int mp_cache_secret_resolve(const char *secret_ref, char *out_secret, size_t out
         return 0;
     }
 
-    if (strncmp(secret_ref, "file:", 5u) == 0) {
-        const char *secret_file_path = secret_ref + 5u;
+    if (strncmp(secret_ref, MP_CACHE_SECRET_FILE_PREFIX, MP_CACHE_SECRET_FILE_PREFIX_LENGTH) == 0) {
+        const char *secret_file_path = secret_ref + MP_CACHE_SECRET_FILE_PREFIX_LENGTH;
         if (*secret_file_path != '/') {
             errno = EINVAL;
             return -1;
@@ -400,13 +397,13 @@ bool mp_cache_role_allows(mp_cache_role_t actual_role, mp_cache_role_t required_
 const char *mp_cache_role_name(mp_cache_role_t role) {
     switch (role) {
         case MP_CACHE_ROLE_CLIENT:
-            return "client";
+            return MP_CACHE_ROLE_NAME_CLIENT;
         case MP_CACHE_ROLE_OPERATOR:
-            return "operator";
+            return MP_CACHE_ROLE_NAME_OPERATOR;
         case MP_CACHE_ROLE_ADMIN:
-            return "admin";
+            return MP_CACHE_ROLE_NAME_ADMIN;
         default:
-            return "none";
+            return MP_CACHE_ROLE_NAME_NONE;
     }
 }
 
@@ -414,13 +411,13 @@ mp_cache_role_t mp_cache_role_from_string(const char *role_text) {
     if (role_text == NULL) {
         return MP_CACHE_ROLE_NONE;
     }
-    if (strcmp(role_text, "client") == 0) {
+    if (strcmp(role_text, MP_CACHE_ROLE_NAME_CLIENT) == 0) {
         return MP_CACHE_ROLE_CLIENT;
     }
-    if (strcmp(role_text, "operator") == 0) {
+    if (strcmp(role_text, MP_CACHE_ROLE_NAME_OPERATOR) == 0) {
         return MP_CACHE_ROLE_OPERATOR;
     }
-    if (strcmp(role_text, "admin") == 0) {
+    if (strcmp(role_text, MP_CACHE_ROLE_NAME_ADMIN) == 0) {
         return MP_CACHE_ROLE_ADMIN;
     }
     return MP_CACHE_ROLE_NONE;

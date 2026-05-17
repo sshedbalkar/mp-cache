@@ -1,14 +1,11 @@
 #ifndef MP_CACHE_INTERNAL_CONFIG_H
 #define MP_CACHE_INTERNAL_CONFIG_H
 
+#include "internal/config/constants.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#define MP_CACHE_TEXT_CAP 128u
-#define MP_CACHE_NAME_CAP 64u
-#define MP_CACHE_SECRET_REF_CAP 256u
-#define MP_CACHE_PATH_CAP 4096u
 
 /*
  * Carries the fully resolved non-secret bootstrap configuration for one service instance.

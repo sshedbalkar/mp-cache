@@ -7,10 +7,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MP_CACHE_CLIENT_ID_CAP 64u
-#define MP_CACHE_TOKEN_TEXT_CAP 65u
-#define MP_CACHE_TOKEN_HASH_SIZE 32u
-
 /* Enumerates the authorization roles recognized by the service. */
 typedef enum {
     MP_CACHE_ROLE_NONE = 0,

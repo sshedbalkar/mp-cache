@@ -1,5 +1,7 @@
 #include "internal/observability/log.h"
 
+#include "internal/config/constants.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -7,10 +9,6 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
-
-#define MP_CACHE_LOG_MESSAGE_CAPACITY 1024u
-#define MP_CACHE_LOG_CONTEXT_CAPACITY 512u
-#define MP_CACHE_LOG_TAIL_READ_CAPACITY (1024u * 1024u)
 
 /* Copy one optional text value into a bounded logger config or scratch buffer. */
 static void mp_cache_log_copy(char *destination, size_t destination_capacity, const char *source) {
@@ -34,10 +32,10 @@ int mp_cache_log_init(mp_cache_log_t *log, const mp_cache_config_t *config) {
 
     memset(log, 0, sizeof(*log));
     mp_logger_config_init_defaults(&logger_config);
-    logger_config.buffer_capacity = 4096u;
-    logger_config.message_capacity = 1024u;
-    logger_config.context_capacity = 512u;
-    logger_config.field_capacity = 8u;
+    logger_config.buffer_capacity = MP_CACHE_LOGGER_BUFFER_CAPACITY;
+    logger_config.message_capacity = MP_CACHE_LOGGER_MESSAGE_CAPACITY;
+    logger_config.context_capacity = MP_CACHE_LOGGER_CONTEXT_CAPACITY;
+    logger_config.field_capacity = MP_CACHE_LOGGER_FIELD_CAPACITY;
     logger_config.format = MP_LOG_FORMAT_JSON;
     logger_config.pretty_output = 0;
     logger_config.stdout_min_level = MP_LOG_LEVEL_TRACE;
@@ -53,15 +51,15 @@ int mp_cache_log_init(mp_cache_log_t *log, const mp_cache_config_t *config) {
         sizeof(logger_config.environment_name),
         config->environment_name);
     mp_cache_log_copy(logger_config.log_directory, sizeof(logger_config.log_directory), config->log_directory);
-    mp_cache_log_copy(logger_config.file_name_prefix, sizeof(logger_config.file_name_prefix), "mp-cache");
+    mp_cache_log_copy(logger_config.file_name_prefix, sizeof(logger_config.file_name_prefix), MP_CACHE_LOGGER_FILE_NAME_PREFIX);
     mp_cache_log_copy(
         logger_config.backup_file_name_prefix,
         sizeof(logger_config.backup_file_name_prefix),
-        "mp-cache-internal");
+        MP_CACHE_LOGGER_BACKUP_FILE_NAME_PREFIX);
     mp_cache_log_copy(
         logger_config.active_streams,
         sizeof(logger_config.active_streams),
-        "stdout,stderr,file");
+        MP_CACHE_LOGGER_ACTIVE_STREAMS);
 
     status = mp_logger_create(&logger_config, &log->raw_logger);
     if (status != MP_LOG_STATUS_OK) {

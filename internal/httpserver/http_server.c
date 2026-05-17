@@ -1,5 +1,6 @@
 #include "internal/httpserver/http_server.h"
 
+#include "internal/config/constants.h"
 #include "internal/crypto/crypto.h"
 #include "internal/platform/fs.h"
 
@@ -18,28 +19,13 @@
 #include <time.h>
 #include <unistd.h>
 
-#define MP_CACHE_HTTP_REQUEST_CAPACITY 65536u
-#define MP_CACHE_HTTP_HEADER_CAPACITY 2048u
-#define MP_CACHE_HTTP_PATH_CAPACITY 512u
-#define MP_CACHE_HTTP_BODY_CAPACITY 32768u
-#define MP_CACHE_HTTP_JSON_ARRAY_LIMIT 256u
-
-/* Project-owned HTTP error codes used by clients for response handling. */
-#define MP_CACHE_HTTP_ERROR_CODE_CONFLICT "conflict"
-#define MP_CACHE_HTTP_ERROR_CODE_FORBIDDEN "forbidden"
-#define MP_CACHE_HTTP_ERROR_CODE_INTERNAL_ERROR "internal_error"
-#define MP_CACHE_HTTP_ERROR_CODE_INVALID_ARGUMENT "invalid_argument"
-#define MP_CACHE_HTTP_ERROR_CODE_LIMIT_EXCEEDED "limit_exceeded"
-#define MP_CACHE_HTTP_ERROR_CODE_NOT_FOUND "not_found"
-#define MP_CACHE_HTTP_ERROR_CODE_UNAUTHORIZED "unauthorized"
-
 /* Carries one parsed HTTP request inside the in-process parser and test harness. */
 typedef struct {
-    char method[16];
+    char method[MP_CACHE_HTTP_METHOD_CAPACITY];
     char request_target[MP_CACHE_HTTP_PATH_CAPACITY];
     char request_path[MP_CACHE_HTTP_PATH_CAPACITY];
     char query_string[MP_CACHE_HTTP_PATH_CAPACITY];
-    char authorization_header[256];
+    char authorization_header[MP_CACHE_HTTP_AUTHORIZATION_CAPACITY];
     size_t content_length;
     char *request_body;
     size_t request_body_length;
@@ -91,7 +77,7 @@ static int mp_cache_http_write_response(
         header_buffer,
         sizeof(header_buffer),
         "HTTP/1.1 %d %s\r\n"
-        "Content-Type: application/json\r\n"
+        "Content-Type: " MP_CACHE_HTTP_CONTENT_TYPE_JSON "\r\n"
         "Content-Length: %zu\r\n"
         "Cache-Control: no-store\r\n"
         "Connection: close\r\n"
@@ -158,7 +144,7 @@ static char *mp_cache_http_strdup_printf(const char *format, ...) {
 
 /* Escape arbitrary text for safe embedding inside JSON string values. */
 static char *mp_cache_http_escape_json(const char *json_text, size_t text_length) {
-    size_t capacity = text_length * 6u + 1u;
+    size_t capacity = text_length * MP_CACHE_JSON_ESCAPE_EXPANSION + 1u;
     char *escaped = NULL;
     size_t input_index = 0u;
     size_t output_index = 0u;
@@ -2059,7 +2045,7 @@ int mp_cache_http_client_request(
 }
 
 int mp_cache_http_client_health(const char *socket_path, FILE *stream) {
-    return mp_cache_http_client_request(socket_path, "GET", "/v1/health", NULL, "application/json", "", stream);
+    return mp_cache_http_client_request(socket_path, "GET", "/v1/health", NULL, MP_CACHE_HTTP_CONTENT_TYPE_JSON, "", stream);
 }
 
 int mp_cache_http_server_test_request(

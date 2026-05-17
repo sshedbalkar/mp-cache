@@ -1,12 +1,11 @@
 #ifndef MP_CACHE_INTERNAL_CRYPTO_H
 #define MP_CACHE_INTERNAL_CRYPTO_H
 
+#include "internal/config/constants.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#define MP_CACHE_SHA256_SIZE 32u
-#define MP_CACHE_NONCE_SIZE 16u
 
 /* Compute the SHA-256 digest of input_bytes into out_digest. */
 void mp_cache_sha256(const uint8_t *input_bytes, size_t input_length, uint8_t out_digest[MP_CACHE_SHA256_SIZE]);

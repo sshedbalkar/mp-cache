@@ -33,7 +33,7 @@
 - `cmd/mp-cache-server`: server entrypoint.
 - `cmd/mp-cachectl`: control CLI for local socket requests.
 - `internal/cache`: bounded in-memory cache module.
-- `internal/config`: bootstrap config defaults, parsing, and export.
+- `internal/config`: bootstrap config defaults, parsing, export, and centralized durable constants in `constants.h`.
 - `internal/httpserver`: Unix-socket HTTP listener and response helpers.
 - `internal/observability`: `mp_logger` integration wrapper.
 - `internal/platform`: filesystem and process helpers.

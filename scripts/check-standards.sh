@@ -12,6 +12,7 @@ required_standard_paths=(
   AGENTS.md
   Makefile
   CMakeLists.txt
+  internal/config/constants.h
   docs/naming-strategy.md
   configs/bootstrap.ini
   configs/build/CMakePresets.json
@@ -52,6 +53,7 @@ for required_path in "${required_standard_paths[@]}"; do
   fi
 done
 
+constant_drift_report="$(rg -n '^#define MP_CACHE_' internal cmd tests 2>/dev/null | grep -v 'internal/config/constants.h' | grep -v '#define MP_CACHE_INTERNAL_' || true)"
 standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_standard_path_count" 'BEGIN { printf "%.0f", (p * 100) / t }')"
 
 {
@@ -60,7 +62,13 @@ standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_stand
   printf '|:------|:------|\n'
   printf '| Checks present | %s/%s |\n' "$present_standard_path_count" "$required_standard_path_count"
   printf '| Score | %s |\n' "$standards_score"
+  printf '| Constants source | %s |\n' "$([ -z "$constant_drift_report" ] && printf 'centralized' || printf 'drift detected')"
 } > "$report_dir/standards-report.md"
+
+if [ -n "$constant_drift_report" ]; then
+  printf 'project constants must be defined in internal/config/constants.h:\n%s\n' "$constant_drift_report" >&2
+  exit 1
+fi
 
 if ! awk -v score="$standards_score" -v minimum="$minimum_score" 'BEGIN { exit (score + 0 >= minimum + 0) ? 0 : 1 }'; then
   printf 'standards score %s is below required %s\n' "$standards_score" "$minimum_score" >&2

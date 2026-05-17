@@ -70,7 +70,8 @@ In 'mp-cache', just like the doc 'mp-cache/docs/runbooks/manual-end-to-end-testi
 
 When I go through 'mp-cache/docs/runbooks/manual-api-testing-with-scripted-local-deploy.md' and run the script block in section 6 in a normal bash sell, I get the error: "bash: status_str: unbound variable". Please fix it. Done
 
-Error codes for application errors.
-In 'mp-cache' project, make it a durable rule that anytime an application error is being sent as a response, it should also send an associated error code (defined by the project), error descriptions are for humans only, the clients use the error codes to decide how to deal with the error. Scan the codebase and make sure this rule is being followed totally. Update the docs/context/tests, etc. Validate that this is being done.
+In 'mp-cache' project, make it a durable rule that anytime an application error is being sent as a response, it should also send an associated error code (defined by the project), error descriptions are for humans only, the clients use the error codes to decide how to deal with the error. Scan the codebase and make sure this rule is being followed totally. Update the docs/context/tests, etc. Validate that this is being done. Done
 
 .tmp folder cleanup?
+
+In 'mp-cache' project, constants, appropriate readonly values, appropriate default values, appropriate config values, etc should be defined in one place for easier discovery and update. Make sure this is followed as a durable rule. Don't scatter them around in multiple source files across the project. Update docs/context/tests wherever required. Perform validation.

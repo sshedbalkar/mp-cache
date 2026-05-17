@@ -8,8 +8,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define MP_CACHE_SHA256_BLOCK_SIZE 64u
-
 /* Tracks the incremental SHA-256 compression state for one digest operation. */
 typedef struct {
     uint32_t state[8];

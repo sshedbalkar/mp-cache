@@ -1,5 +1,7 @@
 #include "internal/runtime/runtime.h"
 
+#include "internal/config/constants.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -8,12 +10,12 @@ static void mp_cache_server_print_usage(FILE *usage_stream) {
     (void)fprintf(
         usage_stream,
         "usage: mp-cache-server [--config <path>] [--print-config]\n"
-        "default config path: configs/bootstrap.ini\n");
+        "default config path: " MP_CACHE_DEFAULT_CONFIG_PATH "\n");
 }
 
 /* Parse the small server CLI surface and hand execution to the runtime module. */
 int main(int argc, char **argv) {
-    const char *config_path = "configs/bootstrap.ini";
+    const char *config_path = MP_CACHE_DEFAULT_CONFIG_PATH;
     int print_config_only = 0;
     int arg_index = 0;
 

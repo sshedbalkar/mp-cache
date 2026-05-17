@@ -19,15 +19,15 @@ static void test_defaults_include_required_ttl(void) {
     mp_cache_config_t config;
 
     mp_cache_config_init_defaults(&config);
-    assert(strcmp(config.socket_path, ".tmp/run/mp-cache.sock") == 0);
-    assert(strcmp(config.pid_file_path, ".tmp/run/mp-cache.pid") == 0);
-    assert(config.default_ttl_seconds == 172800u);
-    assert(config.min_ttl_seconds == 1u);
+    assert(strcmp(config.socket_path, MP_CACHE_DEFAULT_SOCKET_PATH) == 0);
+    assert(strcmp(config.pid_file_path, MP_CACHE_DEFAULT_PID_FILE_PATH) == 0);
+    assert(config.default_ttl_seconds == MP_CACHE_DEFAULT_TTL_SECONDS);
+    assert(config.min_ttl_seconds == MP_CACHE_DEFAULT_MIN_TTL_SECONDS);
     assert(config.max_ttl_seconds >= config.default_ttl_seconds);
-    assert(strcmp(config.bootstrap_admin_token_secret_ref, "env:MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN") == 0);
-    assert(strcmp(config.storage_key_secret_ref, "env:MP_SECRET_LOCAL_STORAGE_KEY") == 0);
-    assert(strcmp(config.checkpoint_path, ".tmp/data/state.checkpoint") == 0);
-    assert(strcmp(config.journal_path, ".tmp/data/state.journal") == 0);
+    assert(strcmp(config.bootstrap_admin_token_secret_ref, MP_CACHE_DEFAULT_BOOTSTRAP_ADMIN_TOKEN_SECRET_REF) == 0);
+    assert(strcmp(config.storage_key_secret_ref, MP_CACHE_DEFAULT_STORAGE_KEY_SECRET_REF) == 0);
+    assert(strcmp(config.checkpoint_path, MP_CACHE_DEFAULT_CHECKPOINT_PATH) == 0);
+    assert(strcmp(config.journal_path, MP_CACHE_DEFAULT_JOURNAL_PATH) == 0);
 }
 
 /* Verify file-backed config parsing overrides the default TTL and related settings. */
@@ -94,6 +94,7 @@ static void test_load_file_overrides_default_ttl(void) {
 static void test_template_write_mentions_default_ttl(void) {
     char path[256];
     char contents[8192];
+    char expected_default_ttl_line[64];
     FILE *file = NULL;
     size_t read_length = 0u;
     mp_cache_config_t config;
@@ -112,9 +113,14 @@ static void test_template_write_mentions_default_ttl(void) {
     contents[read_length] = '\0';
     assert(fclose(file) == 0);
 
-    assert(strstr(contents, "default_ttl_seconds = 172800") != NULL);
-    assert(strstr(contents, "socket_path = .tmp/run/mp-cache.sock") != NULL);
-    assert(strstr(contents, "pid_file_path = .tmp/run/mp-cache.pid") != NULL);
+    (void)snprintf(
+        expected_default_ttl_line,
+        sizeof(expected_default_ttl_line),
+        MP_CACHE_CONFIG_KEY_DEFAULT_TTL_SECONDS " = %u",
+        MP_CACHE_DEFAULT_TTL_SECONDS);
+    assert(strstr(contents, expected_default_ttl_line) != NULL);
+    assert(strstr(contents, MP_CACHE_CONFIG_KEY_SOCKET_PATH " = " MP_CACHE_DEFAULT_SOCKET_PATH) != NULL);
+    assert(strstr(contents, MP_CACHE_CONFIG_KEY_PID_FILE_PATH " = " MP_CACHE_DEFAULT_PID_FILE_PATH) != NULL);
     assert(unlink(path) == 0);
 }
 

@@ -14,19 +14,12 @@
 #include <time.h>
 #include <unistd.h>
 
-#define MP_CACHE_STATE_MAGIC "MPCSTAT1"
-#define MP_CACHE_JOURNAL_MAGIC "MPCJNL1"
-#define MP_CACHE_EXPORT_MAGIC "MPCEXPT1"
-#define MP_CACHE_PACKET_HEADER_SIZE 64u
-#define MP_CACHE_STATE_VERSION 2u
-#define MP_CACHE_JOURNAL_VERSION 2u
-
 /* Tags the operation type encoded inside one journal packet payload. */
 typedef enum {
-    MP_CACHE_JOURNAL_OP_SET = 1,
-    MP_CACHE_JOURNAL_OP_DELETE = 2,
-    MP_CACHE_JOURNAL_OP_CLIENT_UPSERT = 3,
-    MP_CACHE_JOURNAL_OP_PURGE_ALL = 4
+    MP_CACHE_JOURNAL_OP_SET = MP_CACHE_STORAGE_JOURNAL_OP_SET_VALUE,
+    MP_CACHE_JOURNAL_OP_DELETE = MP_CACHE_STORAGE_JOURNAL_OP_DELETE_VALUE,
+    MP_CACHE_JOURNAL_OP_CLIENT_UPSERT = MP_CACHE_STORAGE_JOURNAL_OP_CLIENT_UPSERT_VALUE,
+    MP_CACHE_JOURNAL_OP_PURGE_ALL = MP_CACHE_STORAGE_JOURNAL_OP_PURGE_ALL_VALUE
 } mp_cache_journal_op_t;
 
 /* Owns a growable byte buffer used while serializing packets and state blobs. */
@@ -105,7 +98,7 @@ static int mp_cache_buffer_reserve(mp_cache_buffer_t *buffer, size_t additional_
         return 0;
     }
 
-    next_capacity = buffer->capacity == 0u ? 256u : buffer->capacity;
+    next_capacity = buffer->capacity == 0u ? MP_CACHE_STORAGE_BUFFER_INITIAL_CAPACITY : buffer->capacity;
     while (next_capacity < buffer->length + additional_length) {
         if (next_capacity > SIZE_MAX / 2u) {
             next_capacity = buffer->length + additional_length;
@@ -253,7 +246,7 @@ static int mp_cache_storage_build_packet(
     mp_cache_buffer_t *out_packet,
     uint8_t out_mac[MP_CACHE_TOKEN_HASH_SIZE]) {
     uint8_t nonce[MP_CACHE_NONCE_SIZE];
-    uint8_t header[MP_CACHE_PACKET_HEADER_SIZE];
+    uint8_t header[MP_CACHE_STORAGE_PACKET_HEADER_SIZE];
     uint8_t *ciphertext = NULL;
     mp_cache_buffer_t mac_input = {0};
 
@@ -299,9 +292,9 @@ static int mp_cache_storage_build_packet(
         sizeof(storage->storage_key),
         mac_input.bytes,
         mac_input.length,
-        header + 32u);
+        header + MP_CACHE_STORAGE_HEADER_MAC_OFFSET);
     if (out_mac != NULL) {
-        memcpy(out_mac, header + 32u, MP_CACHE_TOKEN_HASH_SIZE);
+        memcpy(out_mac, header + MP_CACHE_STORAGE_HEADER_MAC_OFFSET, MP_CACHE_TOKEN_HASH_SIZE);
     }
 
     if (mp_cache_buffer_append(out_packet, header, sizeof(header)) != 0 ||
@@ -414,7 +407,7 @@ static int mp_cache_storage_read_packet_stream(
     uint8_t **out_payload,
     size_t *out_payload_length,
     uint8_t out_mac[MP_CACHE_TOKEN_HASH_SIZE]) {
-    uint8_t header[MP_CACHE_PACKET_HEADER_SIZE];
+    uint8_t header[MP_CACHE_STORAGE_PACKET_HEADER_SIZE];
     uint8_t *ciphertext = NULL;
     uint8_t computed_mac[MP_CACHE_TOKEN_HASH_SIZE];
     mp_cache_buffer_t mac_input = {0};
@@ -461,7 +454,8 @@ static int mp_cache_storage_read_packet_stream(
         return -1;
     }
 
-    if (mp_cache_buffer_append(&mac_input, header, 32u) != 0 || mp_cache_buffer_append(&mac_input, ciphertext, payload_length) != 0) {
+    if (mp_cache_buffer_append(&mac_input, header, MP_CACHE_STORAGE_HEADER_MAC_OFFSET) != 0 ||
+        mp_cache_buffer_append(&mac_input, ciphertext, payload_length) != 0) {
         free(ciphertext);
         mp_cache_buffer_destroy(&mac_input);
         return -1;
@@ -472,7 +466,7 @@ static int mp_cache_storage_read_packet_stream(
         mac_input.bytes,
         mac_input.length,
         computed_mac);
-    if (!mp_cache_constant_time_equals(computed_mac, header + 32u, sizeof(computed_mac))) {
+    if (!mp_cache_constant_time_equals(computed_mac, header + MP_CACHE_STORAGE_HEADER_MAC_OFFSET, sizeof(computed_mac))) {
         free(ciphertext);
         mp_cache_buffer_destroy(&mac_input);
         errno = EACCES;
@@ -488,7 +482,7 @@ static int mp_cache_storage_read_packet_stream(
     *out_payload = ciphertext;
     *out_payload_length = payload_length;
     if (out_mac != NULL) {
-        memcpy(out_mac, header + 32u, MP_CACHE_TOKEN_HASH_SIZE);
+        memcpy(out_mac, header + MP_CACHE_STORAGE_HEADER_MAC_OFFSET, MP_CACHE_TOKEN_HASH_SIZE);
     }
 
     mp_cache_buffer_destroy(&mac_input);
@@ -616,7 +610,7 @@ static int mp_cache_storage_serialize_state(
     }
     client_count = mp_cache_security_client_count(security);
 
-    if (mp_cache_buffer_append_u32(out_buffer, MP_CACHE_STATE_VERSION) != 0 ||
+    if (mp_cache_buffer_append_u32(out_buffer, MP_CACHE_STORAGE_STATE_VERSION) != 0 ||
         mp_cache_buffer_append_u64(out_buffer, (uint64_t)now_utc_seconds) != 0 ||
         mp_cache_buffer_append_u32(out_buffer, (uint32_t)entry_count.count) != 0) {
         return -1;
@@ -654,7 +648,7 @@ static int mp_cache_storage_deserialize_state(
 
     if (mp_cache_consume_u32(payload, payload_length, &offset, &version) != 0 ||
         mp_cache_consume_u64(payload, payload_length, &offset, &checkpointed_at) != 0 ||
-        version == 0u || version > MP_CACHE_STATE_VERSION) {
+        version == 0u || version > MP_CACHE_STORAGE_STATE_VERSION) {
         errno = EINVAL;
         return -1;
     }
@@ -738,7 +732,7 @@ static int mp_cache_storage_build_journal_payload(
         return -1;
     }
 
-    if (mp_cache_buffer_append_u32(out_buffer, MP_CACHE_JOURNAL_VERSION) != 0 ||
+    if (mp_cache_buffer_append_u32(out_buffer, MP_CACHE_STORAGE_JOURNAL_VERSION) != 0 ||
         mp_cache_buffer_append_u32(out_buffer, (uint32_t)operation) != 0 ||
         mp_cache_buffer_append_u64(out_buffer, (uint64_t)now_utc_seconds) != 0) {
         return -1;
@@ -796,7 +790,7 @@ static int mp_cache_storage_apply_journal_payload(
     if (mp_cache_consume_u32(payload, payload_length, &offset, &version) != 0 ||
         mp_cache_consume_u32(payload, payload_length, &offset, &operation) != 0 ||
         mp_cache_consume_u64(payload, payload_length, &offset, &recorded_at) != 0 ||
-        version == 0u || version > MP_CACHE_JOURNAL_VERSION) {
+        version == 0u || version > MP_CACHE_STORAGE_JOURNAL_VERSION) {
         errno = EINVAL;
         return -1;
     }
@@ -890,7 +884,7 @@ static int mp_cache_storage_export_count(mp_cache_storage_t *storage, size_t *ou
     }
 
     while ((entry = readdir(directory)) != NULL) {
-        if (strncmp(entry->d_name, "mp-cache-export-", 16u) == 0) {
+        if (strncmp(entry->d_name, MP_CACHE_STORAGE_EXPORT_FILE_PREFIX, MP_CACHE_STORAGE_EXPORT_FILE_PREFIX_LENGTH) == 0) {
             count++;
         }
     }
@@ -965,7 +959,7 @@ int mp_cache_storage_init(mp_cache_storage_t *storage, const mp_cache_config_t *
         return -1;
     }
     storage->max_export_files = config->max_export_files;
-    storage->max_packet_bytes = config->memory_limit_bytes + (16u * 1024u * 1024u);
+    storage->max_packet_bytes = config->memory_limit_bytes + MP_CACHE_STORAGE_MAX_PACKET_OVERHEAD_BYTES;
     storage->log = log;
 
     if (mp_cache_secret_resolve(config->storage_key_secret_ref, storage_secret, sizeof(storage_secret)) != 0) {
@@ -1001,7 +995,7 @@ int mp_cache_storage_load_state(
     mp_cache_store_clear(store);
     mp_cache_security_clear_clients(security);
 
-    result = mp_cache_storage_read_packet_file(storage, storage->checkpoint_path, MP_CACHE_STATE_MAGIC, &payload, &payload_length, NULL);
+    result = mp_cache_storage_read_packet_file(storage, storage->checkpoint_path, MP_CACHE_STORAGE_STATE_MAGIC, &payload, &payload_length, NULL);
     if (result < 0) {
         mp_cache_storage_log(storage, MP_LOG_LEVEL_ERROR, "failed to read checkpoint state");
         free(payload);
@@ -1024,7 +1018,7 @@ int mp_cache_storage_load_state(
 
     for (;;) {
         payload_length = 0u;
-        result = mp_cache_storage_read_packet_stream(storage, journal, MP_CACHE_JOURNAL_MAGIC, &payload, &payload_length, NULL);
+        result = mp_cache_storage_read_packet_stream(storage, journal, MP_CACHE_STORAGE_JOURNAL_MAGIC, &payload, &payload_length, NULL);
         if (result == 1) {
             break;
         }
@@ -1058,7 +1052,7 @@ int mp_cache_storage_checkpoint(
         mp_cache_storage_write_packet_file(
             storage,
             storage->checkpoint_path,
-            MP_CACHE_STATE_MAGIC,
+            MP_CACHE_STORAGE_STATE_MAGIC,
             payload.bytes,
             payload.length,
             NULL) != 0) {
@@ -1101,7 +1095,7 @@ int mp_cache_storage_append_set(
         0u,
         &payload);
     if (result == 0) {
-        result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_JOURNAL_MAGIC, payload.bytes, payload.length);
+        result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_STORAGE_JOURNAL_MAGIC, payload.bytes, payload.length);
     }
     mp_cache_buffer_destroy(&payload);
     return result;
@@ -1127,7 +1121,7 @@ int mp_cache_storage_append_delete(mp_cache_storage_t *storage, const char *key,
         0u,
         &payload);
     if (result == 0) {
-        result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_JOURNAL_MAGIC, payload.bytes, payload.length);
+        result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_STORAGE_JOURNAL_MAGIC, payload.bytes, payload.length);
     }
     mp_cache_buffer_destroy(&payload);
     return result;
@@ -1153,7 +1147,7 @@ int mp_cache_storage_append_client(mp_cache_storage_t *storage, const mp_cache_c
         record->token_active ? 1u : 0u,
         &payload);
     if (result == 0) {
-        result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_JOURNAL_MAGIC, payload.bytes, payload.length);
+        result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_STORAGE_JOURNAL_MAGIC, payload.bytes, payload.length);
     }
     mp_cache_buffer_destroy(&payload);
     return result;
@@ -1179,7 +1173,7 @@ int mp_cache_storage_append_purge_all(mp_cache_storage_t *storage) {
         0u,
         &payload);
     if (result == 0) {
-        result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_JOURNAL_MAGIC, payload.bytes, payload.length);
+        result = mp_cache_storage_append_packet(storage, storage->journal_path, MP_CACHE_STORAGE_JOURNAL_MAGIC, payload.bytes, payload.length);
     }
     mp_cache_buffer_destroy(&payload);
     return result;
@@ -1221,7 +1215,7 @@ int mp_cache_storage_export_state(
     if (mp_cache_storage_format_path(
             out_result->export_path,
             sizeof(out_result->export_path),
-            "%s/mp-cache-export-%ld-%ld.bin",
+            MP_CACHE_STORAGE_EXPORT_FILE_NAME_FORMAT,
             storage->export_directory,
             (long)now_utc_seconds,
             (long)getpid()) != 0) {
@@ -1238,7 +1232,7 @@ int mp_cache_storage_export_state(
     if (mp_cache_storage_write_packet_file(
             storage,
             out_result->export_path,
-            MP_CACHE_EXPORT_MAGIC,
+            MP_CACHE_STORAGE_EXPORT_MAGIC,
             payload.bytes,
             payload.length,
             export_mac) != 0 ||
@@ -1271,7 +1265,7 @@ int mp_cache_storage_import_state(
     if (mp_cache_storage_resolve_import_path(storage, import_path, resolved_path, sizeof(resolved_path)) != 0) {
         return -1;
     }
-    if (mp_cache_storage_read_packet_file(storage, resolved_path, MP_CACHE_EXPORT_MAGIC, &payload, &payload_length, NULL) != 0) {
+    if (mp_cache_storage_read_packet_file(storage, resolved_path, MP_CACHE_STORAGE_EXPORT_MAGIC, &payload, &payload_length, NULL) != 0) {
         free(payload);
         return -1;
     }
