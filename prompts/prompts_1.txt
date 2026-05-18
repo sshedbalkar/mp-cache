@@ -109,4 +109,10 @@ Finally, run the project’s required validation suite, including unit tests, st
 Done
 ---
 
-Deploy 'mp-cache' for use in local as a auto-start service that uses the build files from the 'mp-cache/build' directory. Configure it to work behind the Nginx proxy server running on local. Create a local deploy script (with detailed comments) that does all of this (first time deployment and recurring deployment). Create similar scripts for deploying on Dev/QA/Staging/Production environments. Create docs that explain the local and remote deployment process (update if there is one already). Update docs/context/tests and validate.
+Deploy 'mp-cache' for use in local as a auto-start service that uses the build files from the 'mp-cache/build' directory. Configure it to work behind the Nginx proxy server running on local. Create a local deploy script (with detailed comments) that does all of this (first time deployment and recurring deployment). Create similar scripts for deploying on Dev/QA/Staging/Production environments. Create docs that explain the local and remote deployment process (update if there is one already). Update docs/context/tests and validate. Done
+
+make sure the 'mp-cache/deploy/systemd/mp-cache.service' starts after the SSD volume is mounted.
+
+Give various (wherever applicable) usage examples for all of the scripts within mp-cache/scripts within it's top level comments. Make this a durable rule for all future and updated scripts.
+
+nginx paths should not be hardcoded, use existing appropriate config file (define nginx paths as constants) or create a new config file and use it in all the places where the paths are used. 

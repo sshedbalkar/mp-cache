@@ -227,7 +227,7 @@ server {
 	access_log /var/log/nginx/$mp_local_deploy_service_name.access.log;
 	error_log /var/log/nginx/$mp_local_deploy_service_name.error.log warn;
 
-	location / {
+	location /cache {
 		proxy_pass http://mp_cache_local_upstream;
 		proxy_http_version 1.1;
 		proxy_set_header Host \$host;

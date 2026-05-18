@@ -249,7 +249,7 @@ server {
 	access_log /var/log/nginx/mp-cache.access.log;
 	error_log /var/log/nginx/mp-cache.error.log warn;
 
-	location / {
+	location /cache {
 		proxy_pass http://mp_cache_upstream;
 		proxy_http_version 1.1;
 		proxy_set_header Host \$host;
