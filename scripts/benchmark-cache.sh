@@ -7,6 +7,21 @@ set -euo pipefail
 #   ./scripts/benchmark-cache.sh
 #   ./scripts/benchmark-cache.sh .tmp/test-reports
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/benchmark-cache.sh [report-dir]
+
+Runs the cache benchmark and writes:
+- cache-benchmark.txt
+- cache-benchmark-report.md
+
+Arguments:
+  report-dir
+      Optional report directory. Default: .tmp/test-reports.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

@@ -7,6 +7,27 @@ set -euo pipefail
 #   ./scripts/package.sh
 #   ./scripts/package.sh dist build/local-debug 1.2.3 abc123 2026-05-18T12:00:00Z
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/package.sh [package-dir] [build-dir] [version] [commit] [build-time]
+
+Creates a versioned distributable archive from an existing build directory.
+
+Arguments:
+  package-dir
+      Output package directory. Default: dist.
+  build-dir
+      Build directory containing binaries. Default: build/local-debug.
+  version
+      Artifact version string. Default: dev.
+  commit
+      Artifact commit string. Default: local.
+  build-time
+      UTC build time. Default: 1970-01-01T00:00:00Z.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 package_dir="${1:-dist}"

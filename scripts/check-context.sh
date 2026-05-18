@@ -7,6 +7,15 @@ set -euo pipefail
 #   ./scripts/check-context.sh
 #   ./scripts/test-local.sh
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/check-context.sh
+
+Verifies that required durable docs and context routing files exist.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 required_context_paths=(

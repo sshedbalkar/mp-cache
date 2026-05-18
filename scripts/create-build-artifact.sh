@@ -16,6 +16,27 @@ set -euo pipefail
 #   ./scripts/create-build-artifact.sh
 #   ./scripts/create-build-artifact.sh [package-dir] [build-dir] [version] [commit] [build-time]
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/create-build-artifact.sh [package-dir] [build-dir] [version] [commit] [build-time]
+
+Creates the default local build artifact from an already-created build.
+
+Arguments:
+  package-dir
+      Output package directory. Default: dist/local.
+  build-dir
+      Build directory containing binaries. Default: build/local-debug.
+  version
+      Artifact version string. Default: local.
+  commit
+      Artifact commit string. Default: current short git SHA or local.
+  build-time
+      UTC build time. Default: current UTC timestamp.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 build_artifact_package_dir="${1:-dist/local}"

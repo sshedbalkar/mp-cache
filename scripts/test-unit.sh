@@ -7,6 +7,19 @@ set -euo pipefail
 #   ./scripts/test-unit.sh
 #   ./scripts/test-unit.sh .tmp/test-reports
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/test-unit.sh [report-dir]
+
+Builds and runs the local-debug CTest unit suite.
+
+Arguments:
+  report-dir
+      Optional report directory. Default: .tmp/test-reports.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

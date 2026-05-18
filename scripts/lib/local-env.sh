@@ -7,6 +7,23 @@ set -euo pipefail
 #   . ./scripts/lib/local-env.sh
 #   MP_CONFIG_PATH=configs/bootstrap.ini . ./scripts/lib/local-env.sh
 
+if [ "${BASH_SOURCE[0]}" = "$0" ] && [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: . ./scripts/lib/local-env.sh
+
+Provides shared local environment, build, server, and smoke-test helpers.
+
+Environment:
+  MP_CONFIG_PATH
+      Optional config path override.
+  MP_SOCKET_PATH
+      Optional local Unix socket path override.
+  MP_PID_FILE
+      Optional local pid file path override.
+EOF
+  exit 0
+fi
+
 mp_detect_repo_root() {
   local repo_root_script_dir
   repo_root_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

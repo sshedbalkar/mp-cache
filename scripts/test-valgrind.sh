@@ -7,6 +7,19 @@ set -euo pipefail
 #   ./scripts/test-valgrind.sh
 #   ./scripts/test-valgrind.sh .tmp/test-reports
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/test-valgrind.sh [report-dir]
+
+Runs unit test binaries under Valgrind and records host blockers clearly.
+
+Arguments:
+  report-dir
+      Optional report directory. Default: .tmp/test-reports.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

@@ -7,6 +7,19 @@ set -euo pipefail
 #   ./scripts/test-naming-strategy.sh
 #   ./scripts/test-naming-strategy.sh .tmp/test-reports
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/test-naming-strategy.sh [report-dir]
+
+Verifies naming-strategy rules for cmd, scripts, and internal code.
+
+Arguments:
+  report-dir
+      Optional report directory. Default: .tmp/test-reports.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

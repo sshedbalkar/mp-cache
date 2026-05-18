@@ -7,6 +7,23 @@ set -euo pipefail
 #   ./scripts/promote-artifact.sh dist/mp-cache-1.2.3.tar.gz development qa
 #   ./scripts/promote-artifact.sh dist/promotions/qa/mp-cache-1.2.3.tar.gz qa staging
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/promote-artifact.sh <artifact> <from-env> <to-env>
+
+Copies an immutable artifact and optional checksum into the next promotion directory.
+
+Arguments:
+  artifact
+      Existing artifact archive to promote.
+  from-env
+      Source environment name, such as development or qa.
+  to-env
+      Target environment name, such as qa, staging, or production.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 artifact_path="${1:-}"

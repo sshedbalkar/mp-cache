@@ -7,6 +7,21 @@ set -euo pipefail
 #   ./scripts/check-standards.sh
 #   ./scripts/check-standards.sh .tmp/test-reports 90
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/check-standards.sh [report-dir] [minimum-score]
+
+Verifies durable standards files, centralized constants, and script help headers.
+
+Arguments:
+  report-dir
+      Optional report directory. Default: .tmp/test-reports.
+  minimum-score
+      Optional required standards score. Default: 85.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"
@@ -114,6 +129,17 @@ script_header_usage_examples_report="$(
       printf '%s\n' "$standard_script_file"
   done
 )"
+script_help_usage_report="$(
+  for standard_script_file in scripts/*.sh scripts/lib/*.sh; do
+    [ -f "$standard_script_file" ] || continue
+    script_help_text="$(bash "$standard_script_file" --help 2>&1)" || {
+      printf '%s: --help exited nonzero\n' "$standard_script_file"
+      continue
+    }
+    printf '%s\n' "$script_help_text" | awk '/^Usage:/ { found = 1 } END { exit(found ? 0 : 1) }' ||
+      printf '%s: --help did not print Usage:\n' "$standard_script_file"
+  done
+)"
 standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_standard_path_count" 'BEGIN { printf "%.0f", (p * 100) / t }')"
 
 {
@@ -124,6 +150,7 @@ standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_stand
   printf '| Score | %s |\n' "$standards_score"
   printf '| Constants source | %s |\n' "$([ -z "$constant_drift_report" ] && [ -z "$error_code_drift_report" ] && [ -z "$endpoint_drift_report" ] && printf 'centralized' || printf 'drift detected')"
   printf '| Script usage headers | %s |\n' "$([ -z "$script_header_usage_examples_report" ] && printf 'present' || printf 'missing')"
+  printf '| Script --help usage | %s |\n' "$([ -z "$script_help_usage_report" ] && printf 'present' || printf 'missing')"
 } > "$report_dir/standards-report.md"
 
 if [ -n "$constant_drift_report" ]; then
@@ -140,6 +167,10 @@ if [ -n "$endpoint_drift_report" ]; then
 fi
 if [ -n "$script_header_usage_examples_report" ]; then
   printf 'scripts must include top-level Usage examples comments:\n%s\n' "$script_header_usage_examples_report" >&2
+  exit 1
+fi
+if [ -n "$script_help_usage_report" ]; then
+  printf 'scripts must print usage successfully for --help:\n%s\n' "$script_help_usage_report" >&2
   exit 1
 fi
 

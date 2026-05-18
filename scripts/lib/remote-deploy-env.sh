@@ -7,6 +7,20 @@ set -euo pipefail
 #   . ./scripts/lib/remote-deploy-env.sh
 #   ./scripts/deploy-qa.sh dist/promotions/qa/mp-cache-1.2.3.tar.gz deploy@qa-host
 
+if [ "${BASH_SOURCE[0]}" = "$0" ] && [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: . ./scripts/lib/remote-deploy-env.sh
+
+Provides shared remote artifact deployment and service-control helpers.
+
+Use the environment-specific wrappers for normal operations:
+  ./scripts/deploy-qa.sh <artifact.tar.gz> <ssh-target>
+  ./scripts/restart-qa.sh <ssh-target>
+  ./scripts/stop-qa.sh <ssh-target>
+EOF
+  exit 0
+fi
+
 . ./scripts/lib/nginx-env.sh
 
 mp_remote_deploy_print_usage() {

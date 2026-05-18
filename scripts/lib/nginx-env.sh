@@ -7,6 +7,19 @@ set -euo pipefail
 #   . ./scripts/lib/nginx-env.sh
 #   MP_NGINX_PATH_CONFIG_FILE=configs/deploy/nginx-paths.env . ./scripts/lib/nginx-env.sh
 
+if [ "${BASH_SOURCE[0]}" = "$0" ] && [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: . ./scripts/lib/nginx-env.sh
+
+Loads shared Nginx path constants for local and remote deployment scripts.
+
+Environment:
+  MP_NGINX_PATH_CONFIG_FILE
+      Optional Nginx path constants file override.
+EOF
+  exit 0
+fi
+
 mp_nginx_detect_repo_root() {
   local nginx_env_script_dir
   nginx_env_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

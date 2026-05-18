@@ -7,6 +7,15 @@ set -euo pipefail
 #   ./scripts/build-local.sh
 #   ./scripts/deploy-local.sh
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/build-local.sh
+
+Builds the default local-debug server and refreshes dist/local/mp-cache-local.tar.gz.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh
 

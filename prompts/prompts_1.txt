@@ -113,6 +113,8 @@ Deploy 'mp-cache' for use in local as a auto-start service that uses the build f
 
 make sure the 'mp-cache/deploy/systemd/mp-cache.service' starts after the SSD volume is mounted. Done
 
-Give various (wherever applicable) usage examples for all of the scripts within 'mp-cache/scripts' within it's top level comments. Make this a durable rule for all future and updated scripts.
+Give various (wherever applicable) usage examples for all of the scripts within 'mp-cache/scripts' within it's top level comments. Make this a durable rule for all future and updated scripts. Done.
+
+Make sure all of the scripts have 'print usage' functionality as well which gets triggered on '--help' switch. Make this also a durable rule.
 
 nginx paths should not be hardcoded, use existing appropriate config file (define nginx paths as constants) or create a new config file and use it in all the places where the paths are used. Done

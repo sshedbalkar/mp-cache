@@ -7,6 +7,19 @@ set -euo pipefail
 #   ./scripts/check-logging.sh
 #   ./scripts/check-logging.sh .tmp/test-reports
 
+if [ "${1:-}" = "--help" ]; then
+  cat <<'EOF'
+Usage: ./scripts/check-logging.sh [report-dir]
+
+Verifies service logging stays on the native mp_logger backend.
+
+Arguments:
+  report-dir
+      Optional report directory. Default: .tmp/test-reports.
+EOF
+  exit 0
+fi
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

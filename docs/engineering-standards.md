@@ -75,6 +75,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Builds must be reproducible from checked-in source and build config.
 - Build scripts must live in the repository.
 - Scripts must keep top-level comments that include a short purpose statement and a `Usage examples:` block. When a script is meant to be sourced rather than executed, the examples should show the supported sourcing or caller pattern.
+- Every script must print a `Usage:` block and exit successfully when invoked directly with `--help`; sourced helper scripts must only trigger direct help when executed directly, not when a wrapper script is handling its own `--help`.
 - Promote the same artifact through local, QA, staging, and production.
 - Only config, secrets, limits, and bindings change between environments.
 - Every packaged artifact should include version, commit, build time, and checksum.
