@@ -16,6 +16,7 @@ required_standard_paths=(
   docs/naming-strategy.md
   configs/bootstrap.ini
   configs/build/CMakePresets.json
+  configs/deploy/nginx-paths.env
   configs/logger.bootstrap.ini
   deploy/development/README.md
   deploy/local/README.md
@@ -44,6 +45,7 @@ required_standard_paths=(
   scripts/restart-qa.sh
   scripts/restart-staging.sh
   scripts/lib/remote-deploy-env.sh
+  scripts/lib/nginx-env.sh
   scripts/stop-development.sh
   scripts/stop-production.sh
   scripts/stop-qa.sh

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+. ./scripts/lib/nginx-env.sh
+
 mp_remote_deploy_print_usage() {
   local remote_environment_name="$1"
 
@@ -20,6 +22,8 @@ Environment:
       Remote Nginx listen address. Default: 127.0.0.1:8080.
   MP_REMOTE_DEPLOY_INSTALL_NGINX
       Set to 0 when an external proxy is managed separately. Default: 1.
+  MP_NGINX_PATH_CONFIG_FILE
+      Nginx path constants file. Default: configs/deploy/nginx-paths.env.
 EOF
 }
 
@@ -73,6 +77,12 @@ mp_remote_deploy_run() {
      MP_REMOTE_NGINX_LISTEN='$remote_nginx_listen' \
      MP_REMOTE_INSTALL_NGINX='$remote_should_install_nginx' \
      MP_REMOTE_STAGING_DIR='$remote_staging_dir' \
+     MP_CACHE_NGINX_MAIN_CONFIG_FILE='$MP_CACHE_NGINX_MAIN_CONFIG_FILE' \
+     MP_CACHE_NGINX_CONF_DIR='$MP_CACHE_NGINX_CONF_DIR' \
+     MP_CACHE_NGINX_LOG_DIR='$MP_CACHE_NGINX_LOG_DIR' \
+     MP_CACHE_NGINX_REMOTE_CONF_FILE_NAME='$MP_CACHE_NGINX_REMOTE_CONF_FILE_NAME' \
+     MP_CACHE_NGINX_LOCATION_PATH='$MP_CACHE_NGINX_LOCATION_PATH' \
+     MP_CACHE_NGINX_ERROR_LOG_LEVEL='$MP_CACHE_NGINX_ERROR_LOG_LEVEL' \
      bash -s" <<'REMOTE_DEPLOY_SCRIPT'
 set -euo pipefail
 
@@ -80,10 +90,9 @@ remote_release_id="$(date -u +%Y%m%dT%H%M%SZ)-$MP_REMOTE_ENVIRONMENT_NAME"
 remote_release_dir="$MP_REMOTE_DEPLOY_ROOT/releases/$remote_release_id"
 remote_current_link="$MP_REMOTE_DEPLOY_ROOT/current"
 remote_unit_file="/etc/systemd/system/mp-cache.service"
-remote_nginx_conf_file="/etc/nginx/conf.d/mp-cache.conf"
+remote_nginx_conf_file="$MP_CACHE_NGINX_CONF_DIR/$MP_CACHE_NGINX_REMOTE_CONF_FILE_NAME"
 remote_socket_dir="/run/mp-cache"
 remote_socket_file="$remote_socket_dir/mp-cache.sock"
-remote_pid_file="$remote_socket_dir/mp-cache.pid"
 remote_nologin_shell="/usr/sbin/nologin"
 remote_nginx_user=""
 
@@ -108,6 +117,105 @@ remote_extracted_dir="$(find "$MP_REMOTE_STAGING_DIR/extract" -mindepth 1 -maxde
 [ -n "$remote_extracted_dir" ] || {
   printf 'artifact archive did not contain a top-level directory\n' >&2
   exit 1
+}
+[ -x "$remote_extracted_dir/bin/mp-cache-server" ] || {
+  printf 'artifact archive is missing bin/mp-cache-server\n' >&2
+  exit 1
+}
+[ -f "$remote_extracted_dir/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.ini" ] || {
+  printf 'artifact archive is missing configs/env/%s.ini\n' "$MP_REMOTE_ENVIRONMENT_NAME" >&2
+  exit 1
+}
+
+sudo mkdir -p "$MP_REMOTE_DEPLOY_ROOT/releases"
+sudo rm -rf "$remote_release_dir"
+sudo cp -a "$remote_extracted_dir" "$remote_release_dir"
+sudo chown -R root:root "$remote_release_dir"
+sudo ln -sfn "$remote_release_dir" "$remote_current_link"
+
+cat >"$MP_REMOTE_STAGING_DIR/mp-cache.service" <<EOF
+[Unit]
+Description=mp-cache $MP_REMOTE_ENVIRONMENT_NAME service
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=$MP_REMOTE_DEPLOY_ROOT /var/lib/mp-cache /var/log/mp-cache /run/secrets/mp-cache
+
+[Service]
+Type=simple
+User=$MP_REMOTE_SERVICE_USER
+Group=$MP_REMOTE_SERVICE_GROUP
+WorkingDirectory=$remote_current_link
+ExecStart=$remote_current_link/bin/mp-cache-server --config $remote_current_link/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.ini
+Restart=always
+RestartSec=2s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mp-cache /var/log/mp-cache $remote_socket_dir
+RuntimeDirectory=mp-cache
+RuntimeDirectoryMode=0750
+StateDirectory=mp-cache
+StateDirectoryMode=0750
+LogsDirectory=mp-cache
+LogsDirectoryMode=0750
+LimitNOFILE=4096
+UMask=0007
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo install -m 0644 "$MP_REMOTE_STAGING_DIR/mp-cache.service" "$remote_unit_file"
+sudo systemctl daemon-reload
+sudo systemctl enable --now mp-cache.service
+sudo systemctl restart mp-cache.service
+
+if [ "$MP_REMOTE_INSTALL_NGINX" = "1" ]; then
+  remote_nginx_user="$(awk '$1 == "user" { gsub(";", "", $2); print $2; exit }' "$MP_CACHE_NGINX_MAIN_CONFIG_FILE" 2>/dev/null || true)"
+  if [ -n "$remote_nginx_user" ] && id "$remote_nginx_user" >/dev/null 2>&1; then
+    sudo usermod -a -G "$MP_REMOTE_SERVICE_GROUP" "$remote_nginx_user"
+  fi
+
+  mkdir -p "$MP_REMOTE_STAGING_DIR/nginx"
+  cat >"$MP_REMOTE_STAGING_DIR/nginx/mp-cache.conf" <<EOF
+upstream mp_cache_upstream {
+	server unix:$remote_socket_file;
+}
+
+server {
+	listen $MP_REMOTE_NGINX_LISTEN;
+	server_name _;
+
+	access_log $MP_CACHE_NGINX_LOG_DIR/mp-cache.access.log;
+	error_log $MP_CACHE_NGINX_LOG_DIR/mp-cache.error.log $MP_CACHE_NGINX_ERROR_LOG_LEVEL;
+
+	location $MP_CACHE_NGINX_LOCATION_PATH {
+		rewrite ^$MP_CACHE_NGINX_LOCATION_PATH/?(.*)$ /\$1 break;
+		proxy_pass http://mp_cache_upstream;
+		proxy_http_version 1.1;
+		proxy_set_header Host \$host;
+		proxy_set_header X-Real-IP \$remote_addr;
+		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto \$scheme;
+		proxy_set_header Authorization \$http_authorization;
+		proxy_set_header Connection "";
+	}
+}
+EOF
+  sudo install -m 0644 "$MP_REMOTE_STAGING_DIR/nginx/mp-cache.conf" "$remote_nginx_conf_file"
+  sudo nginx -t
+  if sudo systemctl is-active --quiet nginx; then
+    sudo systemctl reload nginx
+  else
+    sudo systemctl enable --now nginx
+  fi
+fi
+
+sudo systemctl --no-pager --full status mp-cache.service >/dev/null
+rm -rf "$MP_REMOTE_STAGING_DIR"
+printf 'remote deployment complete: %s -> %s\n' "$MP_REMOTE_ENVIRONMENT_NAME" "$remote_release_dir"
+REMOTE_DEPLOY_SCRIPT
 }
 
 mp_remote_service_print_usage() {
@@ -178,101 +286,4 @@ esac
 
 printf 'remote service %s complete: %s.service\n' "$MP_REMOTE_SERVICE_ACTION" "$MP_REMOTE_SERVICE_NAME"
 REMOTE_SERVICE_SCRIPT
-}
-[ -x "$remote_extracted_dir/bin/mp-cache-server" ] || {
-  printf 'artifact archive is missing bin/mp-cache-server\n' >&2
-  exit 1
-}
-[ -f "$remote_extracted_dir/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.ini" ] || {
-  printf 'artifact archive is missing configs/env/%s.ini\n' "$MP_REMOTE_ENVIRONMENT_NAME" >&2
-  exit 1
-}
-
-sudo mkdir -p "$MP_REMOTE_DEPLOY_ROOT/releases"
-sudo rm -rf "$remote_release_dir"
-sudo cp -a "$remote_extracted_dir" "$remote_release_dir"
-sudo chown -R root:root "$remote_release_dir"
-sudo ln -sfn "$remote_release_dir" "$remote_current_link"
-
-cat >"$MP_REMOTE_STAGING_DIR/mp-cache.service" <<EOF
-[Unit]
-Description=mp-cache $MP_REMOTE_ENVIRONMENT_NAME service
-After=network-online.target
-Wants=network-online.target
-RequiresMountsFor=$MP_REMOTE_DEPLOY_ROOT /var/lib/mp-cache /var/log/mp-cache /run/secrets/mp-cache
-
-[Service]
-Type=simple
-User=$MP_REMOTE_SERVICE_USER
-Group=$MP_REMOTE_SERVICE_GROUP
-WorkingDirectory=$remote_current_link
-ExecStart=$remote_current_link/bin/mp-cache-server --config $remote_current_link/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.ini
-Restart=always
-RestartSec=2s
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/var/lib/mp-cache /var/log/mp-cache $remote_socket_dir
-RuntimeDirectory=mp-cache
-RuntimeDirectoryMode=0750
-StateDirectory=mp-cache
-StateDirectoryMode=0750
-LogsDirectory=mp-cache
-LogsDirectoryMode=0750
-LimitNOFILE=4096
-UMask=0007
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo install -m 0644 "$MP_REMOTE_STAGING_DIR/mp-cache.service" "$remote_unit_file"
-sudo systemctl daemon-reload
-sudo systemctl enable --now mp-cache.service
-sudo systemctl restart mp-cache.service
-
-if [ "$MP_REMOTE_INSTALL_NGINX" = "1" ]; then
-  remote_nginx_user="$(awk '$1 == "user" { gsub(";", "", $2); print $2; exit }' /etc/nginx/nginx.conf 2>/dev/null || true)"
-  if [ -n "$remote_nginx_user" ] && id "$remote_nginx_user" >/dev/null 2>&1; then
-    sudo usermod -a -G "$MP_REMOTE_SERVICE_GROUP" "$remote_nginx_user"
-  fi
-
-  cat >"$MP_REMOTE_STAGING_DIR/mp-cache.nginx.conf" <<EOF
-upstream mp_cache_upstream {
-    server unix:$remote_socket_file;
-}
-
-server {
-	listen $MP_REMOTE_NGINX_LISTEN;
-	server_name _;
-
-	access_log /var/log/nginx/mp-cache.access.log;
-	error_log /var/log/nginx/mp-cache.error.log warn;
-
-	location /cache {
-		proxy_pass http://mp_cache_upstream;
-		proxy_http_version 1.1;
-		proxy_set_header Host \$host;
-		proxy_set_header X-Real-IP \$remote_addr;
-		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-		proxy_set_header X-Forwarded-Proto \$scheme;
-		proxy_set_header Authorization \$http_authorization;
-		proxy_set_header Connection "";
-	}
-}
-EOF
-  sudo install -m 0644 "$MP_REMOTE_STAGING_DIR/mp-cache.nginx.conf" "$remote_nginx_conf_file"
-  sudo nginx -t
-  if sudo systemctl is-active --quiet nginx; then
-    sudo systemctl reload nginx
-  else
-    sudo systemctl enable --now nginx
-  fi
-fi
-
-sudo systemctl --no-pager --full status mp-cache.service >/dev/null
-rm -rf "$MP_REMOTE_STAGING_DIR"
-printf 'remote deployment complete: %s -> %s\n' "$MP_REMOTE_ENVIRONMENT_NAME" "$remote_release_dir"
-REMOTE_DEPLOY_SCRIPT
 }

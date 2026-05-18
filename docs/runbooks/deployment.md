@@ -20,8 +20,10 @@ Local defaults:
 2. Local artifact: `dist/local/mp-cache-local.tar.gz`.
 3. Service socket: `/run/mp-cache-local/mp-cache.sock`.
 4. Nginx listener: `127.0.0.1:8080`.
-5. State directory: `/var/lib/mp-cache-local`.
-6. Log directory: `/var/log/mp-cache-local`.
+5. Nginx location prefix: `/cache`.
+6. Nginx path constants: `configs/deploy/nginx-paths.env`.
+7. State directory: `/var/lib/mp-cache-local`.
+8. Log directory: `/var/log/mp-cache-local`.
 
 Common overrides:
 
@@ -30,6 +32,7 @@ MP_LOCAL_DEPLOY_BUILD=0 ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_USE_ARTIFACT=0 ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_ARTIFACT="$PWD/dist/local/mp-cache-local.tar.gz" ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_NGINX_LISTEN=127.0.0.1:18080 ./scripts/deploy-local.sh
+MP_CACHE_NGINX_LOCATION_PATH=/cache ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_BUILD_DIR="$PWD/build/local-debug" ./scripts/deploy-local.sh
 ```
 
@@ -78,6 +81,8 @@ make deploy-production ARTIFACT=dist/promotions/production/mp-cache-<version>.ta
 ```
 
 Remote scripts install each release under `/opt/mp-cache/releases/`, update `/opt/mp-cache/current`, create the dedicated `mp-cache` system user and group when missing, install or refresh `mp-cache.service`, restart the service, and optionally install an Nginx proxy. When Nginx is installed by the script, its configured worker user is added to the `mp-cache` group so it can connect to the service Unix socket. Remote services run as the dedicated `mp-cache` identity by default. Set `MP_REMOTE_DEPLOY_INSTALL_NGINX=0` when the proxy is managed by another host automation layer.
+
+Nginx filesystem paths and the location prefix are centralized in `configs/deploy/nginx-paths.env`. Deployment scripts source that file through `scripts/lib/nginx-env.sh`; override `MP_NGINX_PATH_CONFIG_FILE` or individual `MP_CACHE_NGINX_*` values only when a host has a different Nginx layout.
 
 The systemd unit uses `RequiresMountsFor=` for `/opt/mp-cache`, `/var/lib/mp-cache`, `/var/log/mp-cache`, and `/run/secrets/mp-cache`, so startup waits for the backing SSD or other mounted volume paths before launching the service.
 

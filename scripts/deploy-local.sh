@@ -25,6 +25,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh
+. ./scripts/lib/nginx-env.sh
 
 mp_local_deploy_service_name="${MP_LOCAL_DEPLOY_SERVICE_NAME:-mp-cache-local}"
 mp_local_deploy_build_dir="${MP_LOCAL_DEPLOY_BUILD_DIR:-$MP_REPO_ROOT/build/local-debug}"
@@ -63,6 +64,8 @@ Environment:
       Nginx listen address. Default: 127.0.0.1:8080.
   MP_LOCAL_DEPLOY_SERVICE_NAME
       Local systemd unit and runtime directory name. Default: mp-cache-local.
+  MP_NGINX_PATH_CONFIG_FILE
+      Nginx path constants file. Default: configs/deploy/nginx-paths.env.
 EOF
 }
 
@@ -88,20 +91,20 @@ mp_local_deploy_capture_primary_group() {
 }
 
 mp_local_deploy_select_nginx_conf_file() {
-  if [ -d /etc/nginx/conf.d ]; then
-    printf '/etc/nginx/conf.d/%s.conf\n' "$mp_local_deploy_service_name"
+  if [ -d "$MP_CACHE_NGINX_CONF_DIR" ]; then
+    printf '%s/%s.conf\n' "$MP_CACHE_NGINX_CONF_DIR" "$mp_local_deploy_service_name"
     return 0
   fi
 
-  printf '/etc/nginx/sites-available/%s.conf\n' "$mp_local_deploy_service_name"
+  printf '%s/%s.conf\n' "$MP_CACHE_NGINX_SITES_AVAILABLE_DIR" "$mp_local_deploy_service_name"
 }
 
 mp_local_deploy_enable_nginx_site_if_needed() {
   local nginx_conf_file="$1"
   local nginx_enabled_file=""
 
-  if [ -d /etc/nginx/sites-enabled ] && [ "${nginx_conf_file#"/etc/nginx/sites-available/"}" != "$nginx_conf_file" ]; then
-    nginx_enabled_file="/etc/nginx/sites-enabled/$(basename "$nginx_conf_file")"
+  if [ -d "$MP_CACHE_NGINX_SITES_ENABLED_DIR" ] && [ "${nginx_conf_file#"$MP_CACHE_NGINX_SITES_AVAILABLE_DIR/"}" != "$nginx_conf_file" ]; then
+    nginx_enabled_file="$MP_CACHE_NGINX_SITES_ENABLED_DIR/$(basename "$nginx_conf_file")"
     mp_local_deploy_run_privileged ln -sfn "$nginx_conf_file" "$nginx_enabled_file"
   fi
 }
@@ -225,10 +228,11 @@ server {
 	listen $mp_local_deploy_nginx_listen;
 	server_name localhost mp-cache.local;
 
-	access_log /var/log/nginx/$mp_local_deploy_service_name.access.log;
-	error_log /var/log/nginx/$mp_local_deploy_service_name.error.log warn;
+	access_log $MP_CACHE_NGINX_LOG_DIR/$mp_local_deploy_service_name.access.log;
+	error_log $MP_CACHE_NGINX_LOG_DIR/$mp_local_deploy_service_name.error.log $MP_CACHE_NGINX_ERROR_LOG_LEVEL;
 
-	location /cache {
+	location $MP_CACHE_NGINX_LOCATION_PATH {
+		rewrite ^$MP_CACHE_NGINX_LOCATION_PATH/?(.*)$ /\$1 break;
 		proxy_pass http://mp_cache_local_upstream;
 		proxy_http_version 1.1;
 		proxy_set_header Host \$host;
@@ -269,7 +273,7 @@ mp_local_deploy_verify_proxy() {
   health_endpoint_path="$(mp_read_c_string_constant MP_CACHE_HTTP_ROUTE_HEALTH)" ||
     mp_exit_with_error "failed to read health endpoint from internal/config/constants.h"
 
-  curl --fail --silent --show-error "http://$mp_local_deploy_nginx_listen$health_endpoint_path" >/dev/null
+  curl --fail --silent --show-error "http://$mp_local_deploy_nginx_listen$MP_CACHE_NGINX_LOCATION_PATH$health_endpoint_path" >/dev/null
 }
 
 while [ "$#" -gt 0 ]; do

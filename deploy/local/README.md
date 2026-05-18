@@ -10,6 +10,8 @@ For an auto-start local service behind Nginx, run:
 
 The auto-start script uses the current local user, builds `build/local-debug`, creates `dist/local/mp-cache-local.tar.gz`, stages binaries from that artifact by default, installs `mp-cache-local.service`, configures local Nginx, and verifies the proxied health endpoint. Re-run the same command for recurring local deployment after code changes.
 
+Nginx filesystem paths and the `/cache` location prefix are centralized in `configs/deploy/nginx-paths.env`.
+
 To create the default local artifact without installing the service, run `./scripts/build-local.sh` or `make build-artifact`.
 
 The older rootless command sequence remains useful for short-lived manual testing from a normal non-root shell.
