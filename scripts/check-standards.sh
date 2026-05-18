@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Verifies durable standards files, centralized constants, and script headers.
+#
+# Usage examples:
+#   ./scripts/check-standards.sh
+#   ./scripts/check-standards.sh .tmp/test-reports 90
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"
@@ -101,6 +107,13 @@ endpoint_drift_report=""
 if [ -n "$endpoint_pattern" ]; then
   endpoint_drift_report="$(rg -n "\"[^\"[:space:]]*(${endpoint_pattern})" internal cmd tests scripts 2>/dev/null | grep -v 'internal/config/constants.h' || true)"
 fi
+script_header_usage_examples_report="$(
+  for standard_script_file in scripts/*.sh scripts/lib/*.sh; do
+    [ -f "$standard_script_file" ] || continue
+    awk 'NR <= 30 && /^# Usage examples:/ { found = 1 } END { exit(found ? 0 : 1) }' "$standard_script_file" ||
+      printf '%s\n' "$standard_script_file"
+  done
+)"
 standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_standard_path_count" 'BEGIN { printf "%.0f", (p * 100) / t }')"
 
 {
@@ -110,6 +123,7 @@ standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_stand
   printf '| Checks present | %s/%s |\n' "$present_standard_path_count" "$required_standard_path_count"
   printf '| Score | %s |\n' "$standards_score"
   printf '| Constants source | %s |\n' "$([ -z "$constant_drift_report" ] && [ -z "$error_code_drift_report" ] && [ -z "$endpoint_drift_report" ] && printf 'centralized' || printf 'drift detected')"
+  printf '| Script usage headers | %s |\n' "$([ -z "$script_header_usage_examples_report" ] && printf 'present' || printf 'missing')"
 } > "$report_dir/standards-report.md"
 
 if [ -n "$constant_drift_report" ]; then
@@ -122,6 +136,10 @@ if [ -n "$error_code_drift_report" ]; then
 fi
 if [ -n "$endpoint_drift_report" ]; then
   printf 'project HTTP endpoint literals must use internal/config/constants.h macros:\n%s\n' "$endpoint_drift_report" >&2
+  exit 1
+fi
+if [ -n "$script_header_usage_examples_report" ]; then
+  printf 'scripts must include top-level Usage examples comments:\n%s\n' "$script_header_usage_examples_report" >&2
   exit 1
 fi
 

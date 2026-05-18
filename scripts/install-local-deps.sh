@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Installs local dependencies through the supported host-specific installer.
+#
+# Usage examples:
+#   ./scripts/install-local-deps.sh --dry-run
+#   ./scripts/install-local-deps.sh --with-valgrind
+
 cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh
 

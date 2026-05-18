@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Runs unit test binaries under Valgrind and records host blockers clearly.
+#
+# Usage examples:
+#   ./scripts/test-valgrind.sh
+#   ./scripts/test-valgrind.sh .tmp/test-reports
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

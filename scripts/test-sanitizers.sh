@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Builds and runs the unit tests under the ASan/UBSan preset.
+#
+# Usage examples:
+#   ./scripts/test-sanitizers.sh
+#   ./scripts/test-sanitizers.sh .tmp/test-reports
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

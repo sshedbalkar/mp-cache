@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Runs the cache benchmark and writes detailed and summary reports.
+#
+# Usage examples:
+#   ./scripts/benchmark-cache.sh
+#   ./scripts/benchmark-cache.sh .tmp/test-reports
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

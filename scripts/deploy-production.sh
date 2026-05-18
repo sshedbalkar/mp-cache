@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Deploy the exact artifact approved in Staging to Production.
 # Review the configured host, proxy binding, and mounted secret files first:
+# Usage examples:
 #   ./scripts/deploy-production.sh dist/promotions/production/mp-cache-<version>.tar.gz deploy@prod-host
 
 cd "$(dirname "$0")/.."

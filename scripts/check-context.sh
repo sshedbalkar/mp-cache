@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Verifies that required durable docs and context routing files exist.
+#
+# Usage examples:
+#   ./scripts/check-context.sh
+#   ./scripts/test-local.sh
+
 cd "$(dirname "$0")/.."
 
 required_context_paths=(

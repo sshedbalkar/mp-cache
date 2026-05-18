@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Verifies naming-strategy rules for cmd, scripts, and internal code.
+#
+# Usage examples:
+#   ./scripts/test-naming-strategy.sh
+#   ./scripts/test-naming-strategy.sh .tmp/test-reports
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

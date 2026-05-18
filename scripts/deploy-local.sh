@@ -22,6 +22,11 @@ set -euo pipefail
 #   MP_LOCAL_DEPLOY_BUILD_DIR=/path/to/build/dir     choose another build dir
 #   MP_LOCAL_DEPLOY_NGINX_LISTEN=127.0.0.1:18080     choose proxy listen address
 #   MP_LOCAL_DEPLOY_SERVICE_NAME=mp-cache-local      choose systemd unit name
+#
+# Usage examples:
+#   ./scripts/deploy-local.sh
+#   MP_LOCAL_DEPLOY_BUILD=0 ./scripts/deploy-local.sh
+#   MP_LOCAL_DEPLOY_USE_ARTIFACT=0 ./scripts/deploy-local.sh
 
 cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh

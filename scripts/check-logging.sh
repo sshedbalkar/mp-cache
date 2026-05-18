@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Verifies service logging stays on the native mp_logger backend.
+#
+# Usage examples:
+#   ./scripts/check-logging.sh
+#   ./scripts/check-logging.sh .tmp/test-reports
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

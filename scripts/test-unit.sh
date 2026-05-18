@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Builds and runs the local-debug CTest unit suite.
+#
+# Usage examples:
+#   ./scripts/test-unit.sh
+#   ./scripts/test-unit.sh .tmp/test-reports
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

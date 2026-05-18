@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Creates a versioned distributable archive from an existing build directory.
+#
+# Usage examples:
+#   ./scripts/package.sh
+#   ./scripts/package.sh dist build/local-debug 1.2.3 abc123 2026-05-18T12:00:00Z
+
 cd "$(dirname "$0")/.."
 
 package_dir="${1:-dist}"

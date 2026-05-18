@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Provides shared remote artifact deployment and service-control helpers.
+#
+# Usage examples:
+#   . ./scripts/lib/remote-deploy-env.sh
+#   ./scripts/deploy-qa.sh dist/promotions/qa/mp-cache-1.2.3.tar.gz deploy@qa-host
+
 . ./scripts/lib/nginx-env.sh
 
 mp_remote_deploy_print_usage() {

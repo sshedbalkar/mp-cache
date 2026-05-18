@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Writes or rotates the local development secret environment file.
+#
+# Usage examples:
+#   ./scripts/write-local-secret-env.sh
+#   ./scripts/write-local-secret-env.sh --force
+
 cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh
 

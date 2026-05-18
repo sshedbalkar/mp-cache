@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Installs required Arch Linux or CachyOS packages for local mp-cache work.
+#
+# Usage examples:
+#   ./scripts/install-arch-cachyos.sh --dry-run
+#   ./scripts/install-arch-cachyos.sh --with-jq --with-valgrind
+
 is_dry_run_requested=0
 include_jq_package=0
 include_valgrind_packages=0

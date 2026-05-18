@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Runs hardening-oriented checks and writes validation reports.
+#
+# Usage examples:
+#   ./scripts/test-hardening.sh
+#   ./scripts/test-hardening.sh .tmp/test-reports
+
 cd "$(dirname "$0")/.."
 
 report_dir="${1:-.tmp/test-reports}"

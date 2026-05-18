@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Runs the default local validation suite plus a live health smoke test.
+#
+# Usage examples:
+#   ./scripts/test-local.sh
+#   MP_AUTO_RESET_LOCAL_STATE_ON_LOAD_FAILURE=0 ./scripts/test-local.sh
+
 cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh
 

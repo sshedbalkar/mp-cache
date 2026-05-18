@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Provides shared local environment, build, server, and smoke-test helpers.
+#
+# Usage examples:
+#   . ./scripts/lib/local-env.sh
+#   MP_CONFIG_PATH=configs/bootstrap.ini . ./scripts/lib/local-env.sh
+
 mp_detect_repo_root() {
   local repo_root_script_dir
   repo_root_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

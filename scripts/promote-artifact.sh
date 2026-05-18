@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Copies an immutable artifact and checksum into the next promotion directory.
+#
+# Usage examples:
+#   ./scripts/promote-artifact.sh dist/mp-cache-1.2.3.tar.gz development qa
+#   ./scripts/promote-artifact.sh dist/promotions/qa/mp-cache-1.2.3.tar.gz qa staging
+
 cd "$(dirname "$0")/.."
 
 artifact_path="${1:-}"

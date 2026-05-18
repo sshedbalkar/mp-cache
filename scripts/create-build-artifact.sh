@@ -12,7 +12,8 @@ set -euo pipefail
 # - output directory: dist/local
 # - output archive: dist/local/mp-cache-local.tar.gz
 #
-# Optional positional arguments mirror scripts/package.sh:
+# Usage examples:
+#   ./scripts/create-build-artifact.sh
 #   ./scripts/create-build-artifact.sh [package-dir] [build-dir] [version] [commit] [build-time]
 
 cd "$(dirname "$0")/.."
