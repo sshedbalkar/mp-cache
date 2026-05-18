@@ -16,6 +16,7 @@ required_context_paths=(
   context/doc-cards.md
   docs/architecture/mp-cache-architecture.md
   api/http/v1/cache-service.md
+  docs/runbooks/deployment.md
   docs/runbooks/local-service-lifecycle.md
   docs/runbooks/manual-api-testing-with-scripted-local-deploy.md
 )

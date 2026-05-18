@@ -17,7 +17,9 @@ required_standard_paths=(
   configs/bootstrap.ini
   configs/build/CMakePresets.json
   configs/logger.bootstrap.ini
+  deploy/development/README.md
   deploy/local/README.md
+  deploy/nginx/mp-cache.conf
   deploy/qa/README.md
   deploy/staging/README.md
   deploy/production/README.md
@@ -25,12 +27,27 @@ required_standard_paths=(
   deploy/systemd/mp-cache.service
   docs/architecture/mp-cache-architecture.md
   api/http/v1/cache-service.md
+  docs/runbooks/deployment.md
   docs/runbooks/local-service-lifecycle.md
   docs/runbooks/manual-api-testing-with-scripted-local-deploy.md
   scripts/benchmark-cache.sh
   scripts/build-local.sh
   scripts/check-logging.sh
+  scripts/create-build-artifact.sh
+  scripts/deploy-development.sh
   scripts/deploy-local.sh
+  scripts/deploy-production.sh
+  scripts/deploy-qa.sh
+  scripts/deploy-staging.sh
+  scripts/restart-development.sh
+  scripts/restart-production.sh
+  scripts/restart-qa.sh
+  scripts/restart-staging.sh
+  scripts/lib/remote-deploy-env.sh
+  scripts/stop-development.sh
+  scripts/stop-production.sh
+  scripts/stop-qa.sh
+  scripts/stop-staging.sh
   scripts/test-naming-strategy.sh
   scripts/test-hardening.sh
   scripts/test-local.sh

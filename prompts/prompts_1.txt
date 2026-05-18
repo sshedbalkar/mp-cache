@@ -76,4 +76,37 @@ In 'mp-cache' project, make it a durable rule that anytime an application error 
 
 In 'mp-cache' project, constants, appropriate readonly values, appropriate default values, appropriate config values, etc should be defined in one place for easier discovery and update. Make sure this is followed as a durable rule. Don't scatter them around in multiple source files across the project. Update docs/context/tests wherever required. Perform validation. Done
 
-Make sure all of the API endpoints like '/v1/status', /v1/health', etc are also moved to a central place. We don't want those to be scattered across the project multiple times as well. This also needs to go in the durable rule. Update, check, and validate.
+Make sure all of the API endpoints like '/v1/status', /v1/health', etc are also moved to a central place. We don't want those to be scattered across the project multiple times as well. This also needs to go in the durable rule. Update, check, and validate. Done
+
+---
+In the project 'multi-player-app-ai', constants, readonly values, default values, config keys, environment variable names, protocol markers, HTTP/API routes, HTTP error codes, status names, reusable capacities/limits, date formats, and similar durable values must be defined in one central source-of-truth location for easier discovery and update.
+
+Please inspect the project first, identify the existing best central location or create one that fits the project’s architecture. Then refactor code, tests, scripts, and local docs/context so those durable values are consumed from that central place instead of being scattered across source files.
+
+Also make this a durable rule:
+- Update the project’s engineering standards/docs/context to state that these values must be centralized.
+- Add or update an automated validation/check so future scattered constants, route literals, error-code literals, or default values fail the standards check.
+- Keep public API docs/runbooks as contract documentation, but avoid treating duplicated literals in executable code/tests/scripts as acceptable.
+
+Scope carefully:
+- Preserve existing behavior.
+- Do not centralize local loop counters, one-off test data, obvious arithmetic, or private temporary variables unless they represent a reusable project value.
+- Do not overwrite unrelated user changes.
+- Follow the project’s existing naming, folder, and validation conventions.
+
+After implementation, double-check with searches for scattered literals, especially:
+- `#define`, `const`, `static const`, enums/status-name strings
+- default paths, ports, limits, TTLs, capacities
+- config section/key names
+- env var names and secret reference prefixes
+- API endpoints/routes such as `/v1/...`
+- API error codes such as `not_found`, `invalid_argument`, `unauthorized`
+- diagnostic status strings such as `OK`, `UNKNOWN`, `LIMIT_EXCEEDED`
+
+Update relevant tests so they assert against the central constants rather than copied literals.
+
+Finally, run the project’s required validation suite, including unit tests, standards/context checks, naming checks, and memory/sanitizer/Valgrind checks where the project requires them. Report exactly what changed and the validation results, including any environment blockers.
+Done
+---
+
+Deploy 'mp-cache' for use in local as a auto-start service that uses the build files from the 'mp-cache/build' directory. Configure it to work behind the Nginx proxy server running on local. Create a local deploy script (with detailed comments) that does all of this (first time deployment and recurring deployment). Create similar scripts for deploying on Dev/QA/Staging/Production environments. Create docs that explain the local and remote deployment process (update if there is one already). Update docs/context/tests and validate.

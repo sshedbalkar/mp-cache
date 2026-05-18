@@ -38,6 +38,10 @@
   - path: `docs/runbooks/local-service-lifecycle.md`
   - status: active
   - purpose: start, stop, restart, and validation steps
+- `runbook.deployment`
+  - path: `docs/runbooks/deployment.md`
+  - status: active
+  - purpose: local auto-start service deployment and remote environment deployment
 - `runbook.manual-end-to-end-testing`
   - path: `docs/runbooks/manual-end-to-end-testing.md`
   - status: active

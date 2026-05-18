@@ -11,6 +11,7 @@ artifact_build_time="${5:-1970-01-01T00:00:00Z}"
 artifact_root="$package_dir/mp-cache-$artifact_version"
 archive_path="$package_dir/mp-cache-$artifact_version.tar.gz"
 
+rm -rf "$artifact_root" "$archive_path" "$archive_path.sha256"
 mkdir -p "$artifact_root/bin" "$artifact_root/configs" "$artifact_root/deploy" "$artifact_root/docs"
 cp "$build_dir/mp-cache-server" "$artifact_root/bin/"
 cp "$build_dir/mp-cachectl" "$artifact_root/bin/"

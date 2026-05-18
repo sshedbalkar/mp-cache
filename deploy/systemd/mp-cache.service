@@ -1,14 +1,15 @@
 [Unit]
-Description=mp-cache local Unix-socket cache service
-After=network.target
+Description=mp-cache Unix-socket cache service
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=mp-cache
 Group=mp-cache
-WorkingDirectory=/opt/mp-cache
-ExecStart=/opt/mp-cache/build/local-debug/mp-cache-server --config /opt/mp-cache/configs/env/production.ini
-Restart=on-failure
+WorkingDirectory=/opt/mp-cache/current
+ExecStart=/opt/mp-cache/current/bin/mp-cache-server --config /opt/mp-cache/current/configs/env/production.ini
+Restart=always
 RestartSec=2s
 NoNewPrivileges=true
 PrivateTmp=true
@@ -22,7 +23,7 @@ StateDirectoryMode=0750
 LogsDirectory=mp-cache
 LogsDirectoryMode=0750
 LimitNOFILE=4096
-UMask=0027
+UMask=0007
 
 [Install]
 WantedBy=multi-user.target

@@ -25,6 +25,7 @@
 - `docs/architecture/mp-cache-architecture.md`: accepted service architecture and phased implementation plan.
 - `api/http/v1/cache-service.md`: HTTP API contract and role model.
 - `docs/runbooks/local-service-lifecycle.md`: local lifecycle runbook.
+- `docs/runbooks/deployment.md`: local auto-start, Nginx proxy, and remote environment deployment runbook.
 - `docs/runbooks/manual-api-testing-with-scripted-local-deploy.md`: faster script-driven local deploy before manual API checks.
 - `docs/runbooks/manual-end-to-end-testing.md`: exhaustive isolated manual validation runbook.
 
