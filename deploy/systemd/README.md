@@ -14,4 +14,6 @@ Recommended deployment flow:
 4. Adjust `ExecStart` and `WorkingDirectory` if the artifact root differs from `/opt/mp-cache/current`.
 5. Run `systemctl daemon-reload && systemctl enable --now mp-cache.service`.
 
+The unit uses `RequiresMountsFor=` on the install, state, log, and secret paths so systemd orders service startup after the backing filesystem mounts, including SSD-backed volumes.
+
 Installing the system unit may require host administrator privileges even though the service itself is configured to run as the non-root `mp-cache` identity.

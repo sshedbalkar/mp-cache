@@ -199,6 +199,7 @@ cat >"$MP_REMOTE_STAGING_DIR/mp-cache.service" <<EOF
 Description=mp-cache $MP_REMOTE_ENVIRONMENT_NAME service
 After=network-online.target
 Wants=network-online.target
+RequiresMountsFor=$MP_REMOTE_DEPLOY_ROOT /var/lib/mp-cache /var/log/mp-cache /run/secrets/mp-cache
 
 [Service]
 Type=simple

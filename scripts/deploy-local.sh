@@ -182,6 +182,7 @@ mp_local_deploy_render_systemd_unit() {
 Description=mp-cache local service behind Nginx
 After=network-online.target nginx.service
 Wants=network-online.target
+RequiresMountsFor=$MP_REPO_ROOT $mp_local_deploy_generated_dir $mp_local_deploy_state_dir $mp_local_deploy_log_dir
 
 [Service]
 Type=simple

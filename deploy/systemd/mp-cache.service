@@ -2,6 +2,7 @@
 Description=mp-cache Unix-socket cache service
 After=network-online.target
 Wants=network-online.target
+RequiresMountsFor=/opt/mp-cache /var/lib/mp-cache /var/log/mp-cache /run/secrets/mp-cache
 
 [Service]
 Type=simple

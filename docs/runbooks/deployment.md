@@ -79,6 +79,8 @@ make deploy-production ARTIFACT=dist/promotions/production/mp-cache-<version>.ta
 
 Remote scripts install each release under `/opt/mp-cache/releases/`, update `/opt/mp-cache/current`, create the dedicated `mp-cache` system user and group when missing, install or refresh `mp-cache.service`, restart the service, and optionally install an Nginx proxy. When Nginx is installed by the script, its configured worker user is added to the `mp-cache` group so it can connect to the service Unix socket. Remote services run as the dedicated `mp-cache` identity by default. Set `MP_REMOTE_DEPLOY_INSTALL_NGINX=0` when the proxy is managed by another host automation layer.
 
+The systemd unit uses `RequiresMountsFor=` for `/opt/mp-cache`, `/var/lib/mp-cache`, `/var/log/mp-cache`, and `/run/secrets/mp-cache`, so startup waits for the backing SSD or other mounted volume paths before launching the service.
+
 Remote host expectations:
 
 1. `ssh`, `scp`, `sudo`, `systemd`, `tar`, and Nginx are available.
