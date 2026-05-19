@@ -65,6 +65,7 @@ required_standard_paths=(
   scripts/restart-production.sh
   scripts/restart-qa.sh
   scripts/restart-staging.sh
+  scripts/lib/version-env.sh
   scripts/lib/remote-deploy-env.sh
   scripts/lib/nginx-env.sh
   scripts/stop-development.sh

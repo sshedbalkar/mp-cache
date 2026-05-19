@@ -16,6 +16,8 @@ typedef struct {
     char service_name[MP_CACHE_NAME_CAP];
     /* Environment label such as local, qa, staging, or production. */
     char environment_name[MP_CACHE_TEXT_CAP];
+    /* Build artifact version in MAJOR.MINOR.HOTFIX format. */
+    char build_version[MP_CACHE_TEXT_CAP];
     /* Unix domain socket used for local control-plane HTTP traffic. */
     char socket_path[MP_CACHE_PATH_CAP];
     /* PID file path written by the runtime after startup. */

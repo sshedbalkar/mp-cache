@@ -21,6 +21,7 @@ static void test_defaults_include_required_ttl(void) {
     mp_cache_config_init_defaults(&config);
     assert(strcmp(config.socket_path, MP_CACHE_DEFAULT_SOCKET_PATH) == 0);
     assert(strcmp(config.pid_file_path, MP_CACHE_DEFAULT_PID_FILE_PATH) == 0);
+    assert(strcmp(config.build_version, MP_CACHE_DEFAULT_BUILD_VERSION) == 0);
     assert(config.default_ttl_seconds == MP_CACHE_DEFAULT_TTL_SECONDS);
     assert(config.min_ttl_seconds == MP_CACHE_DEFAULT_MIN_TTL_SECONDS);
     assert(config.max_ttl_seconds >= config.default_ttl_seconds);
@@ -47,6 +48,7 @@ static void test_load_file_overrides_default_ttl(void) {
         "[service]\n"
         "environment_name = qa\n"
         "service_name = mp-cache\n"
+        "build_version = 1.2.3\n"
         "[server]\n"
         "socket_path = .tmp/config-tests/runtime/mp-cache.sock\n"
         "pid_file_path = .tmp/config-tests/runtime/mp-cache.pid\n"
@@ -79,6 +81,7 @@ static void test_load_file_overrides_default_ttl(void) {
     mp_cache_config_init_defaults(&config);
     assert(mp_cache_config_load_file(path, &config) == MP_CACHE_CONFIG_STATUS_OK);
     assert(strcmp(config.environment_name, "qa") == 0);
+    assert(strcmp(config.build_version, "1.2.3") == 0);
     assert(config.default_ttl_seconds == 42u);
     assert(config.max_export_files == 4u);
     assert(strcmp(config.checkpoint_path, ".tmp/config-tests/data/checkpoint.bin") == 0);
@@ -87,6 +90,31 @@ static void test_load_file_overrides_default_ttl(void) {
     assert(config.rate_limit_requests == 15u);
     assert(config.rate_limit_window_seconds == 30u);
 
+    assert(unlink(path) == 0);
+}
+
+/* Verify build versions must use the MAJOR.MINOR.HOTFIX pattern. */
+static void test_load_file_rejects_invalid_build_version(void) {
+    char path[256];
+    FILE *file = NULL;
+    mp_cache_config_t config;
+
+    ensure_directory_exists(".tmp");
+    ensure_directory_exists(".tmp/config-tests");
+
+    (void)snprintf(path, sizeof(path), ".tmp/config-tests/mp-cache-invalid-version-test-%ld.ini", (long)getpid());
+    file = fopen(path, "w");
+    assert(file != NULL);
+    (void)fprintf(
+        file,
+        "[service]\n"
+        "environment_name = qa\n"
+        "service_name = mp-cache\n"
+        "build_version = 1.2\n");
+    assert(fclose(file) == 0);
+
+    mp_cache_config_init_defaults(&config);
+    assert(mp_cache_config_load_file(path, &config) == MP_CACHE_CONFIG_STATUS_PARSE_ERROR);
     assert(unlink(path) == 0);
 }
 
@@ -119,6 +147,7 @@ static void test_template_write_mentions_default_ttl(void) {
         MP_CACHE_CONFIG_KEY_DEFAULT_TTL_SECONDS " = %u",
         MP_CACHE_DEFAULT_TTL_SECONDS);
     assert(strstr(contents, expected_default_ttl_line) != NULL);
+    assert(strstr(contents, MP_CACHE_CONFIG_KEY_BUILD_VERSION " = " MP_CACHE_DEFAULT_BUILD_VERSION) != NULL);
     assert(strstr(contents, MP_CACHE_CONFIG_KEY_SOCKET_PATH " = " MP_CACHE_DEFAULT_SOCKET_PATH) != NULL);
     assert(strstr(contents, MP_CACHE_CONFIG_KEY_PID_FILE_PATH " = " MP_CACHE_DEFAULT_PID_FILE_PATH) != NULL);
     assert(unlink(path) == 0);
@@ -128,6 +157,7 @@ static void test_template_write_mentions_default_ttl(void) {
 int main(void) {
     test_defaults_include_required_ttl();
     test_load_file_overrides_default_ttl();
+    test_load_file_rejects_invalid_build_version();
     test_template_write_mentions_default_ttl();
     return 0;
 }

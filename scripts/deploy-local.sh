@@ -10,7 +10,7 @@ set -euo pipefail
 # .tmp/deploy/local/reports/.
 #
 # Defaults are local-development oriented:
-# - The service binary is staged from dist/local/mp-cache-local.tar.gz.
+# - The service binary is staged from dist/local/mp-cache-<build_version>.tar.gz.
 # - The service runs as the current user so local secret env files remain usable.
 # - Nginx listens on 127.0.0.1:8080 and proxies to the service Unix socket.
 # - Durable local service state lives under systemd StateDirectory/LogsDirectory
@@ -33,13 +33,14 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh
+. ./scripts/lib/version-env.sh
 . ./scripts/lib/nginx-env.sh
 
 mp_local_deploy_service_name="${MP_LOCAL_DEPLOY_SERVICE_NAME:-mp-cache-local}"
 mp_local_deploy_build_dir="${MP_LOCAL_DEPLOY_BUILD_DIR:-$MP_REPO_ROOT/build/local-debug}"
 mp_local_deploy_should_build="${MP_LOCAL_DEPLOY_BUILD:-1}"
 mp_local_deploy_should_use_artifact="${MP_LOCAL_DEPLOY_USE_ARTIFACT:-1}"
-mp_local_deploy_artifact_path="${MP_LOCAL_DEPLOY_ARTIFACT:-$MP_REPO_ROOT/dist/local/mp-cache-local.tar.gz}"
+mp_local_deploy_artifact_path="${MP_LOCAL_DEPLOY_ARTIFACT:-}"
 mp_local_deploy_nginx_listen="${MP_LOCAL_DEPLOY_NGINX_LISTEN:-127.0.0.1:8080}"
 mp_local_deploy_socket_dir="/run/$mp_local_deploy_service_name"
 mp_local_deploy_socket_file="$mp_local_deploy_socket_dir/mp-cache.sock"
@@ -72,7 +73,7 @@ Environment:
   MP_LOCAL_DEPLOY_USE_ARTIFACT
       Set to 0 to run directly from MP_LOCAL_DEPLOY_BUILD_DIR.
   MP_LOCAL_DEPLOY_ARTIFACT
-      Artifact archive to stage. Default: dist/local/mp-cache-local.tar.gz.
+      Artifact archive to stage. Default: dist/local/mp-cache-<build_version>.tar.gz.
   MP_LOCAL_DEPLOY_BUILD_DIR
       Build directory containing mp-cache-server. Default: build/local-debug.
   MP_LOCAL_DEPLOY_NGINX_LISTEN
@@ -160,6 +161,14 @@ mp_local_deploy_run_privileged() {
   fi
 
   sudo "$@"
+}
+
+mp_local_deploy_resolve_artifact_path() {
+  if [ -n "$mp_local_deploy_artifact_path" ]; then
+    return 0
+  fi
+
+  mp_local_deploy_artifact_path="$MP_REPO_ROOT/dist/local/mp-cache-$(mp_read_build_version_from_config "$MP_CONFIG_PATH").tar.gz"
 }
 
 mp_local_deploy_prepare_privilege() {
@@ -391,6 +400,10 @@ if [ "$mp_local_deploy_should_build" = "1" ]; then
   mp_local_deploy_pass_step "local build and artifact completed"
 else
   mp_local_deploy_record_step "build local artifact" "SKIP" "MP_LOCAL_DEPLOY_BUILD=0"
+fi
+
+if [ "$mp_local_deploy_should_use_artifact" = "1" ]; then
+  mp_local_deploy_resolve_artifact_path
 fi
 
 mp_local_deploy_begin_step "stage deployment artifact"

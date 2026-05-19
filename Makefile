@@ -3,8 +3,8 @@ SHELL := /bin/sh
 # Tool override. Set CMAKE=/path/to/cmake when testing a specific CMake build.
 CMAKE ?= cmake
 
-# Artifact metadata used by `make package`; CI should pass real release values.
-VERSION ?= dev
+# Artifact metadata used by `make package`; empty VERSION uses the server config.
+VERSION ?=
 COMMIT ?= local
 BUILD_TIME ?= 1970-01-01T00:00:00Z
 
@@ -13,7 +13,7 @@ BUILD_TIME ?= 1970-01-01T00:00:00Z
 BUILD_DIR ?= build/local-debug
 PACKAGE_DIR ?= dist
 BUILD_ARTIFACT_DIR ?= dist/local
-BUILD_ARTIFACT_VERSION ?= local
+SKIP_VERSION_INCREMENT ?= 0
 
 # Validation output knobs. TEST_REPORT_DIR keeps generated reports under .tmp/
 # by default, and STANDARDS_MIN is the minimum accepted standards score.
@@ -27,8 +27,8 @@ SSH_TARGET ?=
 
 .PHONY: build native-config native-build build-artifact test test-full test-unit test-naming-strategy test-standards test-hardening test-valgrind benchmark check package build-local test-local test-local-deployment deploy-local deploy-development deploy-qa deploy-staging deploy-production stop-local stop-development stop-qa stop-staging stop-production restart-local restart-development restart-qa restart-staging restart-production doctor promote clean
 
-# Default build compiles the native service and creates the default local
-# artifact at dist/local/mp-cache-local.tar.gz.
+# Default build compiles the native service and creates a versioned local artifact
+# using the build_version configured in configs/bootstrap.ini.
 build: build-artifact
 
 # Regenerate build files from the checked-in CMake preset.
@@ -41,7 +41,12 @@ native-build: native-config
 
 # Create the stable local build artifact consumed by deploy-local.sh.
 build-artifact: native-build
-	./scripts/create-build-artifact.sh "$(BUILD_ARTIFACT_DIR)" "$(BUILD_DIR)" "$(BUILD_ARTIFACT_VERSION)" "$(COMMIT)" "$(BUILD_TIME)"
+	@if [ "$(SKIP_VERSION_INCREMENT)" = "1" ]; then \
+		bash -c '. ./scripts/lib/version-env.sh; printf "build version: %s\n" "$$(mp_read_build_version_from_config "$$MP_CONFIG_PATH")"'; \
+	else \
+		bash -c '. ./scripts/lib/version-env.sh; printf "build version: %s\n" "$$(mp_increment_config_build_version "$$MP_CONFIG_PATH")"'; \
+	fi
+	./scripts/create-build-artifact.sh "$(BUILD_ARTIFACT_DIR)" "$(BUILD_DIR)" "$(COMMIT)" "$(BUILD_TIME)"
 
 # Fast required validation set. Valgrind is intentionally separate because it
 # depends on host memory tooling and debug-symbol setup.

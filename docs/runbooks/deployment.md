@@ -12,12 +12,12 @@ Command:
 ./scripts/deploy-local.sh
 ```
 
-The script builds `build/local-debug/mp-cache-server`, creates `dist/local/mp-cache-local.tar.gz`, stages the service binary from that artifact, writes local secrets if needed, generates a host-specific config under `.tmp/deploy/local/`, installs a `mp-cache-local.service` systemd unit that runs as the current local user, installs an Nginx proxy config, restarts the service, reloads Nginx, verifies the proxied health endpoint, and writes `.tmp/deploy/local/reports/deploy-local-report.md`.
+The script builds `build/local-debug/mp-cache-server`, increments `service.build_version` in `configs/bootstrap.ini` unless told to skip it, creates `dist/local/mp-cache-<build_version>.tar.gz`, stages the service binary from that artifact, writes local secrets if needed, generates a host-specific config under `.tmp/deploy/local/`, installs a `mp-cache-local.service` systemd unit that runs as the current local user, installs an Nginx proxy config, restarts the service, reloads Nginx, verifies the proxied health endpoint, and writes `.tmp/deploy/local/reports/deploy-local-report.md`.
 
 Local defaults:
 
 1. Build directory: `build/local-debug`.
-2. Local artifact: `dist/local/mp-cache-local.tar.gz`.
+2. Local artifact: `dist/local/mp-cache-<build_version>.tar.gz`.
 3. Service socket: `/run/mp-cache-local/mp-cache.sock`.
 4. Nginx listener: `127.0.0.1:8080`.
 5. Nginx location prefix: `/cache`.
@@ -31,7 +31,7 @@ Common overrides:
 ```sh
 MP_LOCAL_DEPLOY_BUILD=0 ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_USE_ARTIFACT=0 ./scripts/deploy-local.sh
-MP_LOCAL_DEPLOY_ARTIFACT="$PWD/dist/local/mp-cache-local.tar.gz" ./scripts/deploy-local.sh
+MP_LOCAL_DEPLOY_ARTIFACT="$PWD/dist/local/mp-cache-1.2.0.tar.gz" ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_NGINX_LISTEN=127.0.0.1:18080 ./scripts/deploy-local.sh
 MP_CACHE_NGINX_LOCATION_PATH=/cache ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_BUILD_DIR="$PWD/build/local-debug" ./scripts/deploy-local.sh
@@ -51,9 +51,12 @@ To create the local artifact without installing the service, run:
 
 ```sh
 ./scripts/build-local.sh
+./scripts/build-local.sh --skip-version-increment
 make build
 make build-artifact
 ```
+
+Build versions use `MAJOR.MINOR.HOTFIX`. `./scripts/build-local.sh` and `make build-artifact` increment MINOR by default and reset HOTFIX to `0`; use `--skip-version-increment` or `SKIP_VERSION_INCREMENT=1` after manually editing `service.build_version` in the server config file.
 
 Use `./scripts/run-local-server.sh` when you want the older rootless foreground-style development flow instead of a boot-time service.
 
@@ -65,8 +68,10 @@ Package locally:
 
 ```sh
 make test
-make package VERSION=<version> COMMIT=<commit> BUILD_TIME=<utc-time>
+make package COMMIT=<commit> BUILD_TIME=<utc-time>
 ```
+
+`make package` reads `service.build_version` from the server config when `VERSION` is empty. Passing `VERSION=<major.minor.hotfix>` remains available for controlled release automation.
 
 Deploy to Development:
 

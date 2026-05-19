@@ -77,6 +77,33 @@ static bool mp_cache_parse_u64(const char *value, uint64_t *out_value) {
     return true;
 }
 
+/* Validate MAJOR.MINOR.HOTFIX text with numeric-only components. */
+static bool mp_cache_is_build_version_valid(const char *value) {
+    unsigned int component_count = 0u;
+    bool saw_digit = false;
+
+    if (value == NULL || *value == '\0') {
+        return false;
+    }
+
+    while (*value != '\0') {
+        if (isdigit((unsigned char)*value) != 0) {
+            saw_digit = true;
+        } else if (*value == '.') {
+            if (!saw_digit) {
+                return false;
+            }
+            component_count++;
+            saw_digit = false;
+        } else {
+            return false;
+        }
+        value++;
+    }
+
+    return saw_digit && component_count == 2u;
+}
+
 /* Apply one parsed section/key/value tuple to config and reject unknown keys. */
 static bool mp_cache_apply_value(
     mp_cache_config_t *config,
@@ -90,6 +117,13 @@ static bool mp_cache_apply_value(
         }
         if (strcmp(key, MP_CACHE_CONFIG_KEY_SERVICE_NAME) == 0) {
             mp_cache_copy_string(config->service_name, sizeof(config->service_name), value);
+            return true;
+        }
+        if (strcmp(key, MP_CACHE_CONFIG_KEY_BUILD_VERSION) == 0) {
+            if (!mp_cache_is_build_version_valid(value)) {
+                return false;
+            }
+            mp_cache_copy_string(config->build_version, sizeof(config->build_version), value);
             return true;
         }
         return false;
@@ -203,6 +237,7 @@ static bool mp_cache_apply_value(
 static mp_cache_config_status_t mp_cache_validate(const mp_cache_config_t *config) {
     if (config->service_name[0] == '\0' ||
         config->environment_name[0] == '\0' ||
+        config->build_version[0] == '\0' ||
         config->socket_path[0] == '\0' ||
         config->pid_file_path[0] == '\0' ||
         config->log_directory[0] == '\0' ||
@@ -212,6 +247,10 @@ static mp_cache_config_status_t mp_cache_validate(const mp_cache_config_t *confi
         config->journal_path[0] == '\0' ||
         config->bootstrap_admin_token_secret_ref[0] == '\0' ||
         config->storage_key_secret_ref[0] == '\0') {
+        return MP_CACHE_CONFIG_STATUS_VALIDATION_ERROR;
+    }
+
+    if (!mp_cache_is_build_version_valid(config->build_version)) {
         return MP_CACHE_CONFIG_STATUS_VALIDATION_ERROR;
     }
 
@@ -251,6 +290,7 @@ void mp_cache_config_init_defaults(mp_cache_config_t *config) {
     memset(config, 0, sizeof(*config));
     mp_cache_copy_string(config->service_name, sizeof(config->service_name), MP_CACHE_DEFAULT_SERVICE_NAME);
     mp_cache_copy_string(config->environment_name, sizeof(config->environment_name), MP_CACHE_DEFAULT_ENVIRONMENT_NAME);
+    mp_cache_copy_string(config->build_version, sizeof(config->build_version), MP_CACHE_DEFAULT_BUILD_VERSION);
     mp_cache_copy_string(config->socket_path, sizeof(config->socket_path), MP_CACHE_DEFAULT_SOCKET_PATH);
     mp_cache_copy_string(config->pid_file_path, sizeof(config->pid_file_path), MP_CACHE_DEFAULT_PID_FILE_PATH);
     mp_cache_copy_string(config->data_directory, sizeof(config->data_directory), MP_CACHE_DEFAULT_DATA_DIRECTORY);
@@ -371,7 +411,9 @@ mp_cache_config_status_t mp_cache_config_write_template(
         "[" MP_CACHE_CONFIG_SECTION_SERVICE "]\n"
         "# Valid values: local, development, qa, staging, production\n"
         MP_CACHE_CONFIG_KEY_ENVIRONMENT_NAME " = %s\n"
-        MP_CACHE_CONFIG_KEY_SERVICE_NAME " = %s\n\n"
+        MP_CACHE_CONFIG_KEY_SERVICE_NAME " = %s\n"
+        "# Build artifacts use MAJOR.MINOR.HOTFIX and local builds increment MINOR by default.\n"
+        MP_CACHE_CONFIG_KEY_BUILD_VERSION " = %s\n\n"
         "[" MP_CACHE_CONFIG_SECTION_SERVER "]\n"
         "# Use an absolute socket path in long-lived deployments.\n"
         MP_CACHE_CONFIG_KEY_SOCKET_PATH " = %s\n"
@@ -405,6 +447,7 @@ mp_cache_config_status_t mp_cache_config_write_template(
         MP_CACHE_CONFIG_KEY_RATE_LIMIT_WINDOW_SECONDS " = %" PRIu32 "\n",
         config->environment_name,
         config->service_name,
+        config->build_version,
         config->socket_path,
         config->pid_file_path,
         config->shutdown_timeout_millis,
@@ -443,6 +486,7 @@ void mp_cache_config_print(FILE *stream, const mp_cache_config_t *config, const 
     (void)fprintf(stream, "config_source=%s\n", source_path == NULL ? "(defaults)" : source_path);
     (void)fprintf(stream, MP_CACHE_CONFIG_SECTION_SERVICE "." MP_CACHE_CONFIG_KEY_ENVIRONMENT_NAME "=%s\n", config->environment_name);
     (void)fprintf(stream, MP_CACHE_CONFIG_SECTION_SERVICE "." MP_CACHE_CONFIG_KEY_SERVICE_NAME "=%s\n", config->service_name);
+    (void)fprintf(stream, MP_CACHE_CONFIG_SECTION_SERVICE "." MP_CACHE_CONFIG_KEY_BUILD_VERSION "=%s\n", config->build_version);
     (void)fprintf(stream, MP_CACHE_CONFIG_SECTION_SERVER "." MP_CACHE_CONFIG_KEY_SOCKET_PATH "=%s\n", config->socket_path);
     (void)fprintf(stream, MP_CACHE_CONFIG_SECTION_SERVER "." MP_CACHE_CONFIG_KEY_PID_FILE_PATH "=%s\n", config->pid_file_path);
     (void)fprintf(stream, MP_CACHE_CONFIG_SECTION_SERVER "." MP_CACHE_CONFIG_KEY_SHUTDOWN_TIMEOUT_MILLIS "=%" PRIu32 "\n", config->shutdown_timeout_millis);

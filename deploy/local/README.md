@@ -8,7 +8,7 @@ For an auto-start local service behind Nginx, run:
 ./scripts/deploy-local.sh
 ```
 
-The auto-start script uses the current local user, builds `build/local-debug`, creates `dist/local/mp-cache-local.tar.gz`, stages binaries from that artifact by default, installs `mp-cache-local.service`, configures local Nginx, verifies the proxied health endpoint, and writes `.tmp/deploy/local/reports/deploy-local-report.md`. Re-run the same command for recurring local deployment after code changes.
+The auto-start script uses the current local user, builds `build/local-debug`, increments `service.build_version` in `configs/bootstrap.ini` by default, creates `dist/local/mp-cache-<build_version>.tar.gz`, stages binaries from that artifact by default, installs `mp-cache-local.service`, configures local Nginx, verifies the proxied health endpoint, and writes `.tmp/deploy/local/reports/deploy-local-report.md`. Re-run the same command for recurring local deployment after code changes.
 
 After deployment, run:
 
@@ -20,7 +20,7 @@ The post-deployment smoke test exercises the installed service through Nginx and
 
 Nginx filesystem paths and the `/cache` location prefix are centralized in `configs/deploy/nginx-paths.env`.
 
-To create the default local artifact without installing the service, run `./scripts/build-local.sh` or `make build-artifact`.
+To create the default local artifact without installing the service, run `./scripts/build-local.sh` or `make build-artifact`. Use `./scripts/build-local.sh --skip-version-increment` or `make build-artifact SKIP_VERSION_INCREMENT=1` after manually setting `service.build_version`.
 
 The older rootless command sequence remains useful for short-lived manual testing from a normal non-root shell.
 

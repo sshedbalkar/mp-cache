@@ -19,22 +19,32 @@ Arguments:
   build-dir
       Build directory containing binaries. Default: build/local-debug.
   version
-      Artifact version string. Default: dev.
+      Artifact version string. Default: service.build_version from server config.
   commit
       Artifact commit string. Default: local.
   build-time
       UTC build time. Default: 1970-01-01T00:00:00Z.
+
+Environment:
+  MP_CONFIG_PATH
+      Optional server config path whose service.build_version is used when version is omitted.
 EOF
   exit 0
 fi
 
 cd "$(dirname "$0")/.."
+. ./scripts/lib/version-env.sh
 
 package_dir="${1:-dist}"
 build_dir="${2:-build/local-debug}"
-artifact_version="${3:-dev}"
+artifact_version="${3:-}"
 artifact_commit="${4:-local}"
 artifact_build_time="${5:-1970-01-01T00:00:00Z}"
+if [ -z "$artifact_version" ]; then
+  artifact_version="$(mp_read_build_version_from_config "$MP_CONFIG_PATH")"
+else
+  mp_require_valid_build_version "$artifact_version"
+fi
 artifact_root="$package_dir/mp-cache-$artifact_version"
 archive_path="$package_dir/mp-cache-$artifact_version.tar.gz"
 
