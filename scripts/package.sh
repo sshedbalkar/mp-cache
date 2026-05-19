@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Usage examples:
 #   ./scripts/package.sh
-#   ./scripts/package.sh dist build/local-debug 1.2.3 abc123 2026-05-18T12:00:00Z
+#   ./scripts/package.sh "$MP_PACKAGE_DIR" "$MP_BUILD_DIR" 1.2.3 abc123 2026-05-18T12:00:00Z
 
 if [ "${1:-}" = "--help" ]; then
   cat <<'EOF'
@@ -15,15 +15,15 @@ Creates a versioned distributable archive from an existing build directory.
 
 Arguments:
   package-dir
-      Output package directory. Default: dist.
+      Output package directory. Default: MP_SCRIPT_DEFAULT_PACKAGE_DIR from configs/scripts/defaults.env.
   build-dir
-      Build directory containing binaries. Default: build/local-debug.
+      Build directory containing binaries. Default: MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR from configs/scripts/defaults.env.
   version
       Artifact version string. Default: service.build_version from server config.
   commit
-      Artifact commit string. Default: local.
+      Artifact commit string. Default: MP_SCRIPT_DEFAULT_ARTIFACT_COMMIT from configs/scripts/defaults.env.
   build-time
-      UTC build time. Default: 1970-01-01T00:00:00Z.
+      UTC build time. Default: MP_SCRIPT_DEFAULT_ARTIFACT_BUILD_TIME from configs/scripts/defaults.env.
 
 Environment:
   MP_CONFIG_PATH
@@ -35,11 +35,11 @@ fi
 cd "$(dirname "$0")/.."
 . ./scripts/lib/version-env.sh
 
-package_dir="${1:-dist}"
-build_dir="${2:-build/local-debug}"
+package_dir="${1:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_PACKAGE_DIR")}"
+build_dir="${2:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR")}"
 artifact_version="${3:-}"
-artifact_commit="${4:-local}"
-artifact_build_time="${5:-1970-01-01T00:00:00Z}"
+artifact_commit="${4:-$MP_SCRIPT_DEFAULT_ARTIFACT_COMMIT}"
+artifact_build_time="${5:-$MP_SCRIPT_DEFAULT_ARTIFACT_BUILD_TIME}"
 if [ -z "$artifact_version" ]; then
   artifact_version="$(mp_read_build_version_from_config "$MP_CONFIG_PATH")"
 else

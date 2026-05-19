@@ -9,12 +9,12 @@ set -euo pipefail
 # verifies the proxied health endpoint, and writes a deployment report under
 # .tmp/deploy/local/reports/.
 #
-# Defaults are local-development oriented:
-# - The service binary is staged from dist/local/mp-cache-<build_version>.tar.gz.
-# - The service runs as the current user so local secret env files remain usable.
-# - Nginx listens on 127.0.0.1:8080 and proxies to the service Unix socket.
-# - Durable local service state lives under systemd StateDirectory/LogsDirectory
-#   names for mp-cache-local instead of repository .tmp files.
+# Defaults are local-development oriented and centralized:
+# - Shell-script paths, service names, and systemd settings come from
+#   configs/scripts/defaults.env through scripts/lib/script-config-env.sh.
+# - Nginx paths and location prefix come from configs/deploy/nginx-paths.env.
+# - Application cache, storage, observability, and security values come from
+#   the configured server config file.
 #
 # Useful overrides:
 #   MP_LOCAL_DEPLOY_BUILD=0                          skip rebuilding first
@@ -22,7 +22,7 @@ set -euo pipefail
 #   MP_LOCAL_DEPLOY_ARTIFACT=/path/mp-cache.tar.gz   choose another artifact
 #   MP_LOCAL_DEPLOY_BUILD_DIR=/path/to/build/dir     choose another build dir
 #   MP_LOCAL_DEPLOY_NGINX_LISTEN=127.0.0.1:18080     choose proxy listen address
-#   MP_LOCAL_DEPLOY_SERVICE_NAME=mp-cache-local      choose systemd unit name
+#   MP_LOCAL_DEPLOY_SERVICE_NAME=<name>              choose systemd unit name
 #   MP_LOCAL_DEPLOY_REPORT_DIR=.tmp/deploy/local/reports
 #                                                     choose report directory
 #
@@ -36,24 +36,24 @@ cd "$(dirname "$0")/.."
 . ./scripts/lib/version-env.sh
 . ./scripts/lib/nginx-env.sh
 
-mp_local_deploy_service_name="${MP_LOCAL_DEPLOY_SERVICE_NAME:-mp-cache-local}"
-mp_local_deploy_build_dir="${MP_LOCAL_DEPLOY_BUILD_DIR:-$MP_REPO_ROOT/build/local-debug}"
-mp_local_deploy_should_build="${MP_LOCAL_DEPLOY_BUILD:-1}"
-mp_local_deploy_should_use_artifact="${MP_LOCAL_DEPLOY_USE_ARTIFACT:-1}"
+mp_local_deploy_service_name="${MP_LOCAL_DEPLOY_SERVICE_NAME:-$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_SERVICE_NAME}"
+mp_local_deploy_build_dir="${MP_LOCAL_DEPLOY_BUILD_DIR:-$MP_LOCAL_BUILD_DIR}"
+mp_local_deploy_should_build="${MP_LOCAL_DEPLOY_BUILD:-$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_SHOULD_BUILD}"
+mp_local_deploy_should_use_artifact="${MP_LOCAL_DEPLOY_USE_ARTIFACT:-$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_USE_ARTIFACT}"
 mp_local_deploy_artifact_path="${MP_LOCAL_DEPLOY_ARTIFACT:-}"
-mp_local_deploy_nginx_listen="${MP_LOCAL_DEPLOY_NGINX_LISTEN:-127.0.0.1:8080}"
-mp_local_deploy_socket_dir="/run/$mp_local_deploy_service_name"
+mp_local_deploy_nginx_listen="${MP_LOCAL_DEPLOY_NGINX_LISTEN:-$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_NGINX_LISTEN}"
+mp_local_deploy_socket_dir="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_SYSTEM_RUNTIME_ROOT" "$mp_local_deploy_service_name")"
 mp_local_deploy_socket_file="$mp_local_deploy_socket_dir/mp-cache.sock"
 mp_local_deploy_pid_file="$mp_local_deploy_socket_dir/mp-cache.pid"
-mp_local_deploy_state_dir="/var/lib/$mp_local_deploy_service_name"
-mp_local_deploy_log_dir="/var/log/$mp_local_deploy_service_name"
-mp_local_deploy_unit_file="/etc/systemd/system/$mp_local_deploy_service_name.service"
-mp_local_deploy_generated_dir="$MP_REPO_ROOT/.tmp/deploy/local"
+mp_local_deploy_state_dir="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_SYSTEM_STATE_ROOT" "$mp_local_deploy_service_name")"
+mp_local_deploy_log_dir="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_SYSTEM_LOG_ROOT" "$mp_local_deploy_service_name")"
+mp_local_deploy_unit_file="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_SYSTEMD_UNIT_DIR" "$mp_local_deploy_service_name.service")"
+mp_local_deploy_generated_dir="$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_GENERATED_DIR")"
 mp_local_deploy_config_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.ini"
 mp_local_deploy_unit_staging_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.service"
 mp_local_deploy_nginx_staging_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.nginx.conf"
 mp_local_deploy_artifact_extract_dir="$mp_local_deploy_generated_dir/artifact"
-mp_local_deploy_report_dir="${MP_LOCAL_DEPLOY_REPORT_DIR:-$mp_local_deploy_generated_dir/reports}"
+mp_local_deploy_report_dir="${MP_LOCAL_DEPLOY_REPORT_DIR:-$(mp_script_join_path "$mp_local_deploy_generated_dir" "$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_REPORT_SUBDIR")}"
 mp_local_deploy_report_path="$mp_local_deploy_report_dir/deploy-local-report.md"
 mp_local_deploy_started_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 mp_local_deploy_current_step="initializing"
@@ -73,17 +73,19 @@ Environment:
   MP_LOCAL_DEPLOY_USE_ARTIFACT
       Set to 0 to run directly from MP_LOCAL_DEPLOY_BUILD_DIR.
   MP_LOCAL_DEPLOY_ARTIFACT
-      Artifact archive to stage. Default: dist/local/mp-cache-<build_version>.tar.gz.
+      Artifact archive to stage. Default package directory comes from configs/scripts/defaults.env.
   MP_LOCAL_DEPLOY_BUILD_DIR
-      Build directory containing mp-cache-server. Default: build/local-debug.
+      Build directory containing mp-cache-server.
   MP_LOCAL_DEPLOY_NGINX_LISTEN
-      Nginx listen address. Default: 127.0.0.1:8080.
+      Nginx listen address.
   MP_LOCAL_DEPLOY_SERVICE_NAME
-      Local systemd unit and runtime directory name. Default: mp-cache-local.
+      Local systemd unit and runtime directory name.
   MP_LOCAL_DEPLOY_REPORT_DIR
-      Directory for deploy-local-report.md. Default: .tmp/deploy/local/reports.
+      Directory for deploy-local-report.md.
   MP_NGINX_PATH_CONFIG_FILE
-      Nginx path constants file. Default: configs/deploy/nginx-paths.env.
+      Nginx path constants file. Default: MP_SCRIPT_DEFAULT_NGINX_PATH_CONFIG_PATH from configs/scripts/defaults.env.
+  MP_SCRIPT_CONFIG_FILE
+      Script defaults file. Default: configs/scripts/defaults.env.
 EOF
 }
 
@@ -168,7 +170,7 @@ mp_local_deploy_resolve_artifact_path() {
     return 0
   fi
 
-  mp_local_deploy_artifact_path="$MP_REPO_ROOT/dist/local/mp-cache-$(mp_read_build_version_from_config "$MP_CONFIG_PATH").tar.gz"
+  mp_local_deploy_artifact_path="$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_PACKAGE_DIR")/mp-cache-$(mp_read_build_version_from_config "$MP_CONFIG_PATH").tar.gz"
 }
 
 mp_local_deploy_prepare_privilege() {
@@ -226,44 +228,47 @@ mp_local_deploy_stage_artifact() {
 }
 
 mp_local_deploy_render_config() {
+  local config_binary="$mp_local_deploy_build_dir/mp-cache-server"
+
   # The generated config uses absolute paths so systemd can start the service
   # reliably at boot without depending on the caller's current directory.
   cat >"$mp_local_deploy_config_file" <<EOF
 [service]
-environment_name = local
-service_name = mp-cache
+environment_name = $(mp_resolve_effective_config_value service.environment_name "$config_binary")
+service_name = $(mp_resolve_effective_config_value service.service_name "$config_binary")
+build_version = $(mp_resolve_effective_config_value service.build_version "$config_binary")
 
 [server]
 socket_path = $mp_local_deploy_socket_file
 pid_file_path = $mp_local_deploy_pid_file
-shutdown_timeout_millis = 5000
+shutdown_timeout_millis = $(mp_resolve_effective_config_value server.shutdown_timeout_millis "$config_binary")
 
 [cache]
-memory_limit_bytes = 268435456
-default_ttl_seconds = 172800
-min_ttl_seconds = 1
-max_ttl_seconds = 2592000
-max_key_bytes = 256
-max_value_bytes = 1048576
-bucket_count = 4096
-sweep_interval_seconds = 5
+memory_limit_bytes = $(mp_resolve_effective_config_value cache.memory_limit_bytes "$config_binary")
+default_ttl_seconds = $(mp_resolve_effective_config_value cache.default_ttl_seconds "$config_binary")
+min_ttl_seconds = $(mp_resolve_effective_config_value cache.min_ttl_seconds "$config_binary")
+max_ttl_seconds = $(mp_resolve_effective_config_value cache.max_ttl_seconds "$config_binary")
+max_key_bytes = $(mp_resolve_effective_config_value cache.max_key_bytes "$config_binary")
+max_value_bytes = $(mp_resolve_effective_config_value cache.max_value_bytes "$config_binary")
+bucket_count = $(mp_resolve_effective_config_value cache.bucket_count "$config_binary")
+sweep_interval_seconds = $(mp_resolve_effective_config_value cache.sweep_interval_seconds "$config_binary")
 
 [storage]
 data_directory = $mp_local_deploy_state_dir
 export_directory = $mp_local_deploy_state_dir/exports
 checkpoint_path = $mp_local_deploy_state_dir/state.checkpoint
 journal_path = $mp_local_deploy_state_dir/state.journal
-max_export_files = 16
+max_export_files = $(mp_resolve_effective_config_value storage.max_export_files "$config_binary")
 
 [observability]
 log_directory = $mp_local_deploy_log_dir
-max_log_lines = 200
+max_log_lines = $(mp_resolve_effective_config_value observability.max_log_lines "$config_binary")
 
 [security]
-bootstrap_admin_token_secret_ref = env:MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN
-storage_key_secret_ref = env:MP_SECRET_LOCAL_STORAGE_KEY
-rate_limit_requests = 240
-rate_limit_window_seconds = 60
+bootstrap_admin_token_secret_ref = $(mp_resolve_effective_config_value security.bootstrap_admin_token_secret_ref "$config_binary")
+storage_key_secret_ref = $(mp_resolve_effective_config_value security.storage_key_secret_ref "$config_binary")
+rate_limit_requests = $(mp_resolve_effective_config_value security.rate_limit_requests "$config_binary")
+rate_limit_window_seconds = $(mp_resolve_effective_config_value security.rate_limit_window_seconds "$config_binary")
 EOF
 }
 
@@ -287,21 +292,21 @@ Group=$service_group_name
 WorkingDirectory=$MP_REPO_ROOT
 EnvironmentFile=$MP_LOCAL_SECRET_ENV_FILE
 ExecStart=$mp_local_deploy_build_dir/mp-cache-server --config $mp_local_deploy_config_file
-Restart=always
-RestartSec=2s
+Restart=$MP_SCRIPT_DEFAULT_SYSTEMD_RESTART_POLICY
+RestartSec=$MP_SCRIPT_DEFAULT_SYSTEMD_RESTART_SEC
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=false
 ReadWritePaths=$mp_local_deploy_generated_dir $mp_local_deploy_state_dir $mp_local_deploy_log_dir $mp_local_deploy_socket_dir
 RuntimeDirectory=$mp_local_deploy_service_name
-RuntimeDirectoryMode=0755
+RuntimeDirectoryMode=$MP_SCRIPT_DEFAULT_LOCAL_SYSTEMD_RUNTIME_MODE
 StateDirectory=$mp_local_deploy_service_name
-StateDirectoryMode=0750
+StateDirectoryMode=$MP_SCRIPT_DEFAULT_SYSTEMD_STATE_MODE
 LogsDirectory=$mp_local_deploy_service_name
-LogsDirectoryMode=0750
-LimitNOFILE=4096
-UMask=0000
+LogsDirectoryMode=$MP_SCRIPT_DEFAULT_SYSTEMD_LOGS_MODE
+LimitNOFILE=$MP_SCRIPT_DEFAULT_SYSTEMD_LIMIT_NOFILE
+UMask=$MP_SCRIPT_DEFAULT_LOCAL_SYSTEMD_UMASK
 
 [Install]
 WantedBy=multi-user.target
@@ -319,7 +324,7 @@ upstream mp_cache_local_upstream {
 
 server {
 	listen $mp_local_deploy_nginx_listen;
-	server_name localhost mp-cache.local;
+	server_name $MP_SCRIPT_DEFAULT_LOCAL_NGINX_SERVER_NAMES;
 
 	access_log $MP_CACHE_NGINX_LOG_DIR/$mp_local_deploy_service_name.access.log;
 	error_log $MP_CACHE_NGINX_LOG_DIR/$mp_local_deploy_service_name.error.log $MP_CACHE_NGINX_ERROR_LOG_LEVEL;

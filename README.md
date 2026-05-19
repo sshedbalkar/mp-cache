@@ -94,6 +94,8 @@ make restart-local
 
 `make deploy-local` writes a local deployment report to `.tmp/deploy/local/reports/deploy-local-report.md`. After that deploy completes, use `make test-local-deployment` to run the Nginx-backed post-deployment smoke suite and write `.tmp/deploy/local/reports/post-deployment-test-report.md`.
 
+Shell-script defaults such as build directories, report directories, service names, deployment roots, and default proxy bindings live in `configs/scripts/defaults.env`. Nginx path defaults live in `configs/deploy/nginx-paths.env`, while application runtime settings stay in `configs/bootstrap.ini` and `configs/env/*.ini`.
+
 On Arch Linux and CachyOS, Valgrind can fail before any project code runs when the system dynamic loader is stripped and matching glibc debuginfo is missing. If `make test-valgrind` reports that host blocker, populate the loader debuginfo cache and rerun Valgrind:
 
 ```sh
@@ -112,6 +114,8 @@ build/local-debug/
   mp-cache-server
   mp-cachectl
 ```
+
+The shown local build path is the default from `configs/scripts/defaults.env`; override the central script defaults file or the documented environment variables when a host needs a different layout.
 
 ## Local Run
 
@@ -174,6 +178,8 @@ The local scripts prepare these writable runtime paths:
 .tmp/valgrind/cores/
 logging/
 ```
+
+These are the default local runtime paths from `configs/scripts/defaults.env` and `configs/bootstrap.ini`.
 
 Deployment docs:
 

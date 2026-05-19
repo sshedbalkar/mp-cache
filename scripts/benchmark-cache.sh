@@ -17,22 +17,23 @@ Runs the cache benchmark and writes:
 
 Arguments:
   report-dir
-      Optional report directory. Default: .tmp/test-reports.
+      Optional report directory. Default: MP_SCRIPT_DEFAULT_TEST_REPORT_DIR from configs/scripts/defaults.env.
 EOF
   exit 0
 fi
 
 cd "$(dirname "$0")/.."
+. ./scripts/lib/script-config-env.sh
 
-report_dir="${1:-.tmp/test-reports}"
+report_dir="${1:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_TEST_REPORT_DIR")}"
 mkdir -p "$report_dir"
 
 detail_report="$report_dir/cache-benchmark.txt"
 summary_report="$report_dir/cache-benchmark-report.md"
 
-cmake --fresh --preset local-debug
-cmake --build --preset local-debug
-./build/local-debug/mp_cache_benchmark >"$detail_report"
+cmake --fresh --preset "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_PRESET"
+cmake --build --preset "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_PRESET"
+"$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR")/mp_cache_benchmark" >"$detail_report"
 
 {
   printf '# Cache Benchmark Report\n\n'

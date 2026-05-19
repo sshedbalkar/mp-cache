@@ -14,11 +14,15 @@ Usage: . ./scripts/lib/version-env.sh
 Provides helpers for reading and updating the configured build version.
 
 Environment:
+  MP_SCRIPT_CONFIG_FILE
+      Optional script defaults file override.
   MP_CONFIG_PATH
-      Optional server config path override. Default: configs/bootstrap.ini.
+      Optional server config path override. Default: MP_SCRIPT_DEFAULT_CONFIG_PATH from configs/scripts/defaults.env.
 EOF
   exit 0
 fi
+
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/script-config-env.sh"
 
 mp_version_detect_repo_root() {
   local version_script_dir
@@ -27,7 +31,7 @@ mp_version_detect_repo_root() {
 }
 
 MP_REPO_ROOT="${MP_REPO_ROOT:-$(mp_version_detect_repo_root)}"
-MP_CONFIG_PATH="${MP_CONFIG_PATH:-$MP_REPO_ROOT/configs/bootstrap.ini}"
+MP_CONFIG_PATH="${MP_CONFIG_PATH:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_CONFIG_PATH")}"
 MP_BUILD_VERSION_SECTION="service"
 MP_BUILD_VERSION_KEY="build_version"
 

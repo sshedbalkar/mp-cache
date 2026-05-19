@@ -15,7 +15,7 @@ Verifies durable standards files, centralized constants, and script help headers
 
 Arguments:
   report-dir
-      Optional report directory. Default: .tmp/test-reports.
+      Optional report directory. Default: MP_SCRIPT_DEFAULT_TEST_REPORT_DIR from configs/scripts/defaults.env.
   minimum-score
       Optional required standards score. Default: 85.
 EOF
@@ -23,9 +23,10 @@ EOF
 fi
 
 cd "$(dirname "$0")/.."
+. ./scripts/lib/script-config-env.sh
 
-report_dir="${1:-.tmp/test-reports}"
-minimum_score="${2:-85}"
+report_dir="${1:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_TEST_REPORT_DIR")}"
+minimum_score="${2:-$MP_SCRIPT_DEFAULT_STANDARDS_MINIMUM_SCORE}"
 mkdir -p "$report_dir"
 
 required_standard_paths=(
@@ -38,6 +39,7 @@ required_standard_paths=(
   configs/bootstrap.ini
   configs/build/CMakePresets.json
   configs/deploy/nginx-paths.env
+  configs/scripts/defaults.env
   configs/logger.bootstrap.ini
   deploy/development/README.md
   deploy/local/README.md
@@ -65,6 +67,7 @@ required_standard_paths=(
   scripts/restart-production.sh
   scripts/restart-qa.sh
   scripts/restart-staging.sh
+  scripts/lib/script-config-env.sh
   scripts/lib/version-env.sh
   scripts/lib/remote-deploy-env.sh
   scripts/lib/nginx-env.sh
@@ -124,6 +127,9 @@ endpoint_drift_report=""
 if [ -n "$endpoint_pattern" ]; then
   endpoint_drift_report="$(rg -n "\"[^\"[:space:]]*(${endpoint_pattern})" internal cmd tests scripts 2>/dev/null | grep -v 'internal/config/constants.h' || true)"
 fi
+script_config_literal_report="$(
+  rg -n --color never '\$\{[A-Z0-9_]+:-(\.tmp|build/local-debug|build/local-asan-ubsan|dist|dist/local|configs/bootstrap\.ini|configs/deploy/nginx-paths\.env|127\.0\.0\.1:8080|/opt/mp-cache|/var/lib|/var/log|/run|/etc/systemd|/tmp|mp-cache-local|mp-cache|local|1970-01-01T00:00:00Z|85|1)([^}]*)\}' scripts 2>/dev/null || true
+)"
 script_header_usage_examples_report="$(
   for standard_script_file in scripts/*.sh scripts/lib/*.sh; do
     [ -f "$standard_script_file" ] || continue
@@ -153,6 +159,7 @@ standards_score="$(awk -v p="$present_standard_path_count" -v t="$required_stand
   printf '| Constants source | %s |\n' "$([ -z "$constant_drift_report" ] && [ -z "$error_code_drift_report" ] && [ -z "$endpoint_drift_report" ] && printf 'centralized' || printf 'drift detected')"
   printf '| Script usage headers | %s |\n' "$([ -z "$script_header_usage_examples_report" ] && printf 'present' || printf 'missing')"
   printf '| Script --help usage | %s |\n' "$([ -z "$script_help_usage_report" ] && printf 'present' || printf 'missing')"
+  printf '| Script config defaults | %s |\n' "$([ -z "$script_config_literal_report" ] && printf 'centralized' || printf 'hardcoded fallback detected')"
 } > "$report_dir/standards-report.md"
 
 if [ -n "$constant_drift_report" ]; then
@@ -173,6 +180,10 @@ if [ -n "$script_header_usage_examples_report" ]; then
 fi
 if [ -n "$script_help_usage_report" ]; then
   printf 'scripts must print usage successfully for --help:\n%s\n' "$script_help_usage_report" >&2
+  exit 1
+fi
+if [ -n "$script_config_literal_report" ]; then
+  printf 'script fallback defaults must be centralized in configs/scripts/defaults.env:\n%s\n' "$script_config_literal_report" >&2
   exit 1
 fi
 

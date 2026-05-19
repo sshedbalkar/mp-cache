@@ -7,14 +7,14 @@ set -euo pipefail
 # leaving scripts/package.sh as the single implementation of package layout,
 # checksum creation, and build metadata writing.
 #
-# Defaults:
-# - input build directory: build/local-debug
-# - output directory: dist/local
-# - output archive: dist/local/mp-cache-<build_version>.tar.gz
+# Defaults come from configs/scripts/defaults.env:
+# - input build directory
+# - output directory
+# - output archive path pattern
 #
 # Usage examples:
 #   ./scripts/create-build-artifact.sh
-#   ./scripts/create-build-artifact.sh dist/local build/local-debug abc123 2026-05-18T12:00:00Z
+#   ./scripts/create-build-artifact.sh "$MP_PACKAGE_DIR" "$MP_BUILD_DIR" abc123 2026-05-18T12:00:00Z
 
 if [ "${1:-}" = "--help" ]; then
   cat <<'EOF'
@@ -24,9 +24,9 @@ Creates the default local build artifact from an already-created build.
 
 Arguments:
   package-dir
-      Output package directory. Default: dist/local.
+      Output package directory. Default: MP_SCRIPT_DEFAULT_LOCAL_PACKAGE_DIR from configs/scripts/defaults.env.
   build-dir
-      Build directory containing binaries. Default: build/local-debug.
+      Build directory containing binaries. Default: MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR from configs/scripts/defaults.env.
   commit
       Artifact commit string. Default: current short git SHA or local.
   build-time
@@ -42,8 +42,8 @@ fi
 cd "$(dirname "$0")/.."
 . ./scripts/lib/version-env.sh
 
-build_artifact_package_dir="${1:-dist/local}"
-build_artifact_build_dir="${2:-build/local-debug}"
+build_artifact_package_dir="${1:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_PACKAGE_DIR")}"
+build_artifact_build_dir="${2:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR")}"
 build_artifact_commit="${3:-}"
 build_artifact_build_time="${4:-}"
 build_artifact_version="$(mp_read_build_version_from_config "$MP_CONFIG_PATH")"

@@ -2,23 +2,26 @@ SHELL := /bin/sh
 
 # Tool override. Set CMAKE=/path/to/cmake when testing a specific CMake build.
 CMAKE ?= cmake
+SCRIPT_CONFIG_FILE ?= configs/scripts/defaults.env
+script_default = $(shell . "$(SCRIPT_CONFIG_FILE)"; printf '%s' "$$$(1)")
 
 # Artifact metadata used by `make package`; empty VERSION uses the server config.
 VERSION ?=
-COMMIT ?= local
-BUILD_TIME ?= 1970-01-01T00:00:00Z
+COMMIT ?= $(call script_default,MP_SCRIPT_DEFAULT_ARTIFACT_COMMIT)
+BUILD_TIME ?= $(call script_default,MP_SCRIPT_DEFAULT_ARTIFACT_BUILD_TIME)
 
 # Build and package locations. BUILD_DIR must contain mp-cache-server and
 # mp-cachectl before packaging a deployable tarball.
-BUILD_DIR ?= build/local-debug
-PACKAGE_DIR ?= dist
-BUILD_ARTIFACT_DIR ?= dist/local
+LOCAL_BUILD_PRESET ?= $(call script_default,MP_SCRIPT_DEFAULT_LOCAL_BUILD_PRESET)
+BUILD_DIR ?= $(call script_default,MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR)
+PACKAGE_DIR ?= $(call script_default,MP_SCRIPT_DEFAULT_PACKAGE_DIR)
+BUILD_ARTIFACT_DIR ?= $(call script_default,MP_SCRIPT_DEFAULT_LOCAL_PACKAGE_DIR)
 SKIP_VERSION_INCREMENT ?= 0
 
 # Validation output knobs. TEST_REPORT_DIR keeps generated reports under .tmp/
 # by default, and STANDARDS_MIN is the minimum accepted standards score.
-TEST_REPORT_DIR ?= .tmp/test-reports
-STANDARDS_MIN ?= 85
+TEST_REPORT_DIR ?= $(call script_default,MP_SCRIPT_DEFAULT_TEST_REPORT_DIR)
+STANDARDS_MIN ?= $(call script_default,MP_SCRIPT_DEFAULT_STANDARDS_MINIMUM_SCORE)
 
 # Remote deployment inputs. ARTIFACT is required by deploy-* targets, and
 # SSH_TARGET is required by remote deploy/stop/restart targets.
@@ -33,11 +36,11 @@ build: build-artifact
 
 # Regenerate build files from the checked-in CMake preset.
 native-config:
-	$(CMAKE) --fresh --preset local-debug
+	$(CMAKE) --fresh --preset "$(LOCAL_BUILD_PRESET)"
 
-# Compile all configured local-debug targets.
+# Compile all configured local build targets.
 native-build: native-config
-	$(CMAKE) --build --preset local-debug
+	$(CMAKE) --build --preset "$(LOCAL_BUILD_PRESET)"
 
 # Create the stable local build artifact consumed by deploy-local.sh.
 build-artifact: native-build

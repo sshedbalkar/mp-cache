@@ -15,14 +15,15 @@ Verifies service logging stays on the native mp_logger backend.
 
 Arguments:
   report-dir
-      Optional report directory. Default: .tmp/test-reports.
+      Optional report directory. Default: MP_SCRIPT_DEFAULT_TEST_REPORT_DIR from configs/scripts/defaults.env.
 EOF
   exit 0
 fi
 
 cd "$(dirname "$0")/.."
+. ./scripts/lib/script-config-env.sh
 
-report_dir="${1:-.tmp/test-reports}"
+report_dir="${1:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_TEST_REPORT_DIR")}"
 mkdir -p "$report_dir"
 
 report_path="$report_dir/logging-report.md"

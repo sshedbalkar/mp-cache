@@ -12,7 +12,7 @@ if [ "${1:-}" = "--help" ]; then
   cat <<'EOF'
 Usage: ./scripts/build-local.sh [--skip-version-increment]
 
-Builds the default local-debug server and refreshes dist/local/mp-cache-<build_version>.tar.gz.
+Builds the configured local preset and refreshes the configured local artifact.
 
 Options:
   --skip-version-increment

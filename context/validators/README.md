@@ -8,7 +8,7 @@
 ## Standards Validation
 
 - `./scripts/check-standards.sh .tmp/test-reports 85`
-  - scores scaffold completeness against local required artifacts
+  - scores scaffold completeness against local required artifacts and rejects hardcoded script fallback defaults that belong in `configs/scripts/defaults.env`
 - `./scripts/test-naming-strategy.sh .tmp/test-reports`
   - verifies main entrypoints, scripts, and internal interfaces avoid low-signal standalone names
 

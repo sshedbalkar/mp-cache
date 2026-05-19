@@ -13,7 +13,7 @@
 - `docs/runbooks/local-service-lifecycle.md`
   - local lifecycle operations
 - `docs/runbooks/deployment.md`
-  - local deployment reports and post-deployment smoke testing
+  - centralized script defaults, local deployment reports, and post-deployment smoke testing
 - `docs/runbooks/manual-api-testing-with-scripted-local-deploy.md`
   - faster script-driven local deploy before manual API checks
 - `docs/runbooks/manual-end-to-end-testing.md`

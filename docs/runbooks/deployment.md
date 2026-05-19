@@ -12,19 +12,15 @@ Command:
 ./scripts/deploy-local.sh
 ```
 
-The script builds `build/local-debug/mp-cache-server`, increments `service.build_version` in `configs/bootstrap.ini` unless told to skip it, creates `dist/local/mp-cache-<build_version>.tar.gz`, stages the service binary from that artifact, writes local secrets if needed, generates a host-specific config under `.tmp/deploy/local/`, installs a `mp-cache-local.service` systemd unit that runs as the current local user, installs an Nginx proxy config, restarts the service, reloads Nginx, verifies the proxied health endpoint, and writes `.tmp/deploy/local/reports/deploy-local-report.md`.
+The script builds the configured local preset, increments `service.build_version` in `configs/bootstrap.ini` unless told to skip it, creates the configured local artifact, stages the service binary from that artifact, writes local secrets if needed, generates a host-specific config under the configured local deploy directory, installs the configured local systemd unit as the current local user, installs an Nginx proxy config, restarts the service, reloads Nginx, verifies the proxied health endpoint, and writes the configured deployment report.
 
-Local defaults:
+Local defaults are centralized:
 
-1. Build directory: `build/local-debug`.
-2. Local artifact: `dist/local/mp-cache-<build_version>.tar.gz`.
-3. Service socket: `/run/mp-cache-local/mp-cache.sock`.
-4. Nginx listener: `127.0.0.1:8080`.
-5. Nginx location prefix: `/cache`.
-6. Nginx path constants: `configs/deploy/nginx-paths.env`.
-7. State directory: `/var/lib/mp-cache-local`.
-8. Log directory: `/var/log/mp-cache-local`.
-9. Deployment report: `.tmp/deploy/local/reports/deploy-local-report.md`.
+1. Shell-script defaults: `configs/scripts/defaults.env`.
+2. Nginx paths and location prefix: `configs/deploy/nginx-paths.env`.
+3. Application runtime settings: `configs/bootstrap.ini` and `configs/env/*.ini`.
+
+The generated local deployment config reads application defaults from `configs/bootstrap.ini` and only substitutes host-specific service paths such as the systemd runtime socket, state directory, and log directory.
 
 Common overrides:
 
@@ -36,6 +32,7 @@ MP_LOCAL_DEPLOY_NGINX_LISTEN=127.0.0.1:18080 ./scripts/deploy-local.sh
 MP_CACHE_NGINX_LOCATION_PATH=/cache ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_BUILD_DIR="$PWD/build/local-debug" ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_REPORT_DIR="$PWD/.tmp/deploy/local/reports" ./scripts/deploy-local.sh
+MP_SCRIPT_CONFIG_FILE="$PWD/configs/scripts/defaults.env" ./scripts/deploy-local.sh
 ```
 
 After a successful local deployment, run the post-deployment smoke suite:
@@ -46,6 +43,8 @@ make test-local-deployment
 ```
 
 This verifies the installed systemd service, the local Nginx proxy, unauthenticated health, admin client registration, authenticated cache write/read/delete, operator stats through admin access, and token invalidation. It writes `.tmp/deploy/local/reports/post-deployment-test-report.md` and stores the captured HTTP responses under a run-specific directory beside that report. If you deployed with `MP_LOCAL_DEPLOY_NGINX_LISTEN`, `MP_LOCAL_DEPLOY_SERVICE_NAME`, or `MP_CACHE_NGINX_LOCATION_PATH` overrides, pass the same values to the post-deployment test command.
+
+To change durable script defaults across local and remote deployment automation, edit `configs/scripts/defaults.env` instead of editing script bodies. Keep host-specific one-off overrides in the calling environment.
 
 To create the local artifact without installing the service, run:
 
@@ -63,6 +62,8 @@ Use `./scripts/run-local-server.sh` when you want the older rootless foreground-
 ## Remote Deployment
 
 Remote deployments promote one packaged artifact through Development, QA, Staging, and Production. Do not rebuild between environments.
+
+Remote install roots, service names, staging paths, systemd modes, and default proxy bindings come from `configs/scripts/defaults.env`; Nginx filesystem layout comes from `configs/deploy/nginx-paths.env`.
 
 Package locally:
 

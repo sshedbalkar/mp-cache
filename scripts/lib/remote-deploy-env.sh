@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Provides shared remote artifact deployment and service-control helpers.
+# Script defaults are loaded from configs/scripts/defaults.env.
 #
 # Usage examples:
 #   . ./scripts/lib/remote-deploy-env.sh
@@ -33,17 +34,19 @@ Deploys one packaged mp-cache artifact to the $remote_environment_name host.
 
 Environment:
   MP_REMOTE_DEPLOY_ROOT
-      Install root on the remote host. Default: /opt/mp-cache.
+      Install root on the remote host.
   MP_REMOTE_DEPLOY_SERVICE_USER
       Remote service identity. Default: mp-cache.
   MP_REMOTE_DEPLOY_SERVICE_GROUP
       Remote service group. Default: mp-cache.
   MP_REMOTE_DEPLOY_NGINX_LISTEN
-      Remote Nginx listen address. Default: 127.0.0.1:8080.
+      Remote Nginx listen address.
   MP_REMOTE_DEPLOY_INSTALL_NGINX
-      Set to 0 when an external proxy is managed separately. Default: 1.
+      Set to 0 when an external proxy is managed separately.
   MP_NGINX_PATH_CONFIG_FILE
-      Nginx path constants file. Default: configs/deploy/nginx-paths.env.
+      Nginx path constants file. Default: MP_SCRIPT_DEFAULT_NGINX_PATH_CONFIG_PATH from configs/scripts/defaults.env.
+  MP_SCRIPT_CONFIG_FILE
+      Script defaults file. Default: configs/scripts/defaults.env.
 EOF
 }
 
@@ -53,12 +56,13 @@ mp_remote_deploy_run() {
 
   local remote_archive_file="${1:-}"
   local remote_ssh_target="${2:-}"
-  local remote_deploy_root="${MP_REMOTE_DEPLOY_ROOT:-/opt/mp-cache}"
-  local remote_service_user="${MP_REMOTE_DEPLOY_SERVICE_USER:-mp-cache}"
-  local remote_service_group="${MP_REMOTE_DEPLOY_SERVICE_GROUP:-mp-cache}"
-  local remote_nginx_listen="${MP_REMOTE_DEPLOY_NGINX_LISTEN:-127.0.0.1:8080}"
-  local remote_should_install_nginx="${MP_REMOTE_DEPLOY_INSTALL_NGINX:-1}"
-  local remote_staging_dir="/tmp/mp-cache-deploy-$remote_environment_name-$$"
+  local remote_deploy_root="${MP_REMOTE_DEPLOY_ROOT:-$MP_SCRIPT_DEFAULT_REMOTE_DEPLOY_ROOT}"
+  local remote_service_name="${MP_REMOTE_DEPLOY_SERVICE_NAME:-$MP_SCRIPT_DEFAULT_REMOTE_SERVICE_NAME}"
+  local remote_service_user="${MP_REMOTE_DEPLOY_SERVICE_USER:-$remote_service_name}"
+  local remote_service_group="${MP_REMOTE_DEPLOY_SERVICE_GROUP:-$remote_service_name}"
+  local remote_nginx_listen="${MP_REMOTE_DEPLOY_NGINX_LISTEN:-$MP_SCRIPT_DEFAULT_REMOTE_NGINX_LISTEN}"
+  local remote_should_install_nginx="${MP_REMOTE_DEPLOY_INSTALL_NGINX:-$MP_SCRIPT_DEFAULT_REMOTE_INSTALL_NGINX}"
+  local remote_staging_dir="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_REMOTE_STAGING_ROOT" "mp-cache-deploy-$remote_environment_name-$$")"
   local remote_archive_name=""
 
   if [ "$remote_archive_file" = "--help" ] || [ -z "$remote_archive_file" ] || [ -z "$remote_ssh_target" ]; then
@@ -92,11 +96,26 @@ mp_remote_deploy_run() {
     "MP_REMOTE_ENVIRONMENT_NAME='$remote_environment_name' \
      MP_REMOTE_ARCHIVE_NAME='$remote_archive_name' \
      MP_REMOTE_DEPLOY_ROOT='$remote_deploy_root' \
+     MP_REMOTE_SERVICE_NAME='$remote_service_name' \
      MP_REMOTE_SERVICE_USER='$remote_service_user' \
      MP_REMOTE_SERVICE_GROUP='$remote_service_group' \
      MP_REMOTE_NGINX_LISTEN='$remote_nginx_listen' \
      MP_REMOTE_INSTALL_NGINX='$remote_should_install_nginx' \
      MP_REMOTE_STAGING_DIR='$remote_staging_dir' \
+     MP_REMOTE_SYSTEM_RUNTIME_ROOT='$MP_SCRIPT_DEFAULT_SYSTEM_RUNTIME_ROOT' \
+     MP_REMOTE_SYSTEM_STATE_ROOT='$MP_SCRIPT_DEFAULT_SYSTEM_STATE_ROOT' \
+     MP_REMOTE_SYSTEM_LOG_ROOT='$MP_SCRIPT_DEFAULT_SYSTEM_LOG_ROOT' \
+     MP_REMOTE_SYSTEMD_UNIT_DIR='$MP_SCRIPT_DEFAULT_SYSTEMD_UNIT_DIR' \
+     MP_REMOTE_NGINX_SERVER_NAME='$MP_SCRIPT_DEFAULT_REMOTE_NGINX_SERVER_NAME' \
+     MP_REMOTE_NOLOGIN_PRIMARY='$MP_SCRIPT_DEFAULT_REMOTE_NOLOGIN_PRIMARY' \
+     MP_REMOTE_NOLOGIN_FALLBACK='$MP_SCRIPT_DEFAULT_REMOTE_NOLOGIN_FALLBACK' \
+     MP_REMOTE_SYSTEMD_RESTART_POLICY='$MP_SCRIPT_DEFAULT_SYSTEMD_RESTART_POLICY' \
+     MP_REMOTE_SYSTEMD_RESTART_SEC='$MP_SCRIPT_DEFAULT_SYSTEMD_RESTART_SEC' \
+     MP_REMOTE_SYSTEMD_RUNTIME_MODE='$MP_SCRIPT_DEFAULT_REMOTE_SYSTEMD_RUNTIME_MODE' \
+     MP_REMOTE_SYSTEMD_STATE_MODE='$MP_SCRIPT_DEFAULT_SYSTEMD_STATE_MODE' \
+     MP_REMOTE_SYSTEMD_LOGS_MODE='$MP_SCRIPT_DEFAULT_SYSTEMD_LOGS_MODE' \
+     MP_REMOTE_SYSTEMD_LIMIT_NOFILE='$MP_SCRIPT_DEFAULT_SYSTEMD_LIMIT_NOFILE' \
+     MP_REMOTE_SYSTEMD_UMASK='$MP_SCRIPT_DEFAULT_REMOTE_SYSTEMD_UMASK' \
      MP_CACHE_NGINX_MAIN_CONFIG_FILE='$MP_CACHE_NGINX_MAIN_CONFIG_FILE' \
      MP_CACHE_NGINX_CONF_DIR='$MP_CACHE_NGINX_CONF_DIR' \
      MP_CACHE_NGINX_LOG_DIR='$MP_CACHE_NGINX_LOG_DIR' \
@@ -109,15 +128,18 @@ set -euo pipefail
 remote_release_id="$(date -u +%Y%m%dT%H%M%SZ)-$MP_REMOTE_ENVIRONMENT_NAME"
 remote_release_dir="$MP_REMOTE_DEPLOY_ROOT/releases/$remote_release_id"
 remote_current_link="$MP_REMOTE_DEPLOY_ROOT/current"
-remote_unit_file="/etc/systemd/system/mp-cache.service"
+remote_unit_file="$MP_REMOTE_SYSTEMD_UNIT_DIR/$MP_REMOTE_SERVICE_NAME.service"
 remote_nginx_conf_file="$MP_CACHE_NGINX_CONF_DIR/$MP_CACHE_NGINX_REMOTE_CONF_FILE_NAME"
-remote_socket_dir="/run/mp-cache"
+remote_socket_dir="$MP_REMOTE_SYSTEM_RUNTIME_ROOT/$MP_REMOTE_SERVICE_NAME"
 remote_socket_file="$remote_socket_dir/mp-cache.sock"
-remote_nologin_shell="/usr/sbin/nologin"
+remote_state_dir="$MP_REMOTE_SYSTEM_STATE_ROOT/$MP_REMOTE_SERVICE_NAME"
+remote_log_dir="$MP_REMOTE_SYSTEM_LOG_ROOT/$MP_REMOTE_SERVICE_NAME"
+remote_secret_dir="$MP_REMOTE_SYSTEM_RUNTIME_ROOT/secrets/$MP_REMOTE_SERVICE_NAME"
+remote_nologin_shell="$MP_REMOTE_NOLOGIN_PRIMARY"
 remote_nginx_user=""
 
 if [ ! -x "$remote_nologin_shell" ]; then
-  remote_nologin_shell="/sbin/nologin"
+  remote_nologin_shell="$MP_REMOTE_NOLOGIN_FALLBACK"
 fi
 
 if [ -f "$MP_REMOTE_STAGING_DIR/$MP_REMOTE_ARCHIVE_NAME.sha256" ] && command -v sha256sum >/dev/null 2>&1; then
@@ -158,7 +180,7 @@ cat >"$MP_REMOTE_STAGING_DIR/mp-cache.service" <<EOF
 Description=mp-cache $MP_REMOTE_ENVIRONMENT_NAME service
 After=network-online.target
 Wants=network-online.target
-RequiresMountsFor=$MP_REMOTE_DEPLOY_ROOT /var/lib/mp-cache /var/log/mp-cache /run/secrets/mp-cache
+RequiresMountsFor=$MP_REMOTE_DEPLOY_ROOT $remote_state_dir $remote_log_dir $remote_secret_dir
 
 [Service]
 Type=simple
@@ -166,21 +188,21 @@ User=$MP_REMOTE_SERVICE_USER
 Group=$MP_REMOTE_SERVICE_GROUP
 WorkingDirectory=$remote_current_link
 ExecStart=$remote_current_link/bin/mp-cache-server --config $remote_current_link/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.ini
-Restart=always
-RestartSec=2s
+Restart=$MP_REMOTE_SYSTEMD_RESTART_POLICY
+RestartSec=$MP_REMOTE_SYSTEMD_RESTART_SEC
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/mp-cache /var/log/mp-cache $remote_socket_dir
-RuntimeDirectory=mp-cache
-RuntimeDirectoryMode=0750
-StateDirectory=mp-cache
-StateDirectoryMode=0750
-LogsDirectory=mp-cache
-LogsDirectoryMode=0750
-LimitNOFILE=4096
-UMask=0007
+ReadWritePaths=$remote_state_dir $remote_log_dir $remote_socket_dir
+RuntimeDirectory=$MP_REMOTE_SERVICE_NAME
+RuntimeDirectoryMode=$MP_REMOTE_SYSTEMD_RUNTIME_MODE
+StateDirectory=$MP_REMOTE_SERVICE_NAME
+StateDirectoryMode=$MP_REMOTE_SYSTEMD_STATE_MODE
+LogsDirectory=$MP_REMOTE_SERVICE_NAME
+LogsDirectoryMode=$MP_REMOTE_SYSTEMD_LOGS_MODE
+LimitNOFILE=$MP_REMOTE_SYSTEMD_LIMIT_NOFILE
+UMask=$MP_REMOTE_SYSTEMD_UMASK
 
 [Install]
 WantedBy=multi-user.target
@@ -188,8 +210,8 @@ EOF
 
 sudo install -m 0644 "$MP_REMOTE_STAGING_DIR/mp-cache.service" "$remote_unit_file"
 sudo systemctl daemon-reload
-sudo systemctl enable --now mp-cache.service
-sudo systemctl restart mp-cache.service
+sudo systemctl enable --now "$MP_REMOTE_SERVICE_NAME.service"
+sudo systemctl restart "$MP_REMOTE_SERVICE_NAME.service"
 
 if [ "$MP_REMOTE_INSTALL_NGINX" = "1" ]; then
   remote_nginx_user="$(awk '$1 == "user" { gsub(";", "", $2); print $2; exit }' "$MP_CACHE_NGINX_MAIN_CONFIG_FILE" 2>/dev/null || true)"
@@ -205,7 +227,7 @@ upstream mp_cache_upstream {
 
 server {
 	listen $MP_REMOTE_NGINX_LISTEN;
-	server_name _;
+	server_name $MP_REMOTE_NGINX_SERVER_NAME;
 
 	access_log $MP_CACHE_NGINX_LOG_DIR/mp-cache.access.log;
 	error_log $MP_CACHE_NGINX_LOG_DIR/mp-cache.error.log $MP_CACHE_NGINX_ERROR_LOG_LEVEL;
@@ -232,7 +254,7 @@ EOF
   fi
 fi
 
-sudo systemctl --no-pager --full status mp-cache.service >/dev/null
+sudo systemctl --no-pager --full status "$MP_REMOTE_SERVICE_NAME.service" >/dev/null
 rm -rf "$MP_REMOTE_STAGING_DIR"
 printf 'remote deployment complete: %s -> %s\n' "$MP_REMOTE_ENVIRONMENT_NAME" "$remote_release_dir"
 REMOTE_DEPLOY_SCRIPT
@@ -249,7 +271,7 @@ Runs systemctl $remote_service_action for mp-cache on the $remote_environment_na
 
 Environment:
   MP_REMOTE_DEPLOY_SERVICE_NAME
-      Remote systemd service name. Default: mp-cache.
+      Remote systemd service name.
 EOF
 }
 
@@ -259,7 +281,7 @@ mp_remote_service_run() {
   shift 2
 
   local remote_ssh_target="${1:-}"
-  local remote_service_name="${MP_REMOTE_DEPLOY_SERVICE_NAME:-mp-cache}"
+  local remote_service_name="${MP_REMOTE_DEPLOY_SERVICE_NAME:-$MP_SCRIPT_DEFAULT_REMOTE_SERVICE_NAME}"
 
   if [ "$remote_ssh_target" = "--help" ] || [ -z "$remote_ssh_target" ]; then
     mp_remote_service_print_usage "$remote_environment_name" "$remote_service_action"

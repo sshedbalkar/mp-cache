@@ -25,6 +25,7 @@ EOF
 fi
 
 cd "$(dirname "$0")/.."
+. ./scripts/lib/script-config-env.sh
 
 artifact_path="${1:-}"
 source_env_id="${2:-}"
@@ -40,7 +41,7 @@ fi
   exit 1
 }
 
-promotion_destination_dir="dist/promotions/$target_env_id"
+promotion_destination_dir="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_PROMOTION_DIR" "$target_env_id")"
 mkdir -p "$promotion_destination_dir"
 cp "$artifact_path" "$promotion_destination_dir/"
 

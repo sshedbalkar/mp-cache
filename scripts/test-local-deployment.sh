@@ -15,13 +15,13 @@ Runs post-deployment smoke tests against the local systemd and Nginx deployment.
 
 Environment:
   MP_LOCAL_DEPLOY_NGINX_LISTEN
-      Local Nginx listen address used during deploy. Default: 127.0.0.1:8080.
+      Local Nginx listen address used during deploy.
   MP_LOCAL_DEPLOY_SERVICE_NAME
-      Local systemd unit and runtime directory name. Default: mp-cache-local.
+      Local systemd unit and runtime directory name.
   MP_LOCAL_POST_DEPLOY_REPORT_DIR
-      Directory for post-deployment reports. Default: .tmp/deploy/local/reports.
+      Directory for post-deployment reports.
   MP_NGINX_PATH_CONFIG_FILE
-      Nginx path constants file. Default: configs/deploy/nginx-paths.env.
+      Nginx path constants file. Default: MP_SCRIPT_DEFAULT_NGINX_PATH_CONFIG_PATH from configs/scripts/defaults.env.
 EOF
   exit 0
 fi
@@ -30,10 +30,10 @@ cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh
 . ./scripts/lib/nginx-env.sh
 
-mp_local_post_deploy_service_name="${MP_LOCAL_DEPLOY_SERVICE_NAME:-mp-cache-local}"
-mp_local_post_deploy_nginx_listen="${MP_LOCAL_DEPLOY_NGINX_LISTEN:-127.0.0.1:8080}"
-mp_local_post_deploy_generated_dir="$MP_REPO_ROOT/.tmp/deploy/local"
-mp_local_post_deploy_report_dir="${MP_LOCAL_POST_DEPLOY_REPORT_DIR:-$mp_local_post_deploy_generated_dir/reports}"
+mp_local_post_deploy_service_name="${MP_LOCAL_DEPLOY_SERVICE_NAME:-$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_SERVICE_NAME}"
+mp_local_post_deploy_nginx_listen="${MP_LOCAL_DEPLOY_NGINX_LISTEN:-$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_NGINX_LISTEN}"
+mp_local_post_deploy_generated_dir="$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_GENERATED_DIR")"
+mp_local_post_deploy_report_dir="${MP_LOCAL_POST_DEPLOY_REPORT_DIR:-$(mp_script_join_path "$mp_local_post_deploy_generated_dir" "$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_REPORT_SUBDIR")}"
 mp_local_post_deploy_report_path="$mp_local_post_deploy_report_dir/post-deployment-test-report.md"
 mp_local_post_deploy_run_id="post-deploy-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 mp_local_post_deploy_response_dir="$mp_local_post_deploy_report_dir/$mp_local_post_deploy_run_id-responses"

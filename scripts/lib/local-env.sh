@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Provides shared local environment, build, server, and smoke-test helpers.
+# Script defaults are loaded from configs/scripts/defaults.env.
 #
 # Usage examples:
 #   . ./scripts/lib/local-env.sh
@@ -14,6 +15,8 @@ Usage: . ./scripts/lib/local-env.sh
 Provides shared local environment, build, server, and smoke-test helpers.
 
 Environment:
+  MP_SCRIPT_CONFIG_FILE
+      Optional script defaults file override.
   MP_CONFIG_PATH
       Optional config path override.
   MP_SOCKET_PATH
@@ -24,6 +27,8 @@ EOF
   exit 0
 fi
 
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/script-config-env.sh"
+
 mp_detect_repo_root() {
   local repo_root_script_dir
   repo_root_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,11 +36,23 @@ mp_detect_repo_root() {
 }
 
 MP_REPO_ROOT="${MP_REPO_ROOT:-$(mp_detect_repo_root)}"
-MP_CONFIG_PATH="${MP_CONFIG_PATH:-$MP_REPO_ROOT/configs/bootstrap.ini}"
-MP_SOCKET_PATH="${MP_SOCKET_PATH:-$MP_REPO_ROOT/.tmp/run/mp-cache.sock}"
-MP_PID_FILE="${MP_PID_FILE:-$MP_REPO_ROOT/.tmp/run/mp-cache.pid}"
-MP_CONSOLE_LOG="${MP_CONSOLE_LOG:-$MP_REPO_ROOT/.tmp/logs/console.log}"
-MP_LOCAL_SECRET_ENV_FILE="${MP_LOCAL_SECRET_ENV_FILE:-$MP_REPO_ROOT/.tmp/secrets/local.env}"
+MP_CONFIG_PATH="${MP_CONFIG_PATH:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_CONFIG_PATH")}"
+MP_LOCAL_BUILD_PRESET="${MP_LOCAL_BUILD_PRESET:-$MP_SCRIPT_DEFAULT_LOCAL_BUILD_PRESET}"
+MP_LOCAL_BUILD_DIR="${MP_LOCAL_BUILD_DIR:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR")}"
+MP_LOCAL_RUN_DIR="${MP_LOCAL_RUN_DIR:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_RUN_DIR")}"
+MP_LOCAL_LOG_DIR="${MP_LOCAL_LOG_DIR:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_LOG_DIR")}"
+MP_LOCAL_DATA_DIR="${MP_LOCAL_DATA_DIR:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_DATA_DIR")}"
+MP_LOCAL_EXPORT_DIR="${MP_LOCAL_EXPORT_DIR:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_EXPORT_DIR")}"
+MP_LOCAL_SECRET_DIR="${MP_LOCAL_SECRET_DIR:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_SECRET_DIR")}"
+MP_LOCAL_APP_LOG_DIR="${MP_LOCAL_APP_LOG_DIR:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_APP_LOG_DIR")}"
+MP_LOCAL_HTTP_HOST="${MP_LOCAL_HTTP_HOST:-$MP_SCRIPT_DEFAULT_LOCAL_HTTP_HOST}"
+MP_SOCKET_PATH="${MP_SOCKET_PATH:-$(mp_script_join_path "$MP_LOCAL_RUN_DIR" "mp-cache.sock")}"
+MP_PID_FILE="${MP_PID_FILE:-$(mp_script_join_path "$MP_LOCAL_RUN_DIR" "mp-cache.pid")}"
+MP_CONSOLE_LOG="${MP_CONSOLE_LOG:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_CONSOLE_LOG")}"
+MP_LOCAL_SECRET_ENV_FILE="${MP_LOCAL_SECRET_ENV_FILE:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_SECRET_FILE")}"
+MP_VALGRIND_CORE_DIR="${MP_VALGRIND_CORE_DIR:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_VALGRIND_CORE_DIR")}"
+MP_AUTO_RESET_LOCAL_STATE_ON_LOAD_FAILURE="${MP_AUTO_RESET_LOCAL_STATE_ON_LOAD_FAILURE:-$MP_SCRIPT_DEFAULT_LOCAL_AUTO_RESET_ON_LOAD_FAILURE}"
+MP_ALLOW_ENV_MISMATCH="${MP_ALLOW_ENV_MISMATCH:-$MP_SCRIPT_DEFAULT_ALLOW_ENV_MISMATCH}"
 
 mp_exit_with_error() {
   printf 'error: %s\n' "$1" >&2
@@ -64,7 +81,7 @@ mp_assert_target_env_id() {
   local expected_env_id="$1"
   local detected_env_id
   detected_env_id="$(mp_detect_env_id)"
-  if [ "$detected_env_id" != "$expected_env_id" ] && [ "${MP_ALLOW_ENV_MISMATCH:-0}" != "1" ]; then
+  if [ "$detected_env_id" != "$expected_env_id" ] && [ "$MP_ALLOW_ENV_MISMATCH" != "1" ]; then
     mp_exit_with_error "this script targets $expected_env_id but detected $detected_env_id; set MP_ALLOW_ENV_MISMATCH=1 to override"
   fi
 }
@@ -83,7 +100,7 @@ mp_load_local_secrets() {
 }
 
 mp_prepare_runtime_paths() {
-  mkdir -p "$MP_REPO_ROOT/.tmp/run" "$MP_REPO_ROOT/.tmp/logs" "$MP_REPO_ROOT/.tmp/data" "$MP_REPO_ROOT/.tmp/exports" "$MP_REPO_ROOT/.tmp/secrets" "$MP_REPO_ROOT/.tmp/valgrind/cores" "$MP_REPO_ROOT/logging"
+  mkdir -p "$MP_LOCAL_RUN_DIR" "$MP_LOCAL_LOG_DIR" "$MP_LOCAL_DATA_DIR" "$MP_LOCAL_EXPORT_DIR" "$MP_LOCAL_SECRET_DIR" "$MP_VALGRIND_CORE_DIR" "$MP_LOCAL_APP_LOG_DIR"
 }
 
 mp_console_log_contains() {
@@ -111,10 +128,12 @@ mp_is_socket_bind_permission_failure() {
 
 mp_resolve_effective_config_value() {
   local config_key="$1"
+  local config_binary="${2:-$MP_LOCAL_BUILD_DIR/mp-cache-server}"
+  local config_file="${3:-$MP_CONFIG_PATH}"
   local config_output=""
 
-  [ -x "$MP_REPO_ROOT/build/local-debug/mp-cache-server" ] || mp_exit_with_error "missing binary: build/local-debug/mp-cache-server"
-  config_output="$("$MP_REPO_ROOT/build/local-debug/mp-cache-server" --config "$MP_CONFIG_PATH" --print-config 2>/dev/null)" || return 1
+  [ -x "$config_binary" ] || mp_exit_with_error "missing binary: $config_binary"
+  config_output="$("$config_binary" --config "$config_file" --print-config 2>/dev/null)" || return 1
   printf '%s\n' "$config_output" | awk -F= -v config_key="$config_key" '
     $1 == config_key {
       print substr($0, index($0, "=") + 1)
@@ -203,7 +222,7 @@ mp_build_server() {
   fi
   mp_require_local_dependencies
   mp_prepare_runtime_paths
-  (cd "$MP_REPO_ROOT" && cmake --fresh --preset local-debug && cmake --build --preset local-debug)
+  (cd "$MP_REPO_ROOT" && cmake --fresh --preset "$MP_LOCAL_BUILD_PRESET" && cmake --build --preset "$MP_LOCAL_BUILD_PRESET")
 }
 
 mp_is_server_running() {
@@ -214,7 +233,7 @@ mp_is_server_running() {
 mp_try_start_server() {
   mp_prepare_runtime_paths
   mp_load_local_secrets
-  [ -x "$MP_REPO_ROOT/build/local-debug/mp-cache-server" ] || mp_exit_with_error "missing binary: build/local-debug/mp-cache-server"
+  [ -x "$MP_LOCAL_BUILD_DIR/mp-cache-server" ] || mp_exit_with_error "missing binary: $MP_LOCAL_BUILD_DIR/mp-cache-server"
 
   if mp_is_server_running; then
     mp_exit_with_error "server already running with pid $(cat "$MP_PID_FILE")"
@@ -222,7 +241,7 @@ mp_try_start_server() {
 
   (
     cd "$MP_REPO_ROOT"
-    nohup ./build/local-debug/mp-cache-server --config "$MP_CONFIG_PATH" >"$MP_CONSOLE_LOG" 2>&1 &
+    nohup "$MP_LOCAL_BUILD_DIR/mp-cache-server" --config "$MP_CONFIG_PATH" >"$MP_CONSOLE_LOG" 2>&1 &
   )
 
   sleep 1
@@ -250,7 +269,7 @@ mp_start_server() {
     return 0
   fi
 
-  if [ "${MP_AUTO_RESET_LOCAL_STATE_ON_LOAD_FAILURE:-1}" = "1" ] && mp_is_state_load_failure; then
+  if [ "$MP_AUTO_RESET_LOCAL_STATE_ON_LOAD_FAILURE" = "1" ] && mp_is_state_load_failure; then
     printf 'warning: local state could not be loaded; rotating configured checkpoint and journal files before retrying startup\n' >&2
     if mp_rotate_local_state_files && mp_try_start_server; then
       printf 'warning: local state recovery succeeded; the server started with a clean cache and the previous files were preserved as timestamped backups\n' >&2
@@ -296,7 +315,7 @@ mp_test_health_endpoint() {
   health_endpoint_path="$(mp_read_c_string_constant MP_CACHE_HTTP_ROUTE_HEALTH)" ||
     mp_exit_with_error "failed to read MP_CACHE_HTTP_ROUTE_HEALTH from internal/config/constants.h"
 
-  if curl_output="$(curl --fail --silent --show-error --unix-socket "$MP_SOCKET_PATH" "http://localhost${health_endpoint_path}" 2>&1)"; then
+  if curl_output="$(curl --fail --silent --show-error --unix-socket "$MP_SOCKET_PATH" "http://$MP_LOCAL_HTTP_HOST${health_endpoint_path}" 2>&1)"; then
     printf '%s\n' "$curl_output"
     return 0
   fi
@@ -323,7 +342,7 @@ mp_report_local_environment() {
   printf 'console_log=%s\n' "$MP_CONSOLE_LOG"
 
   mp_require_local_dependencies
-  if [ -x "$MP_REPO_ROOT/build/local-debug/mp-cache-server" ]; then
+  if [ -x "$MP_LOCAL_BUILD_DIR/mp-cache-server" ]; then
     printf 'binary=present\n'
   else
     printf 'binary=missing\n'

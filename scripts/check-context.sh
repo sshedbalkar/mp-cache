@@ -25,6 +25,7 @@ required_context_paths=(
   docs/engineering-standards.md
   docs/naming-strategy.md
   docs/commit-messages.md
+  configs/scripts/defaults.env
   context/README.md
   context/repo-map.md
   context/standards-routing-map.md

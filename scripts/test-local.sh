@@ -24,12 +24,13 @@ cd "$(dirname "$0")/.."
 . ./scripts/lib/local-env.sh
 
 server_started_by_script=0
+local_report_dir="$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_TEST_REPORT_DIR")"
 
 mp_build_server
-./scripts/test-unit.sh .tmp/test-reports
-./scripts/test-naming-strategy.sh .tmp/test-reports
-./scripts/check-standards.sh .tmp/test-reports 85
-./scripts/test-hardening.sh .tmp/test-reports
+./scripts/test-unit.sh "$local_report_dir"
+./scripts/test-naming-strategy.sh "$local_report_dir"
+./scripts/check-standards.sh "$local_report_dir" "$MP_SCRIPT_DEFAULT_STANDARDS_MINIMUM_SCORE"
+./scripts/test-hardening.sh "$local_report_dir"
 ./scripts/check-context.sh
 
 if ! mp_is_server_running; then

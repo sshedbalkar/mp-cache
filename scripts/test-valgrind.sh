@@ -15,21 +15,22 @@ Runs unit test binaries under Valgrind and records host blockers clearly.
 
 Arguments:
   report-dir
-      Optional report directory. Default: .tmp/test-reports.
+      Optional report directory. Default: MP_SCRIPT_DEFAULT_TEST_REPORT_DIR from configs/scripts/defaults.env.
 EOF
   exit 0
 fi
 
 cd "$(dirname "$0")/.."
+. ./scripts/lib/script-config-env.sh
 
-report_dir="${1:-.tmp/test-reports}"
-valgrind_core_dir=".tmp/valgrind/cores"
+report_dir="${1:-$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_TEST_REPORT_DIR")}"
+valgrind_core_dir="$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_VALGRIND_CORE_DIR")"
 mkdir -p "$report_dir"
 mkdir -p "$valgrind_core_dir"
 
 summary_report="$report_dir/valgrind-report.md"
 detail_report="$report_dir/valgrind.txt"
-valgrind_loader_binary="/lib64/ld-linux-x86-64.so.2"
+valgrind_loader_binary="$MP_SCRIPT_DEFAULT_VALGRIND_LOADER_PRIMARY"
 glibc_package_repository=""
 glibc_package_architecture=""
 
@@ -48,7 +49,7 @@ relocate_valgrind_core_dumps() {
 trap relocate_valgrind_core_dumps EXIT
 
 if [ ! -e "$valgrind_loader_binary" ]; then
-  valgrind_loader_binary="$(realpath /usr/lib/ld-linux-x86-64.so.2 2>/dev/null || printf '/usr/lib/ld-linux-x86-64.so.2')"
+  valgrind_loader_binary="$(realpath "$MP_SCRIPT_DEFAULT_VALGRIND_LOADER_FALLBACK" 2>/dev/null || printf '%s' "$MP_SCRIPT_DEFAULT_VALGRIND_LOADER_FALLBACK")"
 fi
 
 if command -v pacman >/dev/null 2>&1; then
@@ -73,8 +74,8 @@ if ! command -v valgrind >/dev/null 2>&1; then
   exit 0
 fi
 
-cmake --fresh --preset local-debug
-cmake --build --preset local-debug
+cmake --fresh --preset "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_PRESET"
+cmake --build --preset "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_PRESET"
 
 prefetch_valgrind_loader_debuginfo() {
   if ! command -v debuginfod-find >/dev/null 2>&1; then
@@ -153,10 +154,10 @@ write_valgrind_loader_instruction_report() {
 
 prefetch_valgrind_loader_debuginfo
 
-if ! run_valgrind_for_test_binary ./build/local-debug/mp_cache_store_tests ||
-   ! run_valgrind_for_test_binary ./build/local-debug/mp_cache_security_tests ||
-   ! run_valgrind_for_test_binary ./build/local-debug/mp_cache_storage_tests ||
-   ! run_valgrind_for_test_binary ./build/local-debug/mp_cache_http_tests; then
+if ! run_valgrind_for_test_binary "$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR")/mp_cache_store_tests" ||
+   ! run_valgrind_for_test_binary "$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR")/mp_cache_security_tests" ||
+   ! run_valgrind_for_test_binary "$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR")/mp_cache_storage_tests" ||
+   ! run_valgrind_for_test_binary "$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_BUILD_DIR")/mp_cache_http_tests"; then
   if rg -q "Fatal error at startup|install glibc's debuginfo|Cannot continue -- exiting now" "$detail_report"; then
     write_valgrind_host_blocker_report
     exit 0

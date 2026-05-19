@@ -6,7 +6,7 @@ Use local standards from `docs/engineering-standards.md`, `docs/naming-strategy.
 
 - `route.build-release`
   - section: `Build, Release, And Deployment`
-  - local files: `Makefile`, `configs/build/CMakePresets.json`, `scripts/package.sh`, `scripts/deploy-local.sh`, `deploy/`
+  - local files: `Makefile`, `configs/build/CMakePresets.json`, `configs/scripts/defaults.env`, `scripts/lib/script-config-env.sh`, `scripts/package.sh`, `scripts/deploy-local.sh`, `deploy/`
 - `route.c-service`
   - sections: `Common Engineering`, `Naming And Terminology`, `C Service And CMake`, `Security And Operations`, `Dependency Management`
   - durable checks: project-level constants, defaults, HTTP endpoints, and HTTP error codes must be routed through `internal/config/constants.h`

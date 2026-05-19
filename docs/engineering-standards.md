@@ -77,6 +77,9 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Build artifact versions must follow `MAJOR.MINOR.HOTFIX` and come from `service.build_version` in the server config file.
 - Build scripts that create a new local build must increment the configured MINOR version by default, reset HOTFIX to `0`, and provide an explicit skip option for manually managed versions.
 - Artifact creation scripts must read the version from config by default and append it to artifact directory and archive names.
+- Shell-script fallback defaults for paths, ports, service names, report locations, build presets, and systemd runtime settings must live in `configs/scripts/defaults.env`; scripts may only read those values through `scripts/lib/script-config-env.sh` or helpers that source it.
+- Nginx path and location defaults must stay in `configs/deploy/nginx-paths.env`.
+- Application runtime settings such as cache limits, TTLs, security secret refs, and storage limits must come from `configs/bootstrap.ini` or `configs/env/*.ini`, not from deploy script literals.
 - Scripts must keep top-level comments that include a short purpose statement and a `Usage examples:` block. When a script is meant to be sourced rather than executed, the examples should show the supported sourcing or caller pattern.
 - Every script must print a `Usage:` block and exit successfully when invoked directly with `--help`; sourced helper scripts must only trigger direct help when executed directly, not when a wrapper script is handling its own `--help`.
 - Promote the same artifact through local, QA, staging, and production.
@@ -99,6 +102,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 ## Folder Structure
 
 - Keep committed config in `configs/`.
+- Keep script-default configuration in `configs/scripts/`.
 - Keep durable docs in `docs/`.
 - Keep retrieval metadata in `context/`.
 - Keep automation in `scripts/`.

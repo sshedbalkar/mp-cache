@@ -10,10 +10,10 @@
 
 - source-truth: `README.md`, `AI_PERSONA.md`, `docs/engineering-standards.md`, `docs/naming-strategy.md`, `docs/commit-messages.md`, local durable docs
 - git-workflow-root: `docs/commit-messages.md`
-- build-deploy-roots: `Makefile`, `CMakeLists.txt`, `configs/build/CMakePresets.json`, `scripts/*.sh`, `deploy/*/README.md`
+- build-deploy-roots: `Makefile`, `CMakeLists.txt`, `configs/build/CMakePresets.json`, `configs/scripts/defaults.env`, `scripts/*.sh`, `deploy/*/README.md`
 - implementation-roots: `cmd/`, `internal/`, `native/mp_logger`
 - api-doc-roots: `api/http/v1/`
-- validation-roots: `tests/`, `scripts/check-context.sh`, `scripts/check-standards.sh`, `scripts/test-hardening.sh`, `scripts/test-local-deployment.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-unit.sh`, `scripts/test-valgrind.sh`
+- validation-roots: `tests/`, `scripts/check-context.sh`, `scripts/check-standards.sh`, `scripts/test-hardening.sh`, `scripts/test-local-deployment.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-unit.sh`, `scripts/test-valgrind.sh`, `configs/scripts/defaults.env`
 
 ## Source Truth
 
@@ -42,6 +42,13 @@
 - `internal/security`: reserved for auth, RBAC, and client token lifecycle logic.
 - `internal/storage`: reserved for encrypted persistence, export/import, and journal replay.
 - `native/mp_logger`: logging submodule.
+
+## Configuration Roots
+
+- `configs/scripts/defaults.env`: centralized shell-script defaults for automation paths, report directories, service names, deployment roots, proxy bindings, and systemd runtime settings.
+- `configs/deploy/nginx-paths.env`: centralized Nginx filesystem and location-prefix defaults.
+- `configs/bootstrap.ini`: local application runtime defaults.
+- `configs/env/*.ini`: environment-specific application runtime defaults.
 
 ## Validation
 
