@@ -6,7 +6,8 @@ set -euo pipefail
 # This script is intentionally both a first-time installer and a recurring
 # deployment helper. Re-running it rebuilds the local binary by default,
 # refreshes generated systemd/Nginx files, restarts the service, reloads Nginx,
-# and verifies the proxied health endpoint.
+# verifies the proxied health endpoint, and writes a deployment report under
+# .tmp/deploy/local/reports/.
 #
 # Defaults are local-development oriented:
 # - The service binary is staged from dist/local/mp-cache-local.tar.gz.
@@ -22,6 +23,8 @@ set -euo pipefail
 #   MP_LOCAL_DEPLOY_BUILD_DIR=/path/to/build/dir     choose another build dir
 #   MP_LOCAL_DEPLOY_NGINX_LISTEN=127.0.0.1:18080     choose proxy listen address
 #   MP_LOCAL_DEPLOY_SERVICE_NAME=mp-cache-local      choose systemd unit name
+#   MP_LOCAL_DEPLOY_REPORT_DIR=.tmp/deploy/local/reports
+#                                                     choose report directory
 #
 # Usage examples:
 #   ./scripts/deploy-local.sh
@@ -49,6 +52,13 @@ mp_local_deploy_config_file="$mp_local_deploy_generated_dir/$mp_local_deploy_ser
 mp_local_deploy_unit_staging_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.service"
 mp_local_deploy_nginx_staging_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.nginx.conf"
 mp_local_deploy_artifact_extract_dir="$mp_local_deploy_generated_dir/artifact"
+mp_local_deploy_report_dir="${MP_LOCAL_DEPLOY_REPORT_DIR:-$mp_local_deploy_generated_dir/reports}"
+mp_local_deploy_report_path="$mp_local_deploy_report_dir/deploy-local-report.md"
+mp_local_deploy_started_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+mp_local_deploy_current_step="initializing"
+mp_local_deploy_step_names=()
+mp_local_deploy_step_statuses=()
+mp_local_deploy_step_details=()
 
 mp_local_deploy_print_usage() {
   cat <<'EOF'
@@ -69,9 +79,78 @@ Environment:
       Nginx listen address. Default: 127.0.0.1:8080.
   MP_LOCAL_DEPLOY_SERVICE_NAME
       Local systemd unit and runtime directory name. Default: mp-cache-local.
+  MP_LOCAL_DEPLOY_REPORT_DIR
+      Directory for deploy-local-report.md. Default: .tmp/deploy/local/reports.
   MP_NGINX_PATH_CONFIG_FILE
       Nginx path constants file. Default: configs/deploy/nginx-paths.env.
 EOF
+}
+
+mp_local_deploy_begin_step() {
+  mp_local_deploy_current_step="$1"
+}
+
+mp_local_deploy_record_step() {
+  mp_local_deploy_step_names+=("$1")
+  mp_local_deploy_step_statuses+=("$2")
+  mp_local_deploy_step_details+=("$3")
+}
+
+mp_local_deploy_pass_step() {
+  mp_local_deploy_record_step "$mp_local_deploy_current_step" "PASS" "$1"
+  mp_local_deploy_current_step=""
+}
+
+mp_local_deploy_write_report() {
+  local exit_code="$1"
+  local deployment_status="PASS"
+  local completed_at_utc=""
+  local step_index=0
+  local report_tmp_path=""
+
+  completed_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  if [ "$exit_code" -ne 0 ]; then
+    deployment_status="FAIL"
+  fi
+
+  mkdir -p "$mp_local_deploy_report_dir" 2>/dev/null || return 0
+  report_tmp_path="$mp_local_deploy_report_path.tmp"
+
+  {
+    printf '# Local Deployment Report\n\n'
+    printf '| Field | Value |\n'
+    printf '|:------|:------|\n'
+    printf '| Status | %s |\n' "$deployment_status"
+    printf '| Started at UTC | %s |\n' "$mp_local_deploy_started_at_utc"
+    printf '| Completed at UTC | %s |\n' "$completed_at_utc"
+    printf '| Service | `%s.service` |\n' "$mp_local_deploy_service_name"
+    printf '| Build mode | `%s` |\n' "$([ "$mp_local_deploy_should_build" = "1" ] && printf 'build before deploy' || printf 'reuse existing build')"
+    printf '| Artifact mode | `%s` |\n' "$([ "$mp_local_deploy_should_use_artifact" = "1" ] && printf 'stage artifact' || printf 'run build directory')"
+    printf '| Artifact | `%s` |\n' "$mp_local_deploy_artifact_path"
+    printf '| Service binary directory | `%s` |\n' "$mp_local_deploy_build_dir"
+    printf '| Generated config | `%s` |\n' "$mp_local_deploy_config_file"
+    printf '| Generated systemd unit | `%s` |\n' "$mp_local_deploy_unit_staging_file"
+    printf '| Installed systemd unit | `%s` |\n' "$mp_local_deploy_unit_file"
+    printf '| Generated Nginx config | `%s` |\n' "$mp_local_deploy_nginx_staging_file"
+    printf '| Proxy URL | `http://%s%s` |\n' "$mp_local_deploy_nginx_listen" "$MP_CACHE_NGINX_LOCATION_PATH"
+    printf '| Post-deployment test | `./scripts/test-local-deployment.sh` |\n\n'
+
+    printf '## Steps\n\n'
+    printf '| Step | Status | Detail |\n'
+    printf '|:-----|:-------|:-------|\n'
+    while [ "$step_index" -lt "${#mp_local_deploy_step_names[@]}" ]; do
+      printf '| %s | %s | %s |\n' \
+      "${mp_local_deploy_step_names[$step_index]}" \
+      "${mp_local_deploy_step_statuses[$step_index]}" \
+      "${mp_local_deploy_step_details[$step_index]}"
+      step_index=$((step_index + 1))
+    done
+    if [ "$deployment_status" = "FAIL" ] && [ -n "$mp_local_deploy_current_step" ]; then
+      printf '| %s | FAIL | inspect the console output above this report path |\n' "$mp_local_deploy_current_step"
+    fi
+  } >"$report_tmp_path"
+  mv "$report_tmp_path" "$mp_local_deploy_report_path"
+  printf 'local deployment report: %s\n' "$mp_local_deploy_report_path" >&2
 }
 
 mp_local_deploy_run_privileged() {
@@ -293,29 +372,59 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+trap 'mp_local_deploy_write_report "$?"' EXIT
+
+mp_local_deploy_begin_step "check required commands"
 mp_require_command curl
 mp_require_command systemctl
 mp_require_command install
 mp_require_command tar
+mp_local_deploy_pass_step "required commands are available"
+
+mp_local_deploy_begin_step "prepare administrator privileges"
 mp_local_deploy_prepare_privilege
+mp_local_deploy_pass_step "administrator privilege check completed"
 
 if [ "$mp_local_deploy_should_build" = "1" ]; then
+  mp_local_deploy_begin_step "build local artifact"
   ./scripts/build-local.sh
+  mp_local_deploy_pass_step "local build and artifact completed"
+else
+  mp_local_deploy_record_step "build local artifact" "SKIP" "MP_LOCAL_DEPLOY_BUILD=0"
 fi
 
+mp_local_deploy_begin_step "stage deployment artifact"
 mp_local_deploy_stage_artifact
+mp_local_deploy_pass_step "service binary directory is $mp_local_deploy_build_dir"
 
+mp_local_deploy_begin_step "validate service binary"
 [ -x "$mp_local_deploy_build_dir/mp-cache-server" ] ||
   mp_exit_with_error "missing executable build file: $mp_local_deploy_build_dir/mp-cache-server"
+mp_local_deploy_pass_step "mp-cache-server is executable"
 
+mp_local_deploy_begin_step "prepare local secrets"
 ./scripts/write-local-secret-env.sh
+mp_local_deploy_pass_step "local secret environment file is ready"
+
+mp_local_deploy_begin_step "render generated deployment files"
 mkdir -p "$mp_local_deploy_generated_dir"
 mp_local_deploy_render_config
 mp_local_deploy_render_systemd_unit "$(mp_local_deploy_capture_primary_group)"
 mp_local_deploy_render_nginx_proxy
+mp_local_deploy_pass_step "generated config, systemd unit, and Nginx proxy files"
+
+mp_local_deploy_begin_step "install and restart systemd service"
 mp_local_deploy_install_systemd_unit
+mp_local_deploy_pass_step "systemd service installed and restarted"
+
+mp_local_deploy_begin_step "install and reload Nginx proxy"
 mp_local_deploy_install_nginx_proxy "$(mp_local_deploy_select_nginx_conf_file)"
+mp_local_deploy_pass_step "Nginx proxy installed and reloaded"
+
+mp_local_deploy_begin_step "verify proxied health endpoint"
 mp_local_deploy_verify_proxy
+mp_local_deploy_pass_step "proxied health endpoint returned success"
 
 printf 'local service deployed: %s\n' "$mp_local_deploy_service_name"
 printf 'local proxy ready: http://%s\n' "$mp_local_deploy_nginx_listen"
+printf 'post-deployment smoke test: ./scripts/test-local-deployment.sh\n'

@@ -22,3 +22,5 @@
   - sanitizer hardening checks
 - `make test-valgrind`
   - host-prepared Valgrind validation for the native test binaries
+- `make test-local-deployment`
+  - post-deployment smoke validation for the installed local systemd service through Nginx

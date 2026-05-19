@@ -8,7 +8,15 @@ For an auto-start local service behind Nginx, run:
 ./scripts/deploy-local.sh
 ```
 
-The auto-start script uses the current local user, builds `build/local-debug`, creates `dist/local/mp-cache-local.tar.gz`, stages binaries from that artifact by default, installs `mp-cache-local.service`, configures local Nginx, and verifies the proxied health endpoint. Re-run the same command for recurring local deployment after code changes.
+The auto-start script uses the current local user, builds `build/local-debug`, creates `dist/local/mp-cache-local.tar.gz`, stages binaries from that artifact by default, installs `mp-cache-local.service`, configures local Nginx, verifies the proxied health endpoint, and writes `.tmp/deploy/local/reports/deploy-local-report.md`. Re-run the same command for recurring local deployment after code changes.
+
+After deployment, run:
+
+```sh
+./scripts/test-local-deployment.sh
+```
+
+The post-deployment smoke test exercises the installed service through Nginx and writes `.tmp/deploy/local/reports/post-deployment-test-report.md` with captured HTTP responses beside it.
 
 Nginx filesystem paths and the `/cache` location prefix are centralized in `configs/deploy/nginx-paths.env`.
 
@@ -22,7 +30,8 @@ Local commands:
 1. `./scripts/build-local.sh`
 2. `./scripts/run-local-server.sh`
 3. `./scripts/test-local.sh`
-4. `./scripts/stop-local-server.sh`
+4. `./scripts/test-local-deployment.sh`
+5. `./scripts/stop-local-server.sh`
 
 If you need a fresh local secret file, use `./scripts/write-local-secret-env.sh --force`.
 

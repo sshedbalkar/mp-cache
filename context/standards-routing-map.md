@@ -6,7 +6,7 @@ Use local standards from `docs/engineering-standards.md`, `docs/naming-strategy.
 
 - `route.build-release`
   - section: `Build, Release, And Deployment`
-  - local files: `Makefile`, `configs/build/CMakePresets.json`, `scripts/package.sh`, `deploy/`
+  - local files: `Makefile`, `configs/build/CMakePresets.json`, `scripts/package.sh`, `scripts/deploy-local.sh`, `deploy/`
 - `route.c-service`
   - sections: `Common Engineering`, `Naming And Terminology`, `C Service And CMake`, `Security And Operations`, `Dependency Management`
   - durable checks: project-level constants, defaults, HTTP endpoints, and HTTP error codes must be routed through `internal/config/constants.h`
@@ -26,4 +26,4 @@ Use local standards from `docs/engineering-standards.md`, `docs/naming-strategy.
   - local files: `docs/`, `context/`
 - `route.testing`
   - section: `Testing And Validation`
-  - local files: `tests/`, `scripts/test-unit.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-hardening.sh`, `scripts/test-valgrind.sh`, `scripts/check-standards.sh`, `docs/runbooks/valgrind-host-setup.md`
+  - local files: `tests/`, `scripts/test-unit.sh`, `scripts/test-local-deployment.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-hardening.sh`, `scripts/test-valgrind.sh`, `scripts/check-standards.sh`, `docs/runbooks/valgrind-host-setup.md`

@@ -140,6 +140,7 @@ export MANUAL_ADMIN_ID="${RUN_TAG}-admin"
 export ADMIN_AUTH_HEADER="Authorization: Bearer $MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN"
 
 ./scripts/deploy-local.sh
+./scripts/test-local-deployment.sh
 ```
 
 ### What this block did
@@ -149,6 +150,8 @@ export ADMIN_AUTH_HEADER="Authorization: Bearer $MP_SECRET_LOCAL_BOOTSTRAP_ADMIN
 - loaded those secret values into your current shell
 - set the socket path you will use for the manual API calls
 - built and started the default local server
+- wrote `.tmp/deploy/local/reports/deploy-local-report.md`
+- ran the deployed-service smoke tests through local Nginx and wrote `.tmp/deploy/local/reports/post-deployment-test-report.md`
 
 ### Important note about local secrets
 

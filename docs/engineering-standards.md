@@ -79,6 +79,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Promote the same artifact through local, QA, staging, and production.
 - Only config, secrets, limits, and bindings change between environments.
 - Every packaged artifact should include version, commit, build time, and checksum.
+- Local auto-start deployment must write a report under `.tmp/deploy/local/reports/`, and post-deployment smoke tests must write their associated report beside it.
 
 ## Testing And Validation
 
@@ -89,6 +90,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 - Any change to native code in `cmd/`, `internal/`, `tests/unit/`, or `native/` requires a Valgrind run before closeout, using `./scripts/test-valgrind.sh` or an equivalent wrapper such as `make test-valgrind`.
 - If the current host cannot execute Valgrind successfully, treat that as a validation blocker unless the failure is an environment limitation that is captured and reported explicitly.
 - `make test` is the local validation artifact.
+- `make test-local-deployment` is the local deployed-service smoke artifact after `make deploy-local`.
 - Context and durable docs must stay in sync with implementation changes.
 
 ## Folder Structure

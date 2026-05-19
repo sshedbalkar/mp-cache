@@ -41,7 +41,7 @@
 - `runbook.deployment`
   - path: `docs/runbooks/deployment.md`
   - status: active
-  - purpose: local auto-start service deployment and remote environment deployment
+  - purpose: local auto-start service deployment, deployment reports, post-deployment smoke tests, and remote environment deployment
 - `runbook.manual-end-to-end-testing`
   - path: `docs/runbooks/manual-end-to-end-testing.md`
   - status: active

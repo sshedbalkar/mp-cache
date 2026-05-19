@@ -12,7 +12,7 @@ Command:
 ./scripts/deploy-local.sh
 ```
 
-The script builds `build/local-debug/mp-cache-server`, creates `dist/local/mp-cache-local.tar.gz`, stages the service binary from that artifact, writes local secrets if needed, generates a host-specific config under `.tmp/deploy/local/`, installs a `mp-cache-local.service` systemd unit that runs as the current local user, installs an Nginx proxy config, restarts the service, reloads Nginx, and verifies the proxied health endpoint.
+The script builds `build/local-debug/mp-cache-server`, creates `dist/local/mp-cache-local.tar.gz`, stages the service binary from that artifact, writes local secrets if needed, generates a host-specific config under `.tmp/deploy/local/`, installs a `mp-cache-local.service` systemd unit that runs as the current local user, installs an Nginx proxy config, restarts the service, reloads Nginx, verifies the proxied health endpoint, and writes `.tmp/deploy/local/reports/deploy-local-report.md`.
 
 Local defaults:
 
@@ -24,6 +24,7 @@ Local defaults:
 6. Nginx path constants: `configs/deploy/nginx-paths.env`.
 7. State directory: `/var/lib/mp-cache-local`.
 8. Log directory: `/var/log/mp-cache-local`.
+9. Deployment report: `.tmp/deploy/local/reports/deploy-local-report.md`.
 
 Common overrides:
 
@@ -34,7 +35,17 @@ MP_LOCAL_DEPLOY_ARTIFACT="$PWD/dist/local/mp-cache-local.tar.gz" ./scripts/deplo
 MP_LOCAL_DEPLOY_NGINX_LISTEN=127.0.0.1:18080 ./scripts/deploy-local.sh
 MP_CACHE_NGINX_LOCATION_PATH=/cache ./scripts/deploy-local.sh
 MP_LOCAL_DEPLOY_BUILD_DIR="$PWD/build/local-debug" ./scripts/deploy-local.sh
+MP_LOCAL_DEPLOY_REPORT_DIR="$PWD/.tmp/deploy/local/reports" ./scripts/deploy-local.sh
 ```
+
+After a successful local deployment, run the post-deployment smoke suite:
+
+```sh
+./scripts/test-local-deployment.sh
+make test-local-deployment
+```
+
+This verifies the installed systemd service, the local Nginx proxy, unauthenticated health, admin client registration, authenticated cache write/read/delete, operator stats through admin access, and token invalidation. It writes `.tmp/deploy/local/reports/post-deployment-test-report.md` and stores the captured HTTP responses under a run-specific directory beside that report. If you deployed with `MP_LOCAL_DEPLOY_NGINX_LISTEN`, `MP_LOCAL_DEPLOY_SERVICE_NAME`, or `MP_CACHE_NGINX_LOCATION_PATH` overrides, pass the same values to the post-deployment test command.
 
 To create the local artifact without installing the service, run:
 

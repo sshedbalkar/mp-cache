@@ -85,11 +85,14 @@ make test-valgrind
 make benchmark
 make package
 make deploy-local
+make test-local-deployment
 make stop-local
 make restart-local
 ```
 
 `make test` is the rootless local validation suite. It runs the unit tests, naming checks, standards checks, and sanitizer-based hardening checks without requiring elevated privileges. `make test-valgrind` stays separate because some hosts need additional package or container setup before Valgrind can execute successfully. Use `make test-full` when the host is already prepared for both.
+
+`make deploy-local` writes a local deployment report to `.tmp/deploy/local/reports/deploy-local-report.md`. After that deploy completes, use `make test-local-deployment` to run the Nginx-backed post-deployment smoke suite and write `.tmp/deploy/local/reports/post-deployment-test-report.md`.
 
 On Arch Linux and CachyOS, Valgrind can fail before any project code runs when the system dynamic loader is stripped and matching glibc debuginfo is missing. If `make test-valgrind` reports that host blocker, populate the loader debuginfo cache and rerun Valgrind:
 
@@ -167,6 +170,7 @@ The local scripts prepare these writable runtime paths:
 .tmp/run/
 .tmp/data/
 .tmp/exports/
+.tmp/deploy/local/reports/
 .tmp/valgrind/cores/
 logging/
 ```

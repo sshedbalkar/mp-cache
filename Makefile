@@ -25,7 +25,7 @@ STANDARDS_MIN ?= 85
 ARTIFACT ?=
 SSH_TARGET ?=
 
-.PHONY: build native-config native-build build-artifact test test-full test-unit test-naming-strategy test-standards test-hardening test-valgrind benchmark check package build-local test-local deploy-local deploy-development deploy-qa deploy-staging deploy-production stop-local stop-development stop-qa stop-staging stop-production restart-local restart-development restart-qa restart-staging restart-production doctor promote clean
+.PHONY: build native-config native-build build-artifact test test-full test-unit test-naming-strategy test-standards test-hardening test-valgrind benchmark check package build-local test-local test-local-deployment deploy-local deploy-development deploy-qa deploy-staging deploy-production stop-local stop-development stop-qa stop-staging stop-production restart-local restart-development restart-qa restart-staging restart-production doctor promote clean
 
 # Default build compiles the native service and creates the default local
 # artifact at dist/local/mp-cache-local.tar.gz.
@@ -88,6 +88,11 @@ build-local:
 
 test-local:
 	./scripts/test-local.sh
+
+# Post-deployment smoke tests exercise the installed local systemd service
+# through the local Nginx proxy and write reports under .tmp/deploy/local/.
+test-local-deployment:
+	./scripts/test-local-deployment.sh
 
 # Local auto-start deployment installs a current-user systemd service behind
 # local Nginx. It may prompt for administrator privileges.

@@ -13,7 +13,7 @@
 - build-deploy-roots: `Makefile`, `CMakeLists.txt`, `configs/build/CMakePresets.json`, `scripts/*.sh`, `deploy/*/README.md`
 - implementation-roots: `cmd/`, `internal/`, `native/mp_logger`
 - api-doc-roots: `api/http/v1/`
-- validation-roots: `tests/`, `scripts/check-context.sh`, `scripts/check-standards.sh`, `scripts/test-hardening.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-unit.sh`, `scripts/test-valgrind.sh`
+- validation-roots: `tests/`, `scripts/check-context.sh`, `scripts/check-standards.sh`, `scripts/test-hardening.sh`, `scripts/test-local-deployment.sh`, `scripts/test-naming-strategy.sh`, `scripts/test-unit.sh`, `scripts/test-valgrind.sh`
 
 ## Source Truth
 
@@ -49,3 +49,4 @@
 - validate_fast: `./scripts/check-context.sh`
 - validate_full: `make test`
 - validate_host_memory: `make test-valgrind`
+- validate_local_deployment: `make test-local-deployment`

@@ -74,6 +74,7 @@ required_standard_paths=(
   scripts/test-naming-strategy.sh
   scripts/test-hardening.sh
   scripts/test-local.sh
+  scripts/test-local-deployment.sh
   scripts/test-sanitizers.sh
   scripts/test-valgrind.sh
   scripts/write-local-secret-env.sh
