@@ -121,6 +121,8 @@ nginx paths should not be hardcoded, use existing appropriate config file (defin
 
 Do the "usage examples in header comments" and implementing the '--help' option in all scripts for 'mp-cache/native/mp_logger' sub-project and 'multi-player-app-ai' project as well. make sure all of their scripts follow it. Add the changes as independent durable rules in their own ruleset and update their docs/context/tests as well. Done
 
+---
+
 In 'mp-cache' project, consider the local deployment script, 'mp-cache/scripts/deploy-local.sh', does it generate a deployment report as to how successful the deployment went, if not create a report and store it in an appropriate place. Also, once the local deployment is done how can the post-deployment tests be done to make sure if everything is working as intended and geberate a report associated with it. Follow the existing standards within the project. Update the top comment, docs/tests/context/validations/etc associated with this. Done
 
 In 'mp-cache', a lot of the configuration parameters in the script files have been either partially or fully hardcoded into the script files, we cannot have that. Move them to a centralized configuration file (use existing ones wherever applicable). This must be a durable rule, update docs/context/tests/validation etc. Done

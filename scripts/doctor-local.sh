@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Usage examples:
 #   ./scripts/doctor-local.sh
-#   MP_CONFIG_PATH=configs/bootstrap.ini ./scripts/doctor-local.sh
+#   MP_CONFIG_PATH=configs/bootstrap.yaml ./scripts/doctor-local.sh
 
 if [ "${1:-}" = "--help" ]; then
   cat <<'EOF'

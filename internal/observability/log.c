@@ -22,6 +22,15 @@ static void mp_cache_log_copy(char *destination, size_t destination_capacity, co
     (void)snprintf(destination, destination_capacity, "%s", source);
 }
 
+static void mp_cache_log_apply_level(
+    mp_logger_config_t *logger_config,
+    const char *section,
+    const char *minimum,
+    const char *maximum) {
+    (void)mp_logger_config_apply_override(logger_config, section, "minimum_level", minimum);
+    (void)mp_logger_config_apply_override(logger_config, section, "maximum_level", maximum);
+}
+
 int mp_cache_log_init(mp_cache_log_t *log, const mp_cache_config_t *config) {
     mp_logger_config_t logger_config;
     mp_log_status_t status;
@@ -31,35 +40,60 @@ int mp_cache_log_init(mp_cache_log_t *log, const mp_cache_config_t *config) {
     }
 
     memset(log, 0, sizeof(*log));
-    mp_logger_config_init_defaults(&logger_config);
-    logger_config.buffer_capacity = MP_CACHE_LOGGER_BUFFER_CAPACITY;
-    logger_config.message_capacity = MP_CACHE_LOGGER_MESSAGE_CAPACITY;
-    logger_config.context_capacity = MP_CACHE_LOGGER_CONTEXT_CAPACITY;
-    logger_config.field_capacity = MP_CACHE_LOGGER_FIELD_CAPACITY;
-    logger_config.format = MP_LOG_FORMAT_JSON;
-    logger_config.pretty_output = 0;
-    logger_config.stdout_min_level = MP_LOG_LEVEL_TRACE;
-    logger_config.stdout_max_level = MP_LOG_LEVEL_INFO;
-    logger_config.stderr_min_level = MP_LOG_LEVEL_WARNING;
-    logger_config.stderr_max_level = MP_LOG_LEVEL_FATAL;
-    logger_config.file_min_level = MP_LOG_LEVEL_TRACE;
-    logger_config.file_max_level = MP_LOG_LEVEL_FATAL;
+    status = mp_logger_bootstrap_load(config->logger_bootstrap_path, &logger_config);
+    if (status != MP_LOG_STATUS_OK) {
+        mp_logger_config_init_defaults(&logger_config);
+    }
+    logger_config.buffer_capacity = config->logger_buffer_capacity;
+    logger_config.message_capacity = config->logger_message_capacity;
+    logger_config.context_capacity = config->logger_context_capacity;
+    logger_config.field_capacity = config->logger_field_capacity;
+    logger_config.field_key_capacity = config->logger_field_key_capacity;
+    logger_config.field_value_capacity = config->logger_field_value_capacity;
+    (void)mp_logger_config_apply_override(&logger_config, "logger", "format", config->logger_format);
+    logger_config.pretty_output = config->logger_pretty_output ? 1 : 0;
 
     mp_cache_log_copy(logger_config.service_name, sizeof(logger_config.service_name), config->service_name);
     mp_cache_log_copy(
         logger_config.environment_name,
         sizeof(logger_config.environment_name),
         config->environment_name);
+    mp_cache_log_copy(logger_config.build_version, sizeof(logger_config.build_version), config->build_version);
     mp_cache_log_copy(logger_config.log_directory, sizeof(logger_config.log_directory), config->log_directory);
-    mp_cache_log_copy(logger_config.file_name_prefix, sizeof(logger_config.file_name_prefix), MP_CACHE_LOGGER_FILE_NAME_PREFIX);
+    mp_cache_log_copy(
+        logger_config.file_name_prefix,
+        sizeof(logger_config.file_name_prefix),
+        config->logger_file_name_prefix);
     mp_cache_log_copy(
         logger_config.backup_file_name_prefix,
         sizeof(logger_config.backup_file_name_prefix),
-        MP_CACHE_LOGGER_BACKUP_FILE_NAME_PREFIX);
+        config->logger_backup_file_name_prefix);
     mp_cache_log_copy(
         logger_config.active_streams,
         sizeof(logger_config.active_streams),
-        MP_CACHE_LOGGER_ACTIVE_STREAMS);
+        config->logger_active_streams);
+    mp_cache_log_apply_level(
+        &logger_config,
+        "stdout",
+        config->logger_stdout_min_level,
+        config->logger_stdout_max_level);
+    mp_cache_log_apply_level(
+        &logger_config,
+        "stderr",
+        config->logger_stderr_min_level,
+        config->logger_stderr_max_level);
+    mp_cache_log_apply_level(
+        &logger_config,
+        "file",
+        config->logger_file_min_level,
+        config->logger_file_max_level);
+    mp_cache_log_apply_level(
+        &logger_config,
+        "udp",
+        config->logger_udp_min_level,
+        config->logger_udp_max_level);
+    mp_cache_log_copy(logger_config.udp_host, sizeof(logger_config.udp_host), config->logger_udp_host);
+    logger_config.udp_port = (uint16_t)config->logger_udp_port;
 
     status = mp_logger_create(&logger_config, &log->raw_logger);
     if (status != MP_LOG_STATUS_OK) {

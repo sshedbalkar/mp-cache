@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Deploy the artifact approved in QA to Staging.
-# Keep environment differences in configs/env/staging.ini and runtime secrets:
+# Keep environment differences in configs/env/staging.yaml and runtime secrets:
 # Usage examples:
 #   ./scripts/deploy-staging.sh dist/promotions/staging/mp-cache-<version>.tar.gz deploy@staging-host
 

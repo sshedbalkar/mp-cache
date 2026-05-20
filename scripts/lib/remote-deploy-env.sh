@@ -164,8 +164,8 @@ remote_extracted_dir="$(find "$MP_REMOTE_STAGING_DIR/extract" -mindepth 1 -maxde
   printf 'artifact archive is missing bin/mp-cache-server\n' >&2
   exit 1
 }
-[ -f "$remote_extracted_dir/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.ini" ] || {
-  printf 'artifact archive is missing configs/env/%s.ini\n' "$MP_REMOTE_ENVIRONMENT_NAME" >&2
+[ -f "$remote_extracted_dir/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.yaml" ] || {
+  printf 'artifact archive is missing configs/env/%s.yaml\n' "$MP_REMOTE_ENVIRONMENT_NAME" >&2
   exit 1
 }
 
@@ -187,7 +187,7 @@ Type=simple
 User=$MP_REMOTE_SERVICE_USER
 Group=$MP_REMOTE_SERVICE_GROUP
 WorkingDirectory=$remote_current_link
-ExecStart=$remote_current_link/bin/mp-cache-server --config $remote_current_link/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.ini
+ExecStart=$remote_current_link/bin/mp-cache-server --config $remote_current_link/configs/env/$MP_REMOTE_ENVIRONMENT_NAME.yaml
 Restart=$MP_REMOTE_SYSTEMD_RESTART_POLICY
 RestartSec=$MP_REMOTE_SYSTEMD_RESTART_SEC
 NoNewPrivileges=true

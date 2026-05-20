@@ -49,7 +49,7 @@ mp_local_deploy_state_dir="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_SYSTEM_STAT
 mp_local_deploy_log_dir="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_SYSTEM_LOG_ROOT" "$mp_local_deploy_service_name")"
 mp_local_deploy_unit_file="$(mp_script_join_path "$MP_SCRIPT_DEFAULT_SYSTEMD_UNIT_DIR" "$mp_local_deploy_service_name.service")"
 mp_local_deploy_generated_dir="$(mp_script_repo_path "$MP_SCRIPT_DEFAULT_LOCAL_DEPLOY_GENERATED_DIR")"
-mp_local_deploy_config_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.ini"
+mp_local_deploy_config_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.yaml"
 mp_local_deploy_unit_staging_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.service"
 mp_local_deploy_nginx_staging_file="$mp_local_deploy_generated_dir/$mp_local_deploy_service_name.nginx.conf"
 mp_local_deploy_artifact_extract_dir="$mp_local_deploy_generated_dir/artifact"
@@ -233,42 +233,39 @@ mp_local_deploy_render_config() {
   # The generated config uses absolute paths so systemd can start the service
   # reliably at boot without depending on the caller's current directory.
   cat >"$mp_local_deploy_config_file" <<EOF
-[service]
-environment_name = $(mp_resolve_effective_config_value service.environment_name "$config_binary")
-service_name = $(mp_resolve_effective_config_value service.service_name "$config_binary")
-build_version = $(mp_resolve_effective_config_value service.build_version "$config_binary")
-
-[server]
-socket_path = $mp_local_deploy_socket_file
-pid_file_path = $mp_local_deploy_pid_file
-shutdown_timeout_millis = $(mp_resolve_effective_config_value server.shutdown_timeout_millis "$config_binary")
-
-[cache]
-memory_limit_bytes = $(mp_resolve_effective_config_value cache.memory_limit_bytes "$config_binary")
-default_ttl_seconds = $(mp_resolve_effective_config_value cache.default_ttl_seconds "$config_binary")
-min_ttl_seconds = $(mp_resolve_effective_config_value cache.min_ttl_seconds "$config_binary")
-max_ttl_seconds = $(mp_resolve_effective_config_value cache.max_ttl_seconds "$config_binary")
-max_key_bytes = $(mp_resolve_effective_config_value cache.max_key_bytes "$config_binary")
-max_value_bytes = $(mp_resolve_effective_config_value cache.max_value_bytes "$config_binary")
-bucket_count = $(mp_resolve_effective_config_value cache.bucket_count "$config_binary")
-sweep_interval_seconds = $(mp_resolve_effective_config_value cache.sweep_interval_seconds "$config_binary")
-
-[storage]
-data_directory = $mp_local_deploy_state_dir
-export_directory = $mp_local_deploy_state_dir/exports
-checkpoint_path = $mp_local_deploy_state_dir/state.checkpoint
-journal_path = $mp_local_deploy_state_dir/state.journal
-max_export_files = $(mp_resolve_effective_config_value storage.max_export_files "$config_binary")
-
-[observability]
-log_directory = $mp_local_deploy_log_dir
-max_log_lines = $(mp_resolve_effective_config_value observability.max_log_lines "$config_binary")
-
-[security]
-bootstrap_admin_token_secret_ref = $(mp_resolve_effective_config_value security.bootstrap_admin_token_secret_ref "$config_binary")
-storage_key_secret_ref = $(mp_resolve_effective_config_value security.storage_key_secret_ref "$config_binary")
-rate_limit_requests = $(mp_resolve_effective_config_value security.rate_limit_requests "$config_binary")
-rate_limit_window_seconds = $(mp_resolve_effective_config_value security.rate_limit_window_seconds "$config_binary")
+service:
+  environment_name: $(mp_resolve_effective_config_value service.environment_name "$config_binary")
+  service_name: $(mp_resolve_effective_config_value service.service_name "$config_binary")
+  build_version: "$(mp_resolve_effective_config_value service.build_version "$config_binary")"
+server:
+  socket_path: $mp_local_deploy_socket_file
+  pid_file_path: $mp_local_deploy_pid_file
+  shutdown_timeout_millis: $(mp_resolve_effective_config_value server.shutdown_timeout_millis "$config_binary")
+cache:
+  memory_limit_bytes: $(mp_resolve_effective_config_value cache.memory_limit_bytes "$config_binary")
+  default_ttl_seconds: $(mp_resolve_effective_config_value cache.default_ttl_seconds "$config_binary")
+  min_ttl_seconds: $(mp_resolve_effective_config_value cache.min_ttl_seconds "$config_binary")
+  max_ttl_seconds: $(mp_resolve_effective_config_value cache.max_ttl_seconds "$config_binary")
+  max_key_bytes: $(mp_resolve_effective_config_value cache.max_key_bytes "$config_binary")
+  max_value_bytes: $(mp_resolve_effective_config_value cache.max_value_bytes "$config_binary")
+  bucket_count: $(mp_resolve_effective_config_value cache.bucket_count "$config_binary")
+  sweep_interval_seconds: $(mp_resolve_effective_config_value cache.sweep_interval_seconds "$config_binary")
+storage:
+  data_directory: $mp_local_deploy_state_dir
+  export_directory: $mp_local_deploy_state_dir/exports
+  checkpoint_path: $mp_local_deploy_state_dir/state.checkpoint
+  journal_path: $mp_local_deploy_state_dir/state.journal
+  max_export_files: $(mp_resolve_effective_config_value storage.max_export_files "$config_binary")
+observability:
+  log_directory: $mp_local_deploy_log_dir
+  max_log_lines: $(mp_resolve_effective_config_value observability.max_log_lines "$config_binary")
+mp_logger:
+  log_directory: $mp_local_deploy_log_dir
+security:
+  bootstrap_admin_token_secret_ref: $(mp_resolve_effective_config_value security.bootstrap_admin_token_secret_ref "$config_binary")
+  storage_key_secret_ref: $(mp_resolve_effective_config_value security.storage_key_secret_ref "$config_binary")
+  rate_limit_requests: $(mp_resolve_effective_config_value security.rate_limit_requests "$config_binary")
+  rate_limit_window_seconds: $(mp_resolve_effective_config_value security.rate_limit_window_seconds "$config_binary")
 EOF
 }
 

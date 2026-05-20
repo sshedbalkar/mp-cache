@@ -15,7 +15,7 @@
 #define MP_CACHE_LINE_CAPACITY 2048u
 
 /* Compiled bootstrap defaults. */
-#define MP_CACHE_DEFAULT_CONFIG_PATH "configs/bootstrap.ini"
+#define MP_CACHE_DEFAULT_CONFIG_PATH "configs/bootstrap.yaml"
 #define MP_CACHE_DEFAULT_SERVICE_NAME "mp-cache"
 #define MP_CACHE_DEFAULT_ENVIRONMENT_NAME "local"
 #define MP_CACHE_DEFAULT_BUILD_VERSION "0.0.0"
@@ -48,6 +48,7 @@
 #define MP_CACHE_CONFIG_SECTION_CACHE "cache"
 #define MP_CACHE_CONFIG_SECTION_STORAGE "storage"
 #define MP_CACHE_CONFIG_SECTION_OBSERVABILITY "observability"
+#define MP_CACHE_CONFIG_SECTION_MP_LOGGER "mp_logger"
 #define MP_CACHE_CONFIG_SECTION_SECURITY "security"
 #define MP_CACHE_CONFIG_KEY_ENVIRONMENT_NAME "environment_name"
 #define MP_CACHE_CONFIG_KEY_SERVICE_NAME "service_name"
@@ -70,6 +71,28 @@
 #define MP_CACHE_CONFIG_KEY_MAX_EXPORT_FILES "max_export_files"
 #define MP_CACHE_CONFIG_KEY_LOG_DIRECTORY "log_directory"
 #define MP_CACHE_CONFIG_KEY_MAX_LOG_LINES "max_log_lines"
+#define MP_CACHE_CONFIG_KEY_LOGGER_BOOTSTRAP_PATH "bootstrap_path"
+#define MP_CACHE_CONFIG_KEY_LOGGER_BUFFER_CAPACITY "buffer_capacity"
+#define MP_CACHE_CONFIG_KEY_LOGGER_MESSAGE_CAPACITY "message_capacity"
+#define MP_CACHE_CONFIG_KEY_LOGGER_CONTEXT_CAPACITY "context_capacity"
+#define MP_CACHE_CONFIG_KEY_LOGGER_FIELD_CAPACITY "field_capacity"
+#define MP_CACHE_CONFIG_KEY_LOGGER_FIELD_KEY_CAPACITY "field_key_capacity"
+#define MP_CACHE_CONFIG_KEY_LOGGER_FIELD_VALUE_CAPACITY "field_value_capacity"
+#define MP_CACHE_CONFIG_KEY_LOGGER_FORMAT "format"
+#define MP_CACHE_CONFIG_KEY_LOGGER_PRETTY_OUTPUT "pretty_output"
+#define MP_CACHE_CONFIG_KEY_LOGGER_FILE_NAME_PREFIX "file_name_prefix"
+#define MP_CACHE_CONFIG_KEY_LOGGER_BACKUP_FILE_NAME_PREFIX "backup_file_name_prefix"
+#define MP_CACHE_CONFIG_KEY_LOGGER_ACTIVE_STREAMS "active_streams"
+#define MP_CACHE_CONFIG_KEY_LOGGER_STDOUT_MIN_LEVEL "stdout_min_level"
+#define MP_CACHE_CONFIG_KEY_LOGGER_STDOUT_MAX_LEVEL "stdout_max_level"
+#define MP_CACHE_CONFIG_KEY_LOGGER_STDERR_MIN_LEVEL "stderr_min_level"
+#define MP_CACHE_CONFIG_KEY_LOGGER_STDERR_MAX_LEVEL "stderr_max_level"
+#define MP_CACHE_CONFIG_KEY_LOGGER_FILE_MIN_LEVEL "file_min_level"
+#define MP_CACHE_CONFIG_KEY_LOGGER_FILE_MAX_LEVEL "file_max_level"
+#define MP_CACHE_CONFIG_KEY_LOGGER_UDP_MIN_LEVEL "udp_min_level"
+#define MP_CACHE_CONFIG_KEY_LOGGER_UDP_MAX_LEVEL "udp_max_level"
+#define MP_CACHE_CONFIG_KEY_LOGGER_UDP_HOST "udp_host"
+#define MP_CACHE_CONFIG_KEY_LOGGER_UDP_PORT "udp_port"
 #define MP_CACHE_CONFIG_KEY_BOOTSTRAP_ADMIN_TOKEN_SECRET_REF "bootstrap_admin_token_secret_ref"
 #define MP_CACHE_CONFIG_KEY_STORAGE_KEY_SECRET_REF "storage_key_secret_ref"
 #define MP_CACHE_CONFIG_KEY_RATE_LIMIT_REQUESTS "rate_limit_requests"
@@ -183,8 +206,23 @@
 #define MP_CACHE_LOGGER_MESSAGE_CAPACITY 1024u
 #define MP_CACHE_LOGGER_CONTEXT_CAPACITY 512u
 #define MP_CACHE_LOGGER_FIELD_CAPACITY 8u
+#define MP_CACHE_LOGGER_FIELD_KEY_CAPACITY 32u
+#define MP_CACHE_LOGGER_FIELD_VALUE_CAPACITY 128u
+#define MP_CACHE_LOGGER_FORMAT "json"
+#define MP_CACHE_LOGGER_PRETTY_OUTPUT 0
 #define MP_CACHE_LOGGER_FILE_NAME_PREFIX "mp-cache"
 #define MP_CACHE_LOGGER_BACKUP_FILE_NAME_PREFIX "mp-cache-internal"
 #define MP_CACHE_LOGGER_ACTIVE_STREAMS "stdout,stderr,file"
+#define MP_CACHE_LOGGER_STDOUT_MIN_LEVEL "trace"
+#define MP_CACHE_LOGGER_STDOUT_MAX_LEVEL "info"
+#define MP_CACHE_LOGGER_STDERR_MIN_LEVEL "warning"
+#define MP_CACHE_LOGGER_STDERR_MAX_LEVEL "fatal"
+#define MP_CACHE_LOGGER_FILE_MIN_LEVEL "trace"
+#define MP_CACHE_LOGGER_FILE_MAX_LEVEL "fatal"
+#define MP_CACHE_LOGGER_UDP_MIN_LEVEL "error"
+#define MP_CACHE_LOGGER_UDP_MAX_LEVEL "fatal"
+#define MP_CACHE_LOGGER_UDP_HOST "127.0.0.1"
+#define MP_CACHE_LOGGER_UDP_PORT 5514u
+#define MP_CACHE_LOGGER_BOOTSTRAP_PATH "native/mp_logger/configs/logger.bootstrap.ini"
 
 #endif

@@ -16,7 +16,7 @@ Use local standards from `docs/engineering-standards.md`, `docs/naming-strategy.
   - local files: `docs/naming-strategy.md`, `cmd/`, `scripts/`, `internal/`, `Makefile`
 - `route.observability-logging`
   - section: `Security And Operations`
-  - local files: `internal/observability/`, `internal/runtime/`, `native/mp_logger`, `configs/logger.bootstrap.ini`
+  - local files: `internal/observability/`, `internal/runtime/`, `native/mp_logger`, `native/mp_logger/configs/logger.bootstrap.ini`
 - `route.server-api`
   - sections: `Server And API`, `Security And Operations`
   - durable checks: application error responses must expose project-defined `error_code`; descriptions are human-only

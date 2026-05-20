@@ -32,6 +32,21 @@ typedef struct {
     char journal_path[MP_CACHE_PATH_CAP];
     /* Directory that stores mp_logger output files. */
     char log_directory[MP_CACHE_PATH_CAP];
+    /* Subproject bootstrap file used before parent overrides are applied. */
+    char logger_bootstrap_path[MP_CACHE_PATH_CAP];
+    char logger_format[MP_CACHE_TEXT_CAP];
+    char logger_file_name_prefix[MP_CACHE_NAME_CAP];
+    char logger_backup_file_name_prefix[MP_CACHE_NAME_CAP];
+    char logger_active_streams[MP_CACHE_TEXT_CAP];
+    char logger_stdout_min_level[MP_CACHE_TEXT_CAP];
+    char logger_stdout_max_level[MP_CACHE_TEXT_CAP];
+    char logger_stderr_min_level[MP_CACHE_TEXT_CAP];
+    char logger_stderr_max_level[MP_CACHE_TEXT_CAP];
+    char logger_file_min_level[MP_CACHE_TEXT_CAP];
+    char logger_file_max_level[MP_CACHE_TEXT_CAP];
+    char logger_udp_min_level[MP_CACHE_TEXT_CAP];
+    char logger_udp_max_level[MP_CACHE_TEXT_CAP];
+    char logger_udp_host[MP_CACHE_TEXT_CAP];
     /* Runtime secret reference for the bootstrap admin bearer token. */
     char bootstrap_admin_token_secret_ref[MP_CACHE_SECRET_REF_CAP];
     /* Runtime secret reference used to derive the persistence key. */
@@ -58,6 +73,14 @@ typedef struct {
     uint32_t sweep_interval_seconds;
     /* Maximum number of lines returned by log-tail endpoints. */
     uint32_t max_log_lines;
+    uint32_t logger_buffer_capacity;
+    uint32_t logger_message_capacity;
+    uint32_t logger_context_capacity;
+    uint32_t logger_field_capacity;
+    uint32_t logger_field_key_capacity;
+    uint32_t logger_field_value_capacity;
+    uint32_t logger_pretty_output;
+    uint32_t logger_udp_port;
     /* Per-principal request budget within one rate-limit window. */
     uint32_t rate_limit_requests;
     /* Length of the rate-limit window in seconds. */

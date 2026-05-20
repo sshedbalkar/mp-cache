@@ -70,7 +70,7 @@ The scripted install step below also installs the required build tools.
 
 This fast path uses the default local deployment layout:
 
-- config path: `configs/bootstrap.ini`
+- config path: `configs/bootstrap.yaml`
 - socket path: `.tmp/run/mp-cache.sock`
 - pid file: `.tmp/run/mp-cache.pid`
 - data path: `.tmp/data/`

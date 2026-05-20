@@ -10,7 +10,7 @@ Recommended deployment flow:
 
 1. Install the packaged artifact under `/opt/mp-cache/releases/<release-id>`.
 2. Update `/opt/mp-cache/current` to point at the selected release.
-3. Mount the secret files referenced by `configs/env/<environment>.ini`.
+3. Mount the secret files referenced by `configs/env/<environment>.yaml`.
 4. Adjust `ExecStart` and `WorkingDirectory` if the artifact root differs from `/opt/mp-cache/current`.
 5. Run `systemctl daemon-reload && systemctl enable --now mp-cache.service`.
 

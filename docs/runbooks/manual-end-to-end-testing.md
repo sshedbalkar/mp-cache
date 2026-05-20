@@ -151,45 +151,45 @@ mkdir -p .tmp/manual-e2e/run
 export MP_LOCAL_SECRET_ENV_FILE="$MP_CACHE_REPO/.tmp/manual-e2e/secrets/local.env"
 MP_LOCAL_SECRET_ENV_FILE="$MP_LOCAL_SECRET_ENV_FILE" ./scripts/write-local-secret-env.sh --force
 
-cat > .tmp/manual-e2e/manual-e2e.ini <<'EOF'
-[service]
-environment_name = local
-service_name = mp-cache
+cat > .tmp/manual-e2e/manual-e2e.yaml <<'EOF'
+service:
+  environment_name: local
+  service_name: mp-cache
 
-[server]
-socket_path = .tmp/manual-e2e/run/mp-cache.sock
-pid_file_path = .tmp/manual-e2e/run/mp-cache.pid
-shutdown_timeout_millis = 5000
+server:
+  socket_path: .tmp/manual-e2e/run/mp-cache.sock
+  pid_file_path: .tmp/manual-e2e/run/mp-cache.pid
+  shutdown_timeout_millis: 5000
 
-[cache]
-memory_limit_bytes = 268435456
-default_ttl_seconds = 172800
-min_ttl_seconds = 1
-max_ttl_seconds = 2592000
-max_key_bytes = 256
-max_value_bytes = 1048576
-bucket_count = 4096
-sweep_interval_seconds = 5
+cache:
+  memory_limit_bytes: 268435456
+  default_ttl_seconds: 172800
+  min_ttl_seconds: 1
+  max_ttl_seconds: 2592000
+  max_key_bytes: 256
+  max_value_bytes: 1048576
+  bucket_count: 4096
+  sweep_interval_seconds: 5
 
-[storage]
-data_directory = .tmp/manual-e2e/data
-export_directory = .tmp/manual-e2e/exports
-checkpoint_path = .tmp/manual-e2e/data/state.checkpoint
-journal_path = .tmp/manual-e2e/data/state.journal
-max_export_files = 16
+storage:
+  data_directory: .tmp/manual-e2e/data
+  export_directory: .tmp/manual-e2e/exports
+  checkpoint_path: .tmp/manual-e2e/data/state.checkpoint
+  journal_path: .tmp/manual-e2e/data/state.journal
+  max_export_files: 16
 
-[observability]
-log_directory = .tmp/manual-e2e/logs
-max_log_lines = 200
+observability:
+  log_directory: .tmp/manual-e2e/logs
+  max_log_lines: 200
 
-[security]
-bootstrap_admin_token_secret_ref = env:MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN
-storage_key_secret_ref = env:MP_SECRET_LOCAL_STORAGE_KEY
-rate_limit_requests = 240
-rate_limit_window_seconds = 60
+security:
+  bootstrap_admin_token_secret_ref: env:MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN
+  storage_key_secret_ref: env:MP_SECRET_LOCAL_STORAGE_KEY
+  rate_limit_requests: 240
+  rate_limit_window_seconds: 60
 EOF
 
-export MP_CONFIG_PATH="$MP_CACHE_REPO/.tmp/manual-e2e/manual-e2e.ini"
+export MP_CONFIG_PATH="$MP_CACHE_REPO/.tmp/manual-e2e/manual-e2e.yaml"
 export MP_SOCKET_PATH="$MP_CACHE_REPO/.tmp/manual-e2e/run/mp-cache.sock"
 export MP_PID_FILE="$MP_CACHE_REPO/.tmp/manual-e2e/run/mp-cache.pid"
 export MP_CONSOLE_LOG="$MP_CACHE_REPO/.tmp/manual-e2e/console.log"
@@ -246,9 +246,9 @@ storage_secret_path="$(realpath .tmp/manual-e2e/file-secrets/storage_key)"
 sed \
   -e "s#env:MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN#file:${admin_secret_path}#" \
   -e "s#env:MP_SECRET_LOCAL_STORAGE_KEY#file:${storage_secret_path}#" \
-  .tmp/manual-e2e/manual-e2e.ini > .tmp/manual-e2e/manual-e2e.file-secrets.ini
+  .tmp/manual-e2e/manual-e2e.yaml > .tmp/manual-e2e/manual-e2e.file-secrets.yaml
 
-export MP_CONFIG_PATH="$MP_CACHE_REPO/.tmp/manual-e2e/manual-e2e.file-secrets.ini"
+export MP_CONFIG_PATH="$MP_CACHE_REPO/.tmp/manual-e2e/manual-e2e.file-secrets.yaml"
 export MP_LOCAL_SECRET_ENV_FILE="$MP_CACHE_REPO/.tmp/manual-e2e/secrets/unused.local.env"
 rm -f "$MP_LOCAL_SECRET_ENV_FILE"
 unset MP_SECRET_LOCAL_BOOTSTRAP_ADMIN_TOKEN

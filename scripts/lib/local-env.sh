@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Usage examples:
 #   . ./scripts/lib/local-env.sh
-#   MP_CONFIG_PATH=configs/bootstrap.ini . ./scripts/lib/local-env.sh
+#   MP_CONFIG_PATH=configs/bootstrap.yaml . ./scripts/lib/local-env.sh
 
 if [ "${BASH_SOURCE[0]}" = "$0" ] && [ "${1:-}" = "--help" ]; then
   cat <<'EOF'

@@ -47,8 +47,9 @@
 
 - `configs/scripts/defaults.env`: centralized shell-script defaults for automation paths, report directories, service names, deployment roots, proxy bindings, and systemd runtime settings.
 - `configs/deploy/nginx-paths.env`: centralized Nginx filesystem and location-prefix defaults.
-- `configs/bootstrap.ini`: local application runtime defaults.
-- `configs/env/*.ini`: environment-specific application runtime defaults.
+- `configs/bootstrap.yaml`: local application runtime defaults.
+- `configs/env/*.yaml`: environment-specific application runtime defaults.
+- `native/mp_logger/configs/logger.bootstrap.ini`: subproject-owned `mp_logger` bootstrap config.
 
 ## Validation
 

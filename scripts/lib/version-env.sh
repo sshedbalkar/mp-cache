@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Usage examples:
 #   . ./scripts/lib/version-env.sh
-#   MP_CONFIG_PATH=configs/bootstrap.ini . ./scripts/lib/version-env.sh
+#   MP_CONFIG_PATH=configs/bootstrap.yaml . ./scripts/lib/version-env.sh
 
 if [ "${BASH_SOURCE[0]}" = "$0" ] && [ "${1:-}" = "--help" ]; then
   cat <<'EOF'
@@ -61,21 +61,22 @@ mp_read_build_version_from_config() {
     mp_version_exit_with_error "server config file not found: $version_config_file"
 
   build_version_value="$(
-    awk -F= -v target_section="$MP_BUILD_VERSION_SECTION" -v target_key="$MP_BUILD_VERSION_KEY" '
+    awk -F: -v target_section="$MP_BUILD_VERSION_SECTION" -v target_key="$MP_BUILD_VERSION_KEY" '
       function trim(value) {
         gsub(/^[[:space:]]+/, "", value)
         gsub(/[[:space:]]+$/, "", value)
+        gsub(/^"/, "", value)
+        gsub(/"$/, "", value)
         return value
       }
 
-      /^[[:space:]]*[#;]/ || /^[[:space:]]*$/ {
+      /^[[:space:]]*[#]/ || /^[[:space:]]*$/ {
         next
       }
 
-      /^[[:space:]]*\[[^]]+\][[:space:]]*$/ {
+      /^[^[:space:]][^:]*:[[:space:]]*$/ {
         section = $0
-        gsub(/^[[:space:]]*\[/, "", section)
-        gsub(/\][[:space:]]*$/, "", section)
+        gsub(/:[[:space:]]*$/, "", section)
         in_section = (section == target_section)
         next
       }
@@ -83,7 +84,7 @@ mp_read_build_version_from_config() {
       in_section == 1 {
         key = trim($1)
         if (key == target_key) {
-          print trim(substr($0, index($0, "=") + 1))
+          print trim(substr($0, index($0, ":") + 1))
           found = 1
           exit
         }
@@ -130,14 +131,13 @@ mp_write_build_version_to_config() {
       -v target_key="$MP_BUILD_VERSION_KEY" \
       -v next_value="$next_build_version" '
     function emit_value() {
-      print target_key " = " next_value
+      print "  " target_key ": \"" next_value "\""
       wrote = 1
     }
 
-    /^[[:space:]]*\[[^]]+\][[:space:]]*$/ {
+    /^[^[:space:]][^:]*:[[:space:]]*$/ {
       section = $0
-      gsub(/^[[:space:]]*\[/, "", section)
-      gsub(/\][[:space:]]*$/, "", section)
+      gsub(/:[[:space:]]*$/, "", section)
       if (in_section == 1 && wrote != 1) {
         emit_value()
       }
@@ -149,7 +149,7 @@ mp_write_build_version_to_config() {
 
     in_section == 1 {
       line = $0
-      split(line, parts, "=")
+      split(line, parts, ":")
       key = parts[1]
       gsub(/^[[:space:]]+/, "", key)
       gsub(/[[:space:]]+$/, "", key)
@@ -168,7 +168,7 @@ mp_write_build_version_to_config() {
         emit_value()
       } else if (saw_section != 1) {
         print ""
-        print "[" target_section "]"
+        print target_section ":"
         emit_value()
       }
     }' "$version_config_file" >"$version_config_temp_file"

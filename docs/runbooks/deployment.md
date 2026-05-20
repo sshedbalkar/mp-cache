@@ -12,15 +12,15 @@ Command:
 ./scripts/deploy-local.sh
 ```
 
-The script builds the configured local preset, increments `service.build_version` in `configs/bootstrap.ini` unless told to skip it, creates the configured local artifact, stages the service binary from that artifact, writes local secrets if needed, generates a host-specific config under the configured local deploy directory, installs the configured local systemd unit as the current local user, installs an Nginx proxy config, restarts the service, reloads Nginx, verifies the proxied health endpoint, and writes the configured deployment report.
+The script builds the configured local preset, increments `service.build_version` in `configs/bootstrap.yaml` unless told to skip it, creates the configured local artifact, stages the service binary from that artifact, writes local secrets if needed, generates a host-specific config under the configured local deploy directory, installs the configured local systemd unit as the current local user, installs an Nginx proxy config, restarts the service, reloads Nginx, verifies the proxied health endpoint, and writes the configured deployment report.
 
 Local defaults are centralized:
 
 1. Shell-script defaults: `configs/scripts/defaults.env`.
 2. Nginx paths and location prefix: `configs/deploy/nginx-paths.env`.
-3. Application runtime settings: `configs/bootstrap.ini` and `configs/env/*.ini`.
+3. Application runtime settings: `configs/bootstrap.yaml` and `configs/env/*.yaml`.
 
-The generated local deployment config reads application defaults from `configs/bootstrap.ini` and only substitutes host-specific service paths such as the systemd runtime socket, state directory, and log directory.
+The generated local deployment config reads application defaults from `configs/bootstrap.yaml` and only substitutes host-specific service paths such as the systemd runtime socket, state directory, and log directory.
 
 Common overrides:
 

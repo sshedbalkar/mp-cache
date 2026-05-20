@@ -36,11 +36,12 @@ required_standard_paths=(
   CMakeLists.txt
   internal/config/constants.h
   docs/naming-strategy.md
-  configs/bootstrap.ini
+  configs/bootstrap.yaml
   configs/build/CMakePresets.json
   configs/deploy/nginx-paths.env
   configs/scripts/defaults.env
-  configs/logger.bootstrap.ini
+  native/mp_logger/configs/logger.bootstrap.ini
+  native/mp_logger/configs/scripts/defaults.env
   deploy/development/README.md
   deploy/local/README.md
   deploy/nginx/mp-cache.conf
@@ -98,6 +99,11 @@ for required_path in "${required_standard_paths[@]}"; do
   fi
 done
 
+if [ -e configs/logger.bootstrap.ini ]; then
+  printf 'mp_logger bootstrap config must live in native/mp_logger/configs/logger.bootstrap.ini, not configs/logger.bootstrap.ini\n' >&2
+  exit 1
+fi
+
 constant_drift_report="$(rg -n '^#define MP_CACHE_' internal cmd tests 2>/dev/null | grep -v 'internal/config/constants.h' | grep -v '#define MP_CACHE_INTERNAL_' || true)"
 error_code_pattern="$(awk '
   /^#define MP_CACHE_HTTP_ERROR_CODE_/ {
@@ -128,7 +134,7 @@ if [ -n "$endpoint_pattern" ]; then
   endpoint_drift_report="$(rg -n "\"[^\"[:space:]]*(${endpoint_pattern})" internal cmd tests scripts 2>/dev/null | grep -v 'internal/config/constants.h' || true)"
 fi
 script_config_literal_report="$(
-  rg -n --color never '\$\{[A-Z0-9_]+:-(\.tmp|build/local-debug|build/local-asan-ubsan|dist|dist/local|configs/bootstrap\.ini|configs/deploy/nginx-paths\.env|127\.0\.0\.1:8080|/opt/mp-cache|/var/lib|/var/log|/run|/etc/systemd|/tmp|mp-cache-local|mp-cache|local|1970-01-01T00:00:00Z|85|1)([^}]*)\}' scripts 2>/dev/null || true
+  rg -n --color never '\$\{[A-Z0-9_]+:-(\.tmp|build/local-debug|build/local-asan-ubsan|dist|dist/local|configs/bootstrap\.yaml|configs/deploy/nginx-paths\.env|127\.0\.0\.1:8080|/opt/mp-cache|/var/lib|/var/log|/run|/etc/systemd|/tmp|mp-cache-local|mp-cache|local|1970-01-01T00:00:00Z|85|1)([^}]*)\}' scripts 2>/dev/null || true
 )"
 script_header_usage_examples_report="$(
   for standard_script_file in scripts/*.sh scripts/lib/*.sh; do

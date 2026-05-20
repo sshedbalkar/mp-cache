@@ -8,7 +8,7 @@ For an auto-start local service behind Nginx, run:
 ./scripts/deploy-local.sh
 ```
 
-The auto-start script uses the current local user, builds the configured local preset, increments `service.build_version` in `configs/bootstrap.ini` by default, creates the configured local artifact, stages binaries from that artifact by default, installs the configured local systemd unit, configures local Nginx, verifies the proxied health endpoint, and writes the configured deployment report. Re-run the same command for recurring local deployment after code changes.
+The auto-start script uses the current local user, builds the configured local preset, increments `service.build_version` in `configs/bootstrap.yaml` by default, creates the configured local artifact, stages binaries from that artifact by default, installs the configured local systemd unit, configures local Nginx, verifies the proxied health endpoint, and writes the configured deployment report. Re-run the same command for recurring local deployment after code changes.
 
 After deployment, run:
 
@@ -18,7 +18,7 @@ After deployment, run:
 
 The post-deployment smoke test exercises the installed service through Nginx and writes `.tmp/deploy/local/reports/post-deployment-test-report.md` with captured HTTP responses beside it.
 
-Shell-script deployment defaults are centralized in `configs/scripts/defaults.env`. Nginx filesystem paths and the location prefix are centralized in `configs/deploy/nginx-paths.env`. Application runtime settings are read from `configs/bootstrap.ini` and the `configs/env/` files.
+Shell-script deployment defaults are centralized in `configs/scripts/defaults.env`. Nginx filesystem paths and the location prefix are centralized in `configs/deploy/nginx-paths.env`. Application runtime settings are read from `configs/bootstrap.yaml` and the `configs/env/` files.
 
 To create the default local artifact without installing the service, run `./scripts/build-local.sh` or `make build-artifact`. Use `./scripts/build-local.sh --skip-version-increment` or `make build-artifact SKIP_VERSION_INCREMENT=1` after manually setting `service.build_version`.
 

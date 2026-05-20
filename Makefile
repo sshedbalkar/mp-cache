@@ -31,7 +31,7 @@ SSH_TARGET ?=
 .PHONY: build native-config native-build build-artifact test test-full test-unit test-naming-strategy test-standards test-hardening test-valgrind benchmark check package build-local test-local test-local-deployment deploy-local deploy-development deploy-qa deploy-staging deploy-production stop-local stop-development stop-qa stop-staging stop-production restart-local restart-development restart-qa restart-staging restart-production doctor promote clean
 
 # Default build compiles the native service and creates a versioned local artifact
-# using the build_version configured in configs/bootstrap.ini.
+# using the build_version configured in configs/bootstrap.yaml.
 build: build-artifact
 
 # Regenerate build files from the checked-in CMake preset.
