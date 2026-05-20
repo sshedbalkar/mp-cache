@@ -131,4 +131,4 @@ Create a versioning pattern for the 'mp-cache' project: [MAJOR.MINOR.HOTFIX]. Ma
 
 Build version also appears as a part of the metadata of each and every API response.
 
-'mp-cache' should load its nested native/mp_logger/configs/logger.bootstrap.yaml, then apply parent values from configs/bootstrap.yaml. Update docs, context, tests, and verify this.
+'mp-cache' should load its nested native/mp_logger/configs/logger.bootstrap.yaml, then apply parent values from configs/bootstrap.yaml. Update docs, context, tests, and verify this. Done
