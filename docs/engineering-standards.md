@@ -103,7 +103,7 @@ This document is the local engineering standard for `mp-cache`. It is authoritat
 
 - Keep committed config in `configs/`.
 - Keep script-default configuration in `configs/scripts/`.
-- Keep nested subproject configuration inside that subproject, such as `native/mp_logger/configs/` for `mp_logger` bootstrap and script defaults.
+- Keep nested subproject configuration inside that subproject, such as the YAML `native/mp_logger/configs/logger.bootstrap.yaml` bootstrap and script defaults; parent services may only keep override values in their own `configs/bootstrap.yaml`.
 - Keep durable docs in `docs/`.
 - Keep retrieval metadata in `context/`.
 - Keep automation in `scripts/`.

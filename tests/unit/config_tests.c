@@ -29,6 +29,7 @@ static void test_defaults_include_required_ttl(void) {
     assert(strcmp(config.storage_key_secret_ref, MP_CACHE_DEFAULT_STORAGE_KEY_SECRET_REF) == 0);
     assert(strcmp(config.checkpoint_path, MP_CACHE_DEFAULT_CHECKPOINT_PATH) == 0);
     assert(strcmp(config.journal_path, MP_CACHE_DEFAULT_JOURNAL_PATH) == 0);
+    assert(strcmp(config.logger_bootstrap_path, "native/mp_logger/configs/logger.bootstrap.yaml") == 0);
 }
 
 /* Verify file-backed config parsing overrides the default TTL and related settings. */
@@ -72,7 +73,7 @@ static void test_load_file_overrides_default_ttl(void) {
         "  log_directory: .tmp/config-tests/logs\n"
         "  max_log_lines: 42\n"
         "mp_logger:\n"
-        "  bootstrap_path: native/mp_logger/configs/logger.bootstrap.ini\n"
+        "  bootstrap_path: native/mp_logger/configs/logger.bootstrap.yaml\n"
         "  buffer_capacity: 7\n"
         "  file_name_prefix: config-test-cache\n"
         "security:\n"

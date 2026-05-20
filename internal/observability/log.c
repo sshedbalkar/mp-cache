@@ -22,13 +22,41 @@ static void mp_cache_log_copy(char *destination, size_t destination_capacity, co
     (void)snprintf(destination, destination_capacity, "%s", source);
 }
 
-static void mp_cache_log_apply_level(
+static int mp_cache_log_apply_override(
+    mp_logger_config_t *logger_config,
+    const char *section,
+    const char *key,
+    const char *value) {
+    return mp_logger_config_apply_override(logger_config, section, key, value) == MP_LOG_STATUS_OK ? 0 : -1;
+}
+
+static int mp_cache_log_apply_u32(
+    mp_logger_config_t *logger_config,
+    const char *section,
+    const char *key,
+    uint32_t value) {
+    char value_text[32];
+    (void)snprintf(value_text, sizeof(value_text), "%u", value);
+    return mp_cache_log_apply_override(logger_config, section, key, value_text);
+}
+
+static int mp_cache_log_apply_bool(
+    mp_logger_config_t *logger_config,
+    const char *section,
+    const char *key,
+    uint32_t value) {
+    return mp_cache_log_apply_override(logger_config, section, key, value != 0u ? "true" : "false");
+}
+
+static int mp_cache_log_apply_level(
     mp_logger_config_t *logger_config,
     const char *section,
     const char *minimum,
     const char *maximum) {
-    (void)mp_logger_config_apply_override(logger_config, section, "minimum_level", minimum);
-    (void)mp_logger_config_apply_override(logger_config, section, "maximum_level", maximum);
+    if (mp_cache_log_apply_override(logger_config, section, "minimum_level", minimum) != 0) {
+        return -1;
+    }
+    return mp_cache_log_apply_override(logger_config, section, "maximum_level", maximum);
 }
 
 int mp_cache_log_init(mp_cache_log_t *log, const mp_cache_config_t *config) {
@@ -44,56 +72,49 @@ int mp_cache_log_init(mp_cache_log_t *log, const mp_cache_config_t *config) {
     if (status != MP_LOG_STATUS_OK) {
         mp_logger_config_init_defaults(&logger_config);
     }
-    logger_config.buffer_capacity = config->logger_buffer_capacity;
-    logger_config.message_capacity = config->logger_message_capacity;
-    logger_config.context_capacity = config->logger_context_capacity;
-    logger_config.field_capacity = config->logger_field_capacity;
-    logger_config.field_key_capacity = config->logger_field_key_capacity;
-    logger_config.field_value_capacity = config->logger_field_value_capacity;
-    (void)mp_logger_config_apply_override(&logger_config, "logger", "format", config->logger_format);
-    logger_config.pretty_output = config->logger_pretty_output ? 1 : 0;
-
-    mp_cache_log_copy(logger_config.service_name, sizeof(logger_config.service_name), config->service_name);
-    mp_cache_log_copy(
-        logger_config.environment_name,
-        sizeof(logger_config.environment_name),
-        config->environment_name);
-    mp_cache_log_copy(logger_config.build_version, sizeof(logger_config.build_version), config->build_version);
-    mp_cache_log_copy(logger_config.log_directory, sizeof(logger_config.log_directory), config->log_directory);
-    mp_cache_log_copy(
-        logger_config.file_name_prefix,
-        sizeof(logger_config.file_name_prefix),
-        config->logger_file_name_prefix);
-    mp_cache_log_copy(
-        logger_config.backup_file_name_prefix,
-        sizeof(logger_config.backup_file_name_prefix),
-        config->logger_backup_file_name_prefix);
-    mp_cache_log_copy(
-        logger_config.active_streams,
-        sizeof(logger_config.active_streams),
-        config->logger_active_streams);
-    mp_cache_log_apply_level(
-        &logger_config,
-        "stdout",
-        config->logger_stdout_min_level,
-        config->logger_stdout_max_level);
-    mp_cache_log_apply_level(
-        &logger_config,
-        "stderr",
-        config->logger_stderr_min_level,
-        config->logger_stderr_max_level);
-    mp_cache_log_apply_level(
-        &logger_config,
-        "file",
-        config->logger_file_min_level,
-        config->logger_file_max_level);
-    mp_cache_log_apply_level(
-        &logger_config,
-        "udp",
-        config->logger_udp_min_level,
-        config->logger_udp_max_level);
-    mp_cache_log_copy(logger_config.udp_host, sizeof(logger_config.udp_host), config->logger_udp_host);
-    logger_config.udp_port = (uint16_t)config->logger_udp_port;
+    if (mp_cache_log_apply_override(&logger_config, "", "service_name", config->service_name) != 0 ||
+        mp_cache_log_apply_override(&logger_config, "", "environment_name", config->environment_name) != 0 ||
+        mp_cache_log_apply_override(&logger_config, "", "build_version", config->build_version) != 0 ||
+        mp_cache_log_apply_u32(&logger_config, "logger", "buffer_capacity", config->logger_buffer_capacity) != 0 ||
+        mp_cache_log_apply_u32(&logger_config, "logger", "message_capacity", config->logger_message_capacity) != 0 ||
+        mp_cache_log_apply_u32(&logger_config, "logger", "context_capacity", config->logger_context_capacity) != 0 ||
+        mp_cache_log_apply_u32(&logger_config, "logger", "field_capacity", config->logger_field_capacity) != 0 ||
+        mp_cache_log_apply_u32(&logger_config, "logger", "field_key_capacity", config->logger_field_key_capacity) != 0 ||
+        mp_cache_log_apply_u32(&logger_config, "logger", "field_value_capacity", config->logger_field_value_capacity) != 0 ||
+        mp_cache_log_apply_override(&logger_config, "logger", "format", config->logger_format) != 0 ||
+        mp_cache_log_apply_bool(&logger_config, "logger", "pretty_output", config->logger_pretty_output) != 0 ||
+        mp_cache_log_apply_override(&logger_config, "logger", "log_directory", config->log_directory) != 0 ||
+        mp_cache_log_apply_override(&logger_config, "logger", "file_name_prefix", config->logger_file_name_prefix) != 0 ||
+        mp_cache_log_apply_override(
+            &logger_config,
+            "logger",
+            "backup_file_name_prefix",
+            config->logger_backup_file_name_prefix) != 0 ||
+        mp_cache_log_apply_override(&logger_config, "logger", "active_streams", config->logger_active_streams) != 0 ||
+        mp_cache_log_apply_level(
+            &logger_config,
+            "stdout",
+            config->logger_stdout_min_level,
+            config->logger_stdout_max_level) != 0 ||
+        mp_cache_log_apply_level(
+            &logger_config,
+            "stderr",
+            config->logger_stderr_min_level,
+            config->logger_stderr_max_level) != 0 ||
+        mp_cache_log_apply_level(
+            &logger_config,
+            "file",
+            config->logger_file_min_level,
+            config->logger_file_max_level) != 0 ||
+        mp_cache_log_apply_level(
+            &logger_config,
+            "udp",
+            config->logger_udp_min_level,
+            config->logger_udp_max_level) != 0 ||
+        mp_cache_log_apply_override(&logger_config, "udp", "host", config->logger_udp_host) != 0 ||
+        mp_cache_log_apply_u32(&logger_config, "udp", "port", config->logger_udp_port) != 0) {
+        return -1;
+    }
 
     status = mp_logger_create(&logger_config, &log->raw_logger);
     if (status != MP_LOG_STATUS_OK) {

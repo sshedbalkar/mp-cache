@@ -42,7 +42,7 @@
 #define MP_CACHE_DEFAULT_RATE_LIMIT_REQUESTS 240u
 #define MP_CACHE_DEFAULT_RATE_LIMIT_WINDOW_SECONDS 60u
 
-/* Config sections and keys accepted by the bootstrap INI parser. */
+/* Config sections and keys accepted by the bootstrap YAML parser. */
 #define MP_CACHE_CONFIG_SECTION_SERVICE "service"
 #define MP_CACHE_CONFIG_SECTION_SERVER "server"
 #define MP_CACHE_CONFIG_SECTION_CACHE "cache"
@@ -223,6 +223,6 @@
 #define MP_CACHE_LOGGER_UDP_MAX_LEVEL "fatal"
 #define MP_CACHE_LOGGER_UDP_HOST "127.0.0.1"
 #define MP_CACHE_LOGGER_UDP_PORT 5514u
-#define MP_CACHE_LOGGER_BOOTSTRAP_PATH "native/mp_logger/configs/logger.bootstrap.ini"
+#define MP_CACHE_LOGGER_BOOTSTRAP_PATH "native/mp_logger/configs/logger.bootstrap.yaml"
 
 #endif

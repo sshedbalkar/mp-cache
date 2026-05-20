@@ -33,7 +33,7 @@ The current baseline includes the Phase 1 scaffold plus the Phase 2 authenticate
 | Service language | C17 | Matches the native-service requirement and low-overhead goals. |
 | Local transport | HTTP over Unix socket | Simple S2S control plane with standard tooling compatibility. |
 | Remote exposure | SSH tunnel plus proxy such as Nginx | Keeps the service local-only while still enabling controlled network access. |
-| Logging | `native/mp_logger` submodule | Reuses the existing bounded logger implementation and conventions. |
+| Logging | `native/mp_logger/configs/logger.bootstrap.yaml` plus `configs/bootstrap.yaml` overrides | Reuses the existing bounded logger implementation, loads the nested YAML bootstrap first, and keeps parent-owned overrides outside the nested subproject. |
 | Config format | YAML bootstrap config | Simple C parser, commentable, exportable on missing config. |
 | Timezone | UTC only | Required by the product constraints and easier for export/import correctness. |
 | Runtime shape | Long-running foreground process with signal-driven graceful shutdown | Simpler lifecycle, packaging, and operational control. |

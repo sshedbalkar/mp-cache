@@ -100,7 +100,7 @@ typedef enum {
 /* Populate config with the compiled bootstrap defaults used when no file is present. */
 void mp_cache_config_init_defaults(mp_cache_config_t *config);
 
-/* Load, parse, and validate one INI config file into config. */
+/* Load, parse, and validate one YAML config file into config. */
 mp_cache_config_status_t mp_cache_config_load_file(
     const char *config_path,
     mp_cache_config_t *config);

@@ -130,3 +130,5 @@ In 'mp-cache', a lot of the configuration parameters in the script files have be
 Create a versioning pattern for the 'mp-cache' project: [MAJOR.MINOR.HOTFIX]. Make the build version configurable using the server config file. By default whenever a new build is created, the build script should automatically update the version number (increements MINOR version) from the config file (unless an option is provided when running the build script which will skip the auto increment and just take the version from the config file as it is - useful in cases the version is updated manually) and the artifact creating script reads the version from config and uses it, appends it to the artifact package. Make this (version pattern to be followed for a build) a durable rule by adding it to the standards. Done
 
 Build version also appears as a part of the metadata of each and every API response.
+
+'mp-cache' should load its nested native/mp_logger/configs/logger.bootstrap.yaml, then apply parent values from configs/bootstrap.yaml. Update docs, context, tests, and verify this.

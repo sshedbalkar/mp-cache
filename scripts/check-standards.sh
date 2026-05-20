@@ -40,7 +40,7 @@ required_standard_paths=(
   configs/build/CMakePresets.json
   configs/deploy/nginx-paths.env
   configs/scripts/defaults.env
-  native/mp_logger/configs/logger.bootstrap.ini
+  native/mp_logger/configs/logger.bootstrap.yaml
   native/mp_logger/configs/scripts/defaults.env
   deploy/development/README.md
   deploy/local/README.md
@@ -100,7 +100,23 @@ for required_path in "${required_standard_paths[@]}"; do
 done
 
 if [ -e configs/logger.bootstrap.ini ]; then
-  printf 'mp_logger bootstrap config must live in native/mp_logger/configs/logger.bootstrap.ini, not configs/logger.bootstrap.ini\n' >&2
+  printf 'parent mp_logger overrides must live in configs/bootstrap.yaml, not configs/logger.bootstrap.ini\n' >&2
+  exit 1
+fi
+if [ -e configs/logger.bootstrap.yaml ]; then
+  printf 'parent mp_logger overrides must live in configs/bootstrap.yaml, not configs/logger.bootstrap.yaml\n' >&2
+  exit 1
+fi
+if [ -e native/mp_logger/configs/logger.bootstrap.ini ]; then
+  printf 'nested mp_logger bootstrap must be YAML: native/mp_logger/configs/logger.bootstrap.yaml\n' >&2
+  exit 1
+fi
+if ! grep -q '^mp_logger:' configs/bootstrap.yaml; then
+  printf 'configs/bootstrap.yaml must own parent mp_logger overrides\n' >&2
+  exit 1
+fi
+if ! grep -q 'MP_CACHE_LOGGER_BOOTSTRAP_PATH "native/mp_logger/configs/logger.bootstrap.yaml"' internal/config/constants.h; then
+  printf 'mp-cache must load the nested mp_logger YAML bootstrap path by default\n' >&2
   exit 1
 fi
 

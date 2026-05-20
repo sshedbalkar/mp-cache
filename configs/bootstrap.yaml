@@ -25,7 +25,9 @@ observability:
   log_directory: logging
   max_log_lines: 200
 mp_logger:
-  bootstrap_path: native/mp_logger/configs/logger.bootstrap.ini
+  # The nested logger bootstrap stays in the subproject; parent-owned override
+  # values live in this section and are applied after the bootstrap loads.
+  bootstrap_path: native/mp_logger/configs/logger.bootstrap.yaml
   buffer_capacity: 4096
   message_capacity: 1024
   context_capacity: 512
